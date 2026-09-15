@@ -1,0 +1,106 @@
+# ============================================================
+# Miscellaneous
+# ============================================================
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# ============================================================
+# IntelliJ / Android Studio
+# ============================================================
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# ============================================================
+# VS Code
+# ============================================================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ============================================================
+# Flutter / Dart / Pub
+# ============================================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Flutter generated documentation
+**/doc/api/
+
+# Flutter generated iOS files
+**/ios/Flutter/.last_build_id
+
+# ============================================================
+# Dart generated files
+# ============================================================
+*.g.dart
+*.freezed.dart
+
+# ============================================================
+# Android
+# ============================================================
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Gradle
+.gradle/
+**/.gradle/
+android/.gradle/
+
+# Android local configuration
+android/local.properties
+
+# ============================================================
+# Android signing / secrets
+# ============================================================
+*.jks
+*.keystore
+key.properties
+
+# ============================================================
+# iOS
+# ============================================================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcuserdatad
+*.xccheckout
+*.moved-aside
+
+# ============================================================
+# Environment / Secrets
+# ============================================================
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# Obfuscation / Symbolication
+# ============================================================
+app.*.symbols
+app.*.map.json
