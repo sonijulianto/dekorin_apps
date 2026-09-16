@@ -13,7 +13,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
 /// Service that handles real authentication API calls to Golang backend.
 class AuthService {
   // http://10.0.2.2:3000/api untuk Android Emulator, atau 127.0.0.1 untuk iOS/Web/Mac
-  static const String _baseUrl = 'http://10.0.2.2:3000/api';
+  static const String _baseUrl = 'http://10.166.190.239:3000/api';
 
   /// Attempts to authenticate with the given [email] and [password].
   ///
