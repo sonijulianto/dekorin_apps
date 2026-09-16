@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
@@ -408,6 +410,7 @@ class _AgendaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
+    final isFilled = item.formStatus == 'filled';
 
     return Container(
       decoration: BoxDecoration(
@@ -551,9 +554,179 @@ class _AgendaCard extends StatelessWidget {
                   ],
                 ),
               ],
+
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              // Client Web Form Status & Copy Link Action
+              Row(
+                children: [
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isFilled
+                          ? Colors.green.shade50
+                          : Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isFilled
+                            ? Colors.green.shade200
+                            : Colors.amber.shade300,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isFilled ? Icons.check_circle : Icons.hourglass_top,
+                          size: 14,
+                          color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isFilled ? 'Form Terisi' : 'Menunggu Client',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  
+                  // Copy Form Link Button
+                  if (item.formToken.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () {
+                        final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
+                        Clipboard.setData(ClipboardData(text: formUrl));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Link form disalin! Kirim ke WA: $formUrl'),
+                            backgroundColor: AppTheme.primaryGold,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.link, size: 16, color: AppTheme.primaryGold),
+                      label: const Text(
+                        'Copy Link Form',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryGold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Detailed Client Form Information if filled
+              if (item.clientForm != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.assignment_turned_in, size: 16, color: Colors.green),
+                          SizedBox(width: 6),
+                          Text(
+                            'Detail Isian Client',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (item.clientForm!.eventAddress.isNotEmpty)
+                        _buildFormDetailRow(
+                          Icons.home,
+                          'Alamat Acara',
+                          item.clientForm!.eventAddress,
+                        ),
+                      if (item.clientForm!.decorationTheme.isNotEmpty)
+                        _buildFormDetailRow(
+                          Icons.palette,
+                          'Tema',
+                          item.clientForm!.decorationTheme,
+                        ),
+                      if (item.clientForm!.colorPreference.isNotEmpty)
+                        _buildFormDetailRow(
+                          Icons.color_lens,
+                          'Warna Favorit',
+                          item.clientForm!.colorPreference,
+                        ),
+                      if (item.clientForm!.specialRequests.isNotEmpty)
+                        _buildFormDetailRow(
+                          Icons.chat_bubble_outline,
+                          'Permintaan Khusus',
+                          item.clientForm!.specialRequests,
+                        ),
+                      if (item.clientForm!.referencePhotoUrl.isNotEmpty)
+                        _buildFormDetailRow(
+                          Icons.image,
+                          'Foto Inspirasi',
+                          item.clientForm!.referencePhotoUrl,
+                          isLink: true,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFormDetailRow(IconData icon, String label, String value, {bool isLink = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.textLight),
+          const SizedBox(width: 6),
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textDark,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 11,
+                color: isLink ? Colors.blue : AppTheme.textDark,
+                decoration: isLink ? TextDecoration.underline : TextDecoration.none,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

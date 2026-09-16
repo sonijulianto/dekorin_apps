@@ -53,11 +53,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   // --- Logo / Brand ---
                   _buildLogo(),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Kelola bisnis dekorasi Anda\ndengan mudah dan efisien',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: AppTypography.bodyMedium.copyWith(
                       color: AppTheme.textLight,
                       height: 1.5,
                     ),
@@ -155,8 +154,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   // --- Footer ---
                   Text(
                     '© 2026 Dekorin. All rights reserved.',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTypography.bodySmall.copyWith(
                       color: AppTheme.textLight.withValues(alpha: 0.6),
                     ),
                   ),
@@ -197,12 +195,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Dekorin',
-          style: TextStyle(
+          style: AppTypography.h1.copyWith(
             fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textDark,
             letterSpacing: 1.5,
           ),
         ),

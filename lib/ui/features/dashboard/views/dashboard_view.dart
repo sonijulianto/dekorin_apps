@@ -33,13 +33,9 @@ class DashboardView extends ConsumerWidget {
             children: [
               _buildSummaryCards(data.summary),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Booking Minggu Ini',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textDark,
-                ),
+                style: AppTypography.titleLarge,
               ),
               const SizedBox(height: 12),
               _buildBookingList(data.thisWeekBookings),

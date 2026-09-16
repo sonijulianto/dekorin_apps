@@ -19,10 +19,13 @@ class ProfileView extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               user?.name ?? 'Profile',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: AppTypography.h2,
             ),
             const SizedBox(height: 8),
-            Text(user?.email ?? 'Pengaturan akan hadir di sini.'),
+            Text(
+              user?.email ?? 'Pengaturan akan hadir di sini.',
+              style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
+            ),
             const SizedBox(height: 40),
             ElevatedButton.icon(
               onPressed: () {

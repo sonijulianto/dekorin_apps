@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dekorin_apps/config/theme/app_theme.dart';
 
 /// A reusable text field widget with Dekorin styling.
 ///
@@ -39,7 +40,7 @@ class DekorinTextField extends StatelessWidget {
       validator: validator,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
-      style: const TextStyle(fontSize: 16),
+      style: AppTypography.bodyLarge,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

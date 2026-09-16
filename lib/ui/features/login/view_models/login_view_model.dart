@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/repositories/auth_repository_impl.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -81,6 +82,11 @@ class LoginViewModel extends Notifier<LoginState> {
       ref.read(globalAuthProvider.notifier).setUser(user);
       
       state = state.copyWith(isLoading: false);
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.message,
+      );
     } on Exception catch (e) {
       state = state.copyWith(
         isLoading: false,

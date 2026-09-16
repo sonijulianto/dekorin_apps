@@ -36,6 +36,8 @@ class _MainViewState extends State<MainView> {
         onTap: _onItemTapped,
         selectedItemColor: AppTheme.primaryGold,
         unselectedItemColor: AppTheme.textLight,
+        selectedLabelStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold),
+        unselectedLabelStyle: AppTypography.labelMedium,
         backgroundColor: Colors.white,
         elevation: 10,
         items: const [

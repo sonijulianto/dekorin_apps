@@ -1,9 +1,8 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 
@@ -11,32 +10,17 @@ final agendaServiceProvider = Provider<AgendaService>((ref) {
   return AgendaService();
 });
 
+/// Service yang menangani data agenda dan paket dekorasi dari backend.
+///
+/// Menggunakan [ApiClient] terpusat (tidak ada boilerplate HTTP).
 class AgendaService {
-  // Gunakan 10.0.2.2 untuk Android emulator, 127.0.0.1 untuk iOS / Desktop / Web
-  String get baseUrl {
-    if (kIsWeb) return 'http://10.166.190.239:3000/api';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.166.190.239:3000/api';
-    }
-    return 'http://10.166.190.239:3000/api';
-  }
-
   /// Mengambil daftar master paket dekorasi
   Future<List<DecorationPackage>> getPackages() async {
-    final url = Uri.parse('$baseUrl/packages');
     try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> body = jsonDecode(response.body);
-        final List<dynamic> data = body['data'] as List<dynamic>? ?? [];
-        return data
-            .map((item) =>
-                DecorationPackage.fromJson(item as Map<String, dynamic>))
-            .toList();
-      } else {
-        throw Exception('Gagal memuat master paket: status ${response.statusCode}');
-      }
-    } catch (e) {
+      final responseData = await ApiClient.get(ApiEndpoint.packages);
+      final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+      return data.map((item) => DecorationPackage.fromJson(item as Map<String, dynamic>)).toList();
+    } catch (_) {
       // Fallback data jika backend belum tersambung
       return const [
         DecorationPackage(
@@ -68,35 +52,23 @@ class AgendaService {
   }
 
   /// Mengambil daftar agenda mendatang dengan opsional filter tanggal
-  Future<List<AgendaItem>> getAgendas({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
+  Future<List<AgendaItem>> getAgendas({DateTime? startDate, DateTime? endDate}) async {
     final formatter = DateFormat('yyyy-MM-dd');
-    final queryParams = <String, String>{};
+    final queryParams = <String>[];
     if (startDate != null) {
-      queryParams['start_date'] = formatter.format(startDate);
+      queryParams.add('start_date=${formatter.format(startDate)}');
     }
     if (endDate != null) {
-      queryParams['end_date'] = formatter.format(endDate);
+      queryParams.add('end_date=${formatter.format(endDate)}');
     }
 
-    final uri = Uri.parse('$baseUrl/agendas').replace(
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
+    final queryPath = queryParams.isNotEmpty ? '${ApiEndpoint.agendas}?${queryParams.join('&')}' : ApiEndpoint.agendas;
 
     try {
-      final response = await http.get(uri);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> body = jsonDecode(response.body);
-        final List<dynamic> data = body['data'] as List<dynamic>? ?? [];
-        return data
-            .map((item) => AgendaItem.fromJson(item as Map<String, dynamic>))
-            .toList();
-      } else {
-        throw Exception('Gagal memuat agenda: status ${response.statusCode}');
-      }
-    } catch (e) {
+      final responseData = await ApiClient.get(queryPath);
+      final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+      return data.map((item) => AgendaItem.fromJson(item as Map<String, dynamic>)).toList();
+    } catch (_) {
       // Jika jaringan gagal, berikan fallback contoh
       final now = DateTime.now();
       final mock = [
@@ -126,12 +98,10 @@ class AgendaService {
 
       if (startDate != null || endDate != null) {
         return mock.where((agenda) {
-          if (startDate != null &&
-              agenda.eventDateTime.isBefore(DateTime(startDate.year, startDate.month, startDate.day))) {
+          if (startDate != null && agenda.eventDateTime.isBefore(DateTime(startDate.year, startDate.month, startDate.day))) {
             return false;
           }
-          if (endDate != null &&
-              agenda.eventDateTime.isAfter(DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59))) {
+          if (endDate != null && agenda.eventDateTime.isAfter(DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59))) {
             return false;
           }
           return true;
@@ -150,9 +120,7 @@ class AgendaService {
     required String packageId,
     String notes = '',
   }) async {
-    final url = Uri.parse('$baseUrl/agendas');
-    final formattedDate =
-        DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime);
+    final formattedDate = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime);
 
     final payload = {
       'client_name': clientName,
@@ -163,18 +131,8 @@ class AgendaService {
       'notes': notes,
     };
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
+    final responseData = await ApiClient.post(ApiEndpoint.agendas, body: payload);
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final Map<String, dynamic> body = jsonDecode(response.body);
-      return AgendaItem.fromJson(body['data'] as Map<String, dynamic>);
-    } else {
-      final Map<String, dynamic> body = jsonDecode(response.body);
-      throw Exception(body['error'] ?? 'Gagal membuat agenda');
-    }
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
   }
 }
