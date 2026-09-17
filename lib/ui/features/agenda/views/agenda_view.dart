@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
 
 class AgendaView extends ConsumerWidget {
@@ -406,25 +408,80 @@ class _AgendaCard extends StatelessWidget {
 
   final AgendaItem item;
 
+  Future<void> _sendWhatsAppMessage(BuildContext context, AgendaItem item) async {
+    final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
+
+    // Format nomor HP agar sesuai format WhatsApp internasional (62xxx)
+    String phone = item.clientPhone.replaceAll(RegExp(r'\D'), '');
+    if (phone.startsWith('0')) {
+      phone = '62${phone.substring(1)}';
+    } else if (!phone.startsWith('62') && phone.isNotEmpty) {
+      phone = '62$phone';
+    }
+
+    final message =
+        'Halo Kak ${item.clientName}, terima kasih telah memesan dekorasi di Dekorin! ✨\n\n'
+        'Mohon bantu lengkapi detail acara (alamat, tema, warna, dll) melalui tautan berikut ya:\n'
+        '$formUrl';
+
+    final waUrl = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
+
+    try {
+      if (await canLaunchUrl(waUrl)) {
+        await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+      } else {
+        await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!'),
+              backgroundColor: AppTheme.primaryGold,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pesan & Link disalin ke Clipboard!'),
+            backgroundColor: AppTheme.primaryGold,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
     final isFilled = item.formStatus == 'filled';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AgendaDetailView(item: item),
           ),
-        ],
-      ),
-      child: ClipRRect(
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: const BoxDecoration(
@@ -447,21 +504,26 @@ class _AgendaCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          item.clientName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textDark,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              item.clientName,
+                              style: AppTypography.titleMedium,
+                            ),
+                            if (item.clientPhone.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                '• ${item.clientPhone}',
+                                style: AppTypography.bodySmall,
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
                           item.backdropTitle,
-                          style: const TextStyle(
-                            fontSize: 13,
+                          style: AppTypography.titleSmall.copyWith(
                             color: AppTheme.primaryGold,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -478,9 +540,8 @@ class _AgendaCard extends StatelessWidget {
                       item.packageName.isNotEmpty
                           ? item.packageName
                           : 'Paket Custom',
-                      style: const TextStyle(
+                      style: AppTypography.caption.copyWith(
                         color: AppTheme.primaryGold,
-                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -497,11 +558,7 @@ class _AgendaCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '${dateFormat.format(item.eventDateTime)} • ${timeFormat.format(item.eventDateTime)} WIB',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textDark,
-                    ),
+                    style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark),
                   ),
                 ],
               ),
@@ -517,8 +574,7 @@ class _AgendaCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         item.mapsUrl,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: AppTypography.bodySmall.copyWith(
                           color: Colors.blue,
                           decoration: TextDecoration.underline,
                         ),
@@ -542,9 +598,7 @@ class _AgendaCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         item.notes,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textLight,
+                        style: AppTypography.bodySmall.copyWith(
                           fontStyle: FontStyle.italic,
                         ),
                         maxLines: 2,
@@ -559,7 +613,7 @@ class _AgendaCard extends StatelessWidget {
               const Divider(height: 1),
               const SizedBox(height: 12),
 
-              // Client Web Form Status & Copy Link Action
+              // Client Web Form Status & Share via WhatsApp Action
               Row(
                 children: [
                   // Status Badge
@@ -587,8 +641,7 @@ class _AgendaCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           isFilled ? 'Form Terisi' : 'Menunggu Client',
-                          style: TextStyle(
-                            fontSize: 11,
+                          style: AppTypography.caption.copyWith(
                             fontWeight: FontWeight.bold,
                             color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
                           ),
@@ -597,138 +650,57 @@ class _AgendaCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  
-                  // Copy Form Link Button
+
+                  // Copy link icon
                   if (item.formToken.isNotEmpty)
-                    TextButton.icon(
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 18, color: AppTheme.textLight),
+                      tooltip: 'Copy Link Form',
                       onPressed: () {
                         final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
                         Clipboard.setData(ClipboardData(text: formUrl));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Link form disalin! Kirim ke WA: $formUrl'),
+                            content: Text('Link form disalin: $formUrl'),
                             backgroundColor: AppTheme.primaryGold,
-                            duration: const Duration(seconds: 3),
+                            duration: const Duration(seconds: 2),
                           ),
                         );
                       },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    ),
+                  
+                  // Share to WhatsApp Button
+                  if (item.formToken.isNotEmpty)
+                    ElevatedButton.icon(
+                      onPressed: () => _sendWhatsAppMessage(context, item),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
-                      icon: const Icon(Icons.link, size: 16, color: AppTheme.primaryGold),
+                      icon: const Icon(Icons.send_rounded, size: 14),
                       label: const Text(
-                        'Copy Link Form',
+                        'Bagikan ke WA',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryGold,
                         ),
                       ),
                     ),
                 ],
               ),
-
-              // Detailed Client Form Information if filled
-              if (item.clientForm != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green.shade100),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.assignment_turned_in, size: 16, color: Colors.green),
-                          SizedBox(width: 6),
-                          Text(
-                            'Detail Isian Client',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (item.clientForm!.eventAddress.isNotEmpty)
-                        _buildFormDetailRow(
-                          Icons.home,
-                          'Alamat Acara',
-                          item.clientForm!.eventAddress,
-                        ),
-                      if (item.clientForm!.decorationTheme.isNotEmpty)
-                        _buildFormDetailRow(
-                          Icons.palette,
-                          'Tema',
-                          item.clientForm!.decorationTheme,
-                        ),
-                      if (item.clientForm!.colorPreference.isNotEmpty)
-                        _buildFormDetailRow(
-                          Icons.color_lens,
-                          'Warna Favorit',
-                          item.clientForm!.colorPreference,
-                        ),
-                      if (item.clientForm!.specialRequests.isNotEmpty)
-                        _buildFormDetailRow(
-                          Icons.chat_bubble_outline,
-                          'Permintaan Khusus',
-                          item.clientForm!.specialRequests,
-                        ),
-                      if (item.clientForm!.referencePhotoUrl.isNotEmpty)
-                        _buildFormDetailRow(
-                          Icons.image,
-                          'Foto Inspirasi',
-                          item.clientForm!.referencePhotoUrl,
-                          isLink: true,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFormDetailRow(IconData icon, String label, String value, {bool isLink = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 14, color: AppTheme.textLight),
-          const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textDark,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 11,
-                color: isLink ? Colors.blue : AppTheme.textDark,
-                decoration: isLink ? TextDecoration.underline : TextDecoration.none,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
+}
 }
 

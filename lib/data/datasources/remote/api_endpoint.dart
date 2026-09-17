@@ -23,7 +23,8 @@ class ApiEndpoint {
   // ── Users ─────────────────────────────────────────────────
   static const String users = '/users';
 
-  // ── Agendas & Packages ───────────────────────────────────
+  // ── Agendas, Packages & Addons ──────────────────────────────
   static const String agendas = '/agendas';
   static const String packages = '/packages';
+  static const String addons = '/addons';
 }

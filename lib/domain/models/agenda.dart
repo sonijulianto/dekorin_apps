@@ -7,6 +7,12 @@ class ClientFormModel {
     required this.colorPreference,
     required this.specialRequests,
     required this.referencePhotoUrl,
+    this.packageId = '',
+    this.packageName = '',
+    this.packagePrice = 0.0,
+    this.selectedAddons = '',
+    this.addonsPrice = 0.0,
+    this.totalPrice = 0.0,
     this.submittedAt,
   });
 
@@ -17,6 +23,12 @@ class ClientFormModel {
   final String colorPreference;
   final String specialRequests;
   final String referencePhotoUrl;
+  final String packageId;
+  final String packageName;
+  final double packagePrice;
+  final String selectedAddons;
+  final double addonsPrice;
+  final double totalPrice;
   final DateTime? submittedAt;
 
   factory ClientFormModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +39,12 @@ class ClientFormModel {
       } catch (_) {}
     }
 
+    double parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return ClientFormModel(
       id: json['id'] as String? ?? '',
       agendaId: json['agenda_id'] as String? ?? '',
@@ -35,6 +53,12 @@ class ClientFormModel {
       colorPreference: json['color_preference'] as String? ?? '',
       specialRequests: json['special_requests'] as String? ?? '',
       referencePhotoUrl: json['reference_photo_url'] as String? ?? '',
+      packageId: json['package_id'] as String? ?? '',
+      packageName: json['package_name'] as String? ?? '',
+      packagePrice: parseDouble(json['package_price']),
+      selectedAddons: json['selected_addons'] as String? ?? '',
+      addonsPrice: parseDouble(json['addons_price']),
+      totalPrice: parseDouble(json['total_price']),
       submittedAt: parsedSubmitted,
     );
   }
@@ -48,6 +72,12 @@ class ClientFormModel {
       'color_preference': colorPreference,
       'special_requests': specialRequests,
       'reference_photo_url': referencePhotoUrl,
+      'package_id': packageId,
+      'package_name': packageName,
+      'package_price': packagePrice,
+      'selected_addons': selectedAddons,
+      'addons_price': addonsPrice,
+      'total_price': totalPrice,
       'submitted_at': submittedAt?.toIso8601String(),
     };
   }

@@ -136,4 +136,37 @@ class ApiClient {
       throw ApiException('Terjadi kesalahan: $e');
     }
   }
+
+  // ── UPLOAD IMAGE ──────────────────────────────────────────
+  static Future<String> uploadImage(File file, {bool withToken = true}) async {
+    try {
+      final uri = Uri.parse('${ApiEndpoint.baseUrl}/upload');
+      final request = http.MultipartRequest('POST', uri);
+
+      if (withToken) {
+        final token = DataPreferences.getToken();
+        if (token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+
+      final multipartFile = await http.MultipartFile.fromPath(
+        'image',
+        file.path,
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final body = _handleResponse(response);
+
+      return body['url'] as String? ?? '';
+    } on SocketException {
+      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Gagal mengunggah gambar: $e');
+    }
+  }
 }

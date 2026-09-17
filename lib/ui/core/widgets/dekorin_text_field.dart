@@ -18,6 +18,7 @@ class DekorinTextField extends StatelessWidget {
     this.validator,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.maxLines = 1,
   });
 
   final TextEditingController controller;
@@ -30,6 +31,7 @@ class DekorinTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
   final void Function(String)? onFieldSubmitted;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +42,7 @@ class DekorinTextField extends StatelessWidget {
       validator: validator,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
+      maxLines: maxLines,
       style: AppTypography.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

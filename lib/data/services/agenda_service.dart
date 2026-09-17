@@ -114,21 +114,25 @@ class AgendaService {
   /// Membuat agenda baru ke backend
   Future<AgendaItem> createAgenda({
     required String clientName,
-    required String backdropTitle,
-    required DateTime eventDateTime,
-    required String mapsUrl,
-    required String packageId,
+    String clientPhone = '',
+    String backdropTitle = '',
+    DateTime? eventDateTime,
+    String mapsUrl = '',
+    String packageId = '',
     String notes = '',
   }) async {
-    final formattedDate = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime);
+    final formattedDate = eventDateTime != null
+        ? DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime)
+        : '';
 
     final payload = {
       'client_name': clientName,
-      'backdrop_title': backdropTitle,
-      'event_date_time': formattedDate,
-      'maps_url': mapsUrl,
-      'package_id': packageId,
-      'notes': notes,
+      'client_phone': clientPhone,
+      if (backdropTitle.isNotEmpty) 'backdrop_title': backdropTitle,
+      if (formattedDate.isNotEmpty) 'event_date_time': formattedDate,
+      if (mapsUrl.isNotEmpty) 'maps_url': mapsUrl,
+      if (packageId.isNotEmpty) 'package_id': packageId,
+      if (notes.isNotEmpty) 'notes': notes,
     };
 
     final responseData = await ApiClient.post(ApiEndpoint.agendas, body: payload);

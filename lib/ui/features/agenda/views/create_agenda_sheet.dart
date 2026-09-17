@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
-import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
@@ -18,6 +17,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   final _formKey = GlobalKey<FormState>();
 
   final _clientNameController = TextEditingController();
+  final _clientPhoneController = TextEditingController();
   final _backdropTitleController = TextEditingController();
   final _mapsUrlController = TextEditingController();
   final _notesController = TextEditingController();
@@ -30,6 +30,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   @override
   void dispose() {
     _clientNameController.dispose();
+    _clientPhoneController.dispose();
     _backdropTitleController.dispose();
     _mapsUrlController.dispose();
     _notesController.dispose();
@@ -91,24 +92,11 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan tentukan tanggal dan jam acara'),
+          content: Text('Mohon isi Nama Client dan Nomor HP terlebih dahulu'),
           backgroundColor: AppTheme.errorRed,
-        ),
-      );
-      return;
-    }
-
-    if (_selectedPackageId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan pilih salah satu paket dekorasi'),
-          backgroundColor: AppTheme.errorRed,
+          duration: Duration(seconds: 2),
         ),
       );
       return;
@@ -118,22 +106,26 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       _isLoading = true;
     });
 
-    final eventDateTime = DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
-    );
+    DateTime? eventDateTime;
+    if (_selectedDate != null && _selectedTime != null) {
+      eventDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+    }
 
     try {
       final agendaService = ref.read(agendaServiceProvider);
       await agendaService.createAgenda(
         clientName: _clientNameController.text.trim(),
+        clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
         eventDateTime: eventDateTime,
         mapsUrl: _mapsUrlController.text.trim(),
-        packageId: _selectedPackageId!,
+        packageId: _selectedPackageId ?? '',
         notes: _notesController.text.trim(),
       );
 
@@ -235,7 +227,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                         ),
                       ),
                       Text(
-                        'Isi detail agenda acara dekorasi',
+                        'Wajib isi Nama Client. Detail lain dapat diisi oleh client via Web Form.',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textLight,
@@ -274,9 +266,37 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 14),
 
+              // 2. Nomor HP Client (WhatsApp)
+              const Text(
+                'Nomor HP / WA Client *',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _clientPhoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: 'Contoh: 08123456789',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nomor HP client wajib diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
               // 2. Nama di Backdrop
               const Text(
-                'Nama di Backdrop *',
+                'Nama di Backdrop (Opsional)',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -292,18 +312,12 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nama di backdrop wajib diisi';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 14),
 
               // 3. Tanggal dan Jam Acara
               const Text(
-                'Tanggal & Jam Acara *',
+                'Tanggal & Jam Acara (Opsional)',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -397,7 +411,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
               // 4. Link Maps Google Maps
               const Text(
-                'Link Google Maps Lokasi',
+                'Link Google Maps Lokasi (Opsional)',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -419,7 +433,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
               // 5. Paket yang dipilih (Master Paket)
               const Text(
-                'Pilih Paket Dekorasi *',
+                'Pilih Paket Dekorasi (Opsional)',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -470,8 +484,6 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                         _selectedPackageId = value;
                       });
                     },
-                    validator: (val) =>
-                        val == null ? 'Pilih salah satu paket' : null,
                   );
                 },
                 loading: () => const Center(
