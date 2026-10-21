@@ -58,6 +58,13 @@ class MasterService {
     await ApiClient.delete('${ApiEndpoint.packages}/$id');
   }
 
+  Future<void> reorderPackages(List<String> packageIds) async {
+    await ApiClient.put(
+      ApiEndpoint.reorderPackages,
+      body: {'package_ids': packageIds},
+    );
+  }
+
   // ── ADDONS ───────────────────────────────────────────────
 
   Future<List<DecorationAddon>> getAddons() async {
@@ -105,5 +112,12 @@ class MasterService {
 
   Future<void> deleteAddon(String id) async {
     await ApiClient.delete('${ApiEndpoint.addons}/$id');
+  }
+
+  Future<void> reorderAddons(List<String> addonIds) async {
+    await ApiClient.put(
+      ApiEndpoint.reorderAddons,
+      body: {'addon_ids': addonIds},
+    );
   }
 }

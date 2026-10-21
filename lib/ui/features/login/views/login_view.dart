@@ -22,6 +22,14 @@ class _LoginViewState extends ConsumerState<LoginView> {
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-fill kredensial untuk kemudahan testing
+    _emailController.text = 'admin@dekorin.com';
+    _passwordController.text = 'admin123';
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -149,7 +157,61 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           )
                         : const Text('Masuk'),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // --- Quick Role Selector for Easy Testing ---
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pilih Akun Demo / Role:',
+                          style: AppTypography.caption.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildRoleChip(
+                                label: 'Owner',
+                                email: 'owner@dekorin.com',
+                                pass: 'owner123',
+                                color: Colors.purple,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildRoleChip(
+                                label: 'Admin',
+                                email: 'admin@dekorin.com',
+                                pass: 'admin123',
+                                color: AppTheme.primaryGold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildRoleChip(
+                                label: 'Crew',
+                                email: 'crew@dekorin.com',
+                                pass: 'crew123',
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // --- Footer ---
                   Text(
@@ -203,6 +265,46 @@ class _LoginViewState extends ConsumerState<LoginView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRoleChip({
+    required String label,
+    required String email,
+    required String pass,
+    required Color color,
+  }) {
+    final isSelected = _emailController.text == email;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _emailController.text = email;
+          _passwordController.text = pass;
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isSelected ? color : AppTheme.textDark,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

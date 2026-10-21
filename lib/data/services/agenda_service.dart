@@ -119,6 +119,7 @@ class AgendaService {
     DateTime? eventDateTime,
     String mapsUrl = '',
     String packageId = '',
+    double packagePrice = 0.0,
     String notes = '',
   }) async {
     final formattedDate = eventDateTime != null
@@ -132,6 +133,7 @@ class AgendaService {
       if (formattedDate.isNotEmpty) 'event_date_time': formattedDate,
       if (mapsUrl.isNotEmpty) 'maps_url': mapsUrl,
       if (packageId.isNotEmpty) 'package_id': packageId,
+      if (packagePrice > 0) 'package_price': packagePrice,
       if (notes.isNotEmpty) 'notes': notes,
     };
 
@@ -139,4 +141,33 @@ class AgendaService {
 
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
   }
+
+  /// Mengupdate nominal pembayaran DP untuk agenda tertentu
+  Future<AgendaItem> updateAgendaDp(String agendaId, double dpAmount) async {
+    final payload = {'dp_amount': dpAmount};
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/dp', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate nominal uang transport untuk agenda tertentu
+  Future<AgendaItem> updateAgendaTransport(String agendaId, double transportFee) async {
+    final payload = {'transport_fee': transportFee};
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/transport', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate status pembayaran agenda (unpaid, dp, paid)
+  Future<AgendaItem> updatePaymentStatus(String agendaId, String paymentStatus) async {
+    final payload = {'payment_status': paymentStatus};
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/payment-status', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate status acara agenda (upcoming, completed, cancelled)
+  Future<AgendaItem> updateEventStatus(String agendaId, String status) async {
+    final payload = {'status': status};
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/status', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
 }
+

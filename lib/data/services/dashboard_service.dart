@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/booking.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 
@@ -7,53 +9,51 @@ final dashboardServiceProvider = Provider<DashboardService>((ref) {
   return DashboardService();
 });
 
-/// Dummy service to mock dashboard data.
+/// Service untuk mengambil data dashboard keuangan & booking dari backend.
 class DashboardService {
   Future<DashboardSummary> fetchSummary() async {
-    // Simulate network delay
-    await Future<void>.delayed(const Duration(seconds: 1));
-
-    return const DashboardSummary(
-      upcomingBookingsCount: 12,
-      totalRevenue: 25000000.0, // 25 Juta
-      totalProfit: 8500000.0, // 8.5 Juta
-    );
+    try {
+      final responseData = await ApiClient.get(ApiEndpoint.dashboardSummary);
+      final data = responseData['data'] as Map<String, dynamic>;
+      return DashboardSummary.fromJson(data);
+    } catch (e) {
+      return const DashboardSummary(
+        upcomingBookingsCount: 0,
+        totalRevenue: 0.0,
+        totalExpense: 0.0,
+        totalProfit: 0.0,
+        upcomingAgendas: [],
+        recentExpenses: [],
+      );
+    }
   }
 
   Future<List<Booking>> fetchThisWeekBookings() async {
-    // Simulate network delay
-    await Future<void>.delayed(const Duration(seconds: 1));
-
-    final now = DateTime.now();
-
-    return [
-      Booking(
-        id: 'bk_001',
-        clientName: 'Budi & Siska',
-        eventName: 'Wedding Reception',
-        date: now.add(const Duration(days: 2)),
-        location: 'Gedung Serbaguna, Jakarta',
-        status: BookingStatus.confirmed,
-        totalPrice: 15000000.0,
-      ),
-      Booking(
-        id: 'bk_002',
-        clientName: 'Keluarga Anang',
-        eventName: 'Engagement',
-        date: now.add(const Duration(days: 4)),
-        location: 'Restoran Sunda, Bandung',
-        status: BookingStatus.pending,
-        totalPrice: 5000000.0,
-      ),
-      Booking(
-        id: 'bk_003',
-        clientName: 'PT. Maju Mundur',
-        eventName: 'Corporate Gathering',
-        date: now.add(const Duration(days: 6)),
-        location: 'Hotel Bintang, Surabaya',
-        status: BookingStatus.confirmed,
-        totalPrice: 10000000.0,
-      ),
-    ];
+    try {
+      final summary = await fetchSummary();
+      return summary.upcomingAgendas.map((agenda) {
+        return Booking(
+          id: agenda.id,
+          clientName: agenda.clientName,
+          eventName: agenda.backdropTitle.isNotEmpty
+              ? agenda.backdropTitle
+              : agenda.packageName,
+          date: agenda.eventDateTime,
+          location: (agenda.clientForm != null &&
+                  agenda.clientForm!.eventAddress.isNotEmpty)
+              ? agenda.clientForm!.eventAddress
+              : (agenda.mapsUrl.isNotEmpty ? 'Lokasi via Maps' : 'Lokasi Acara'),
+          status: agenda.isEventCompleted
+              ? BookingStatus.completed
+              : agenda.isCancelled
+                  ? BookingStatus.cancelled
+                  : BookingStatus.confirmed,
+          totalPrice: agenda.calculatedTotalPrice,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 }
+

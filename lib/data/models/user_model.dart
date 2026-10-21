@@ -8,18 +8,21 @@ class UserModel {
     required this.id,
     required this.fullName,
     required this.email,
+    this.role = 'admin',
   });
 
   final String id;
   final String fullName;
   final String email;
+  final String role;
 
   /// Creates a [UserModel] from a JSON map.
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
-      fullName: json['full_name'] as String,
-      email: json['email'] as String,
+      id: json['id'] as String? ?? '',
+      fullName: json['full_name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      role: json['role'] as String? ?? 'admin',
     );
   }
 
@@ -29,6 +32,7 @@ class UserModel {
       'id': id,
       'full_name': fullName,
       'email': email,
+      'role': role,
     };
   }
 
@@ -38,6 +42,7 @@ class UserModel {
       id: id,
       name: fullName,
       email: email,
+      role: role,
     );
   }
 }

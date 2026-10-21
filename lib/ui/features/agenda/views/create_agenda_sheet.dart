@@ -4,7 +4,10 @@ import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
   const CreateAgendaSheet({super.key});
@@ -24,8 +27,35 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
-  String? _selectedPackageId;
+  DecorationPackage? _selectedPackage;
+  List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
+
+  Future<void> _openPackagePicker() async {
+    final result = await Navigator.of(context).push<DecorationPackage>(
+      MaterialPageRoute(
+        builder: (_) => PackagePickerScreen(
+          selectedPackageId: _selectedPackage?.id,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() => _selectedPackage = result);
+    }
+  }
+
+  Future<void> _openAddonPicker() async {
+    final result = await Navigator.of(context).push<List<SelectedAddonItem>>(
+      MaterialPageRoute(
+        builder: (_) => AddonPickerScreen(
+          initiallySelectedAddons: _selectedAddons,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() => _selectedAddons = result);
+    }
+  }
 
   @override
   void dispose() {
@@ -119,14 +149,45 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
     try {
       final agendaService = ref.read(agendaServiceProvider);
+      
+      String combinedNotes = _notesController.text.trim();
+      if (_selectedAddons.isNotEmpty) {
+        final addonNames = _selectedAddons.map((item) {
+          final unitPriceFormatted = NumberFormat.currency(
+            locale: 'id_ID',
+            symbol: 'Rp ',
+            decimalDigits: 0,
+          ).format(item.addon.price);
+
+          final totalPriceFormatted = NumberFormat.currency(
+            locale: 'id_ID',
+            symbol: 'Rp ',
+            decimalDigits: 0,
+          ).format(item.totalPrice);
+
+          if (item.quantity > 1) {
+            return '- ${item.addon.name} x${item.quantity} ($unitPriceFormatted/unit = $totalPriceFormatted)';
+          }
+          return '- ${item.addon.name} ($unitPriceFormatted)';
+        }).join('\n');
+        
+        final addonText = '[Item Tambahan / Addon]:\n$addonNames';
+        if (combinedNotes.isNotEmpty) {
+          combinedNotes = '$combinedNotes\n\n$addonText';
+        } else {
+          combinedNotes = addonText;
+        }
+      }
+
       await agendaService.createAgenda(
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
         eventDateTime: eventDateTime,
         mapsUrl: _mapsUrlController.text.trim(),
-        packageId: _selectedPackageId ?? '',
-        notes: _notesController.text.trim(),
+        packageId: _selectedPackage?.id ?? '',
+        packagePrice: _selectedPackage?.basePrice ?? 0.0,
+        notes: combinedNotes,
       );
 
       // Refresh list agenda
@@ -161,13 +222,6 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final packagesAsync = ref.watch(packagesProvider);
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -441,60 +495,181 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 ),
               ),
               const SizedBox(height: 6),
-              packagesAsync.when(
-                data: (packages) {
-                  return DropdownButtonFormField<String>(
-                    value: _selectedPackageId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.card_giftcard),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+              InkWell(
+                onTap: _openPackagePicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(
+                      color: _selectedPackage != null
+                          ? AppTheme.primaryGold
+                          : Colors.grey.shade300,
                     ),
-                    hint: const Text('Pilih paket master dekorasi'),
-                    items: packages.map((pkg) {
-                      return DropdownMenuItem<String>(
-                        value: pkg.id,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              pkg.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              currencyFormatter.format(pkg.basePrice),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.primaryGold,
-                              ),
-                            ),
-                          ],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedPackageId = value;
-                      });
-                    },
-                  );
-                },
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                        child: const Icon(
+                          Icons.card_giftcard,
+                          color: AppTheme.primaryGold,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _selectedPackage == null
+                            ? const Text(
+                                'Ketuk untuk pilih paket dekorasi',
+                                style: TextStyle(
+                                  color: AppTheme.textLight,
+                                  fontSize: 13,
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedPackage!.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppTheme.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    NumberFormat.currency(
+                                      locale: 'id_ID',
+                                      symbol: 'Rp ',
+                                      decimalDigits: 0,
+                                    ).format(_selectedPackage!.basePrice),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.primaryGold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: _selectedPackage != null
+                            ? AppTheme.primaryGold
+                            : AppTheme.textLight,
+                      ),
+                    ],
                   ),
                 ),
-                error: (e, _) => Text(
-                  'Gagal memuat master paket: $e',
-                  style: const TextStyle(color: AppTheme.errorRed, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+
+              // 6. Item Tambahan (Addon)
+              const Text(
+                'Pilih Item Tambahan / Addon (Opsional)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _openAddonPicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(
+                      color: _selectedAddons.isNotEmpty
+                          ? AppTheme.primaryGold
+                          : Colors.grey.shade300,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.add_shopping_cart,
+                          color: AppTheme.primaryGold,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _selectedAddons.isEmpty
+                            ? const Text(
+                                'Ketuk untuk pilih item tambahan',
+                                style: TextStyle(
+                                  color: AppTheme.textLight,
+                                  fontSize: 13,
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_selectedAddons.fold<int>(0, (sum, i) => sum + i.quantity)} item tambahan (${_selectedAddons.length} jenis)',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppTheme.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _selectedAddons.map((i) => '${i.addon.name} (x${i.quantity})').join(', '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textLight,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    NumberFormat.currency(
+                                      locale: 'id_ID',
+                                      symbol: 'Rp ',
+                                      decimalDigits: 0,
+                                    ).format(
+                                      _selectedAddons.fold<double>(
+                                        0.0,
+                                        (sum, item) => sum + item.totalPrice,
+                                      ),
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.primaryGold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: _selectedAddons.isNotEmpty
+                            ? AppTheme.primaryGold
+                            : AppTheme.textLight,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),

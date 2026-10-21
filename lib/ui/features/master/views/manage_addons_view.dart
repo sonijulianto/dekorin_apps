@@ -10,6 +10,8 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
+import 'package:flutter/services.dart';
+import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 
 final addonsProvider = FutureProvider.autoDispose<List<DecorationAddon>>((ref) async {
@@ -26,11 +28,17 @@ class ManageAddonsView extends ConsumerStatefulWidget {
 
 class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  List<DecorationAddon>? _localAddons;
 
   void _showAddonFormSheet([DecorationAddon? addon]) {
     final isEdit = addon != null;
+    final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final nameController = TextEditingController(text: addon?.name ?? '');
-    final priceController = TextEditingController(text: addon != null ? addon.price.toStringAsFixed(0) : '');
+    final priceController = TextEditingController(
+      text: addon != null && addon.price > 0
+          ? thousandFormatter.format(addon.price.toInt()).replaceAll(',', '.')
+          : '',
+    );
     final descController = TextEditingController(text: addon?.description ?? '');
     final formKey = GlobalKey<FormState>();
 
@@ -208,12 +216,21 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                       const SizedBox(height: 12),
                       DekorinTextField(
                         controller: priceController,
-                        label: 'Harga Item (Rp)',
-                        hint: 'Contoh: 300000',
+                        label: 'Harga Item',
+                        hint: 'Contoh: 300.000',
+                        prefixText: 'Rp ',
+                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          ThousandsSeparatorInputFormatter(),
+                        ],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
-                          if (double.tryParse(v.trim()) == null) return 'Harga harus berupa angka';
+                          final clean = v.replaceAll(RegExp(r'\D'), '');
+                          if (double.tryParse(clean) == null || double.parse(clean) <= 0) {
+                            return 'Harga harus berupa angka valid';
+                          }
                           return null;
                         },
                       ),
@@ -243,7 +260,8 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
 
                                   try {
                                     final service = ref.read(masterServiceProvider);
-                                    final price = double.parse(priceController.text.trim());
+                                    final cleanPrice = priceController.text.replaceAll(RegExp(r'\D'), '');
+                                    final price = double.parse(cleanPrice);
                                     String finalImageUrl = existingImageUrl;
 
                                     // Upload gambar terkompresi ke server jika ada foto baru yang dipilih
@@ -338,6 +356,14 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<DecorationAddon>>>(addonsProvider, (_, next) {
+      next.whenData((data) {
+        setState(() {
+          _localAddons = List.from(data);
+        });
+      });
+    });
+
     final addonsAsync = ref.watch(addonsProvider);
 
     return Scaffold(
@@ -362,102 +388,184 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
             );
           }
 
+          if (_localAddons == null || _localAddons!.length != addons.length) {
+            _localAddons = List.from(addons);
+          }
+          final displayList = _localAddons!;
+
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(addonsProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: addons.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final addon = addons[index];
-                return Container(
+            child: ReorderableListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              itemCount: displayList.length,
+              header: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.borderLight),
+                    color: AppColors.goldLight.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: addon.imageUrl.isNotEmpty
-                              ? Image.network(
-                                  addon.imageUrl,
-                                  width: 60,
-                                  height: 60,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.swap_vert_rounded, size: 18, color: AppColors.primaryGold),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              onReorder: (int oldIndex, int newIndex) async {
+                setState(() {
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = displayList.removeAt(oldIndex);
+                  displayList.insert(newIndex, item);
+                });
+
+                try {
+                  final ids = displayList.map((a) => a.id).toList();
+                  await ref.read(masterServiceProvider).reorderAddons(ids);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Urutan addon berhasil disimpan'),
+                        duration: Duration(milliseconds: 1200),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menyimpan urutan addon: $e')),
+                    );
+                  }
+                  ref.invalidate(addonsProvider);
+                }
+              },
+              itemBuilder: (context, index) {
+                final addon = displayList[index];
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(addon.id),
+                  index: index,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(Icons.drag_indicator_rounded, color: AppColors.textLight, size: 22),
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: addon.imageUrl.isNotEmpty
+                                ? Image.network(
+                                    addon.imageUrl,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 60,
+                                      height: 60,
+                                      color: AppColors.goldLight,
+                                      child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold),
+                                    ),
+                                  )
+                                : Container(
                                     width: 60,
                                     height: 60,
                                     color: AppColors.goldLight,
                                     child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold),
                                   ),
-                                )
-                              : Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: AppColors.goldLight,
-                                  child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(addon.name, style: AppTypography.titleSmall),
-                              const SizedBox(height: 2),
-                              Text(
-                                currencyFormatter.format(addon.price),
-                                style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold),
-                              ),
-                              if (addon.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(addon.name, style: AppTypography.titleSmall),
+                                const SizedBox(height: 2),
                                 Text(
-                                  addon.description,
-                                  style: AppTypography.caption,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  currencyFormatter.format(addon.price),
+                                  style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold),
                                 ),
+                                if (addon.description.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    addon.description,
+                                    style: AppTypography.caption,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ],
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: AppColors.textLight),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showAddonFormSheet(addon);
+                              } else if (value == 'delete') {
+                                _confirmDelete(addon);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.edit, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text('Edit', style: AppTypography.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.delete, size: 18, color: AppColors.errorRed),
+                                    const SizedBox(width: 8),
+                                    Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showAddonFormSheet(addon);
-                            } else if (value == 'delete') {
-                              _confirmDelete(addon);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text('Edit', style: AppTypography.bodyMedium),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.delete, size: 18, color: AppColors.errorRed),
-                                  const SizedBox(width: 8),
-                                  Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );

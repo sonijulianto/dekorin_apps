@@ -10,6 +10,7 @@ import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class AgendaView extends ConsumerWidget {
   const AgendaView({super.key});
@@ -54,6 +55,7 @@ class AgendaView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(globalAuthProvider).value;
     final agendaState = ref.watch(agendaViewModelProvider);
     final filterState = ref.watch(agendaFilterProvider);
 
@@ -72,16 +74,18 @@ class AgendaView extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCreateAgenda(context),
-        backgroundColor: AppTheme.primaryGold,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_task),
-        label: const Text(
-          'Buat Agenda',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: (user?.canCreateAgenda ?? true)
+          ? FloatingActionButton.extended(
+              onPressed: () => _openCreateAgenda(context),
+              backgroundColor: AppTheme.primaryGold,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_task),
+              label: const Text(
+                'Buat Agenda',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -649,7 +653,61 @@ class _AgendaCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (item.isEventCompleted)
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.green.shade300),
+                      ),
+                      child: Text(
+                        'Selesai',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                    ),
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: item.isPaidOff
+                          ? Colors.green.shade50
+                          : item.dpAmount > 0
+                              ? Colors.amber.shade50
+                              : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: item.isPaidOff
+                            ? Colors.green.shade400
+                            : item.dpAmount > 0
+                                ? Colors.amber.shade400
+                                : Colors.red.shade300,
+                      ),
+                    ),
+                    child: Text(
+                      item.isPaidOff
+                          ? 'Lunas'
+                          : item.dpAmount > 0
+                              ? 'DP'
+                              : 'Belum Bayar',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: item.isPaidOff
+                            ? Colors.green.shade800
+                            : item.dpAmount > 0
+                                ? Colors.amber.shade900
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                  ),
                   const Spacer(),
+
 
                   // Copy link icon
                   if (item.formToken.isNotEmpty)

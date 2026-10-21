@@ -5,6 +5,7 @@ class DecorationPackage {
     required this.description,
     required this.basePrice,
     this.imageUrl = '',
+    this.sortOrder = 0,
   });
 
   final String id;
@@ -12,6 +13,7 @@ class DecorationPackage {
   final String description;
   final double basePrice;
   final String imageUrl;
+  final int sortOrder;
 
   factory DecorationPackage.fromJson(Map<String, dynamic> json) {
     return DecorationPackage(
@@ -22,6 +24,7 @@ class DecorationPackage {
       basePrice: (json['base_price'] is num)
           ? (json['base_price'] as num).toDouble()
           : double.tryParse(json['base_price']?.toString() ?? '0') ?? 0.0,
+      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -32,6 +35,7 @@ class DecorationPackage {
       'description': description,
       'image_url': imageUrl,
       'base_price': basePrice,
+      'sort_order': sortOrder,
     };
   }
 

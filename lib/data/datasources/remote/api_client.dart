@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -32,6 +33,11 @@ class ApiException implements Exception {
 class ApiClient {
   ApiClient._(); // Tidak bisa di-instansiasi
 
+  /// Timeout default untuk semua HTTP request.
+  /// Jika server tidak merespons dalam waktu ini, request dibatalkan
+  /// dan muncul pesan error (tidak loading selamanya).
+  static const _timeout = Duration(seconds: 15);
+
   // ── Helper: Membuat headers ───────────────────────────────
   static Map<String, String> _headers({bool withToken = true}) {
     final headers = <String, String>{
@@ -65,10 +71,12 @@ class ApiClient {
       final response = await http.get(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
-      );
+      ).timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
       throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -87,10 +95,12 @@ class ApiClient {
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      );
+      ).timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
       throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -109,10 +119,12 @@ class ApiClient {
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      );
+      ).timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
       throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -126,10 +138,12 @@ class ApiClient {
       final response = await http.delete(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
-      );
+      ).timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
       throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
     } on ApiException {
       rethrow;
     } catch (e) {

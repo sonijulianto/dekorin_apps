@@ -6,10 +6,9 @@ class ApiEndpoint {
   ApiEndpoint._(); // Tidak bisa di-instansiasi
 
   // ── Base URL ──────────────────────────────────────────────
-  // Gunakan 10.0.2.2 untuk Android Emulator,
-  // 127.0.0.1 untuk iOS Simulator / Web / macOS.
-  // Ganti sesuai IP jika testing di device fisik.
-  static const String baseUrl = 'http://192.168.1.99:3000/api';
+  // Menggunakan ngrok static domain → tidak perlu ubah IP lagi!
+  // Pastikan ngrok sudah berjalan: ngrok http --domain=ashen-mongrel-renounce.ngrok-free.dev 3000
+  static const String baseUrl = 'https://ashen-mongrel-renounce.ngrok-free.dev/api';
 
   /// Base URL untuk Web Form (mengambil host & port dari baseUrl tanpa path /api)
   static String get webFormBaseUrl {
@@ -23,8 +22,24 @@ class ApiEndpoint {
   // ── Users ─────────────────────────────────────────────────
   static const String users = '/users';
 
+  // ── Dashboard & Expenses ──────────────────────────────────
+  static const String dashboardSummary = '/dashboard/summary';
+  static const String expenses = '/expenses';
+
   // ── Agendas, Packages & Addons ──────────────────────────────
   static const String agendas = '/agendas';
   static const String packages = '/packages';
+  static const String reorderPackages = '/packages/reorder';
   static const String addons = '/addons';
+  static const String reorderAddons = '/addons/reorder';
+  static const String invitations = '/invitations';
+
+  /// Helper untuk membuat URL publik undangan digital
+  static String getInvitationWebUrl(String slug, [String? guestName]) {
+    final base = '$webFormBaseUrl/invitation/$slug';
+    if (guestName != null && guestName.trim().isNotEmpty) {
+      return '$base?to=${Uri.encodeComponent(guestName.trim())}';
+    }
+    return base;
+  }
 }

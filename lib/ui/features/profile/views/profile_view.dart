@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/manage_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_packages_view.dart';
 
@@ -59,13 +60,21 @@ class ProfileView extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.goldLight,
+                            color: user?.isOwner == true
+                                ? Colors.purple.withValues(alpha: 0.15)
+                                : (user?.isCrew == true
+                                    ? Colors.blue.withValues(alpha: 0.15)
+                                    : AppColors.goldLight),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'Administrator',
+                            user?.roleDisplayName ?? 'Administrator',
                             style: AppTypography.caption.copyWith(
-                              color: AppColors.primaryGold,
+                              color: user?.isOwner == true
+                                  ? Colors.purple
+                                  : (user?.isCrew == true
+                                      ? Colors.blue
+                                      : AppColors.primaryGold),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -78,73 +87,95 @@ class ProfileView extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Master Data Menu Section
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(
-                  'MASTER DATA DEKORASI',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                    color: AppColors.textLight,
+            // Master Data Menu Section (Hanya tampil untuk Owner & Admin, disembunyikan untuk Crew)
+            if (user?.canManageMasterData ?? true) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text(
+                    'MASTER DATA DEKORASI',
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                      color: AppColors.textLight,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderLight),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.goldLight,
-                        borderRadius: BorderRadius.circular(10),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.inventory_2, color: AppColors.primaryGold, size: 22),
                       ),
-                      child: const Icon(Icons.inventory_2, color: AppColors.primaryGold, size: 22),
+                      title: Text('Kelola Paket Dekorasi', style: AppTypography.titleSmall),
+                      subtitle: Text('Atur daftar paket, foto, dan harga dasar', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ManagePackagesView()),
+                        );
+                      },
                     ),
-                    title: Text('Kelola Paket Dekorasi', style: AppTypography.titleSmall),
-                    subtitle: Text('Atur daftar paket, foto, dan harga dasar', style: AppTypography.caption),
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ManagePackagesView()),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.goldLight,
-                        borderRadius: BorderRadius.circular(10),
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold, size: 22),
                       ),
-                      child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold, size: 22),
+                      title: Text('Kelola Item Tambahan (Addon)', style: AppTypography.titleSmall),
+                      subtitle: Text('Atur item tambahan pilihan client & harga', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ManageAddonsView()),
+                        );
+                      },
                     ),
-                    title: Text('Kelola Item Tambahan (Addon)', style: AppTypography.titleSmall),
-                    subtitle: Text('Atur item tambahan pilihan client & harga', style: AppTypography.caption),
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ManageAddonsView()),
-                      );
-                    },
-                  ),
-                ],
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.mark_email_read_outlined, color: AppColors.primaryGold, size: 22),
+                      ),
+                      title: Text('Kelola Undangan Digital', style: AppTypography.titleSmall),
+                      subtitle: Text('Buat website undangan pernikahan & link tamu', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ManageInvitationsView()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
+            ],
 
             // Logout Button
             SizedBox(

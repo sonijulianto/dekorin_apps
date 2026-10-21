@@ -93,9 +93,13 @@ class AgendaItem {
     required this.mapsUrl,
     required this.packageId,
     required this.packageName,
+    this.packagePrice = 0.0,
+    this.transportFee = 0.0,
     this.status = 'upcoming',
+    this.paymentStatus = 'unpaid',
     this.formToken = '',
     this.formStatus = 'pending',
+    this.dpAmount = 0.0,
     this.notes = '',
     this.clientForm,
   });
@@ -108,11 +112,70 @@ class AgendaItem {
   final String mapsUrl;
   final String packageId;
   final String packageName;
+  final double packagePrice;
+  final double transportFee;
   final String status;
+  final String paymentStatus; // 'unpaid', 'dp', 'paid'
   final String formToken;
   final String formStatus; // 'pending', 'filled'
+  final double dpAmount;
   final String notes;
   final ClientFormModel? clientForm;
+
+  bool get isPaidOff => paymentStatus.toLowerCase() == 'paid';
+  bool get isEventCompleted => status.toLowerCase() == 'completed';
+  bool get isCancelled => status.toLowerCase() == 'cancelled';
+
+  double get calculatedTotalPrice {
+    double total = transportFee;
+    if (clientForm != null && clientForm!.totalPrice > 0) {
+      total += clientForm!.totalPrice;
+    } else {
+      total += packagePrice;
+    }
+    return total;
+  }
+
+  AgendaItem copyWith({
+    String? id,
+    String? clientName,
+    String? clientPhone,
+    String? backdropTitle,
+    DateTime? eventDateTime,
+    String? mapsUrl,
+    String? packageId,
+    String? packageName,
+    double? packagePrice,
+    double? transportFee,
+    String? status,
+    String? paymentStatus,
+    String? formToken,
+    String? formStatus,
+    double? dpAmount,
+    String? notes,
+    ClientFormModel? clientForm,
+  }) {
+    return AgendaItem(
+      id: id ?? this.id,
+      clientName: clientName ?? this.clientName,
+      clientPhone: clientPhone ?? this.clientPhone,
+      backdropTitle: backdropTitle ?? this.backdropTitle,
+      eventDateTime: eventDateTime ?? this.eventDateTime,
+      mapsUrl: mapsUrl ?? this.mapsUrl,
+      packageId: packageId ?? this.packageId,
+      packageName: packageName ?? this.packageName,
+      packagePrice: packagePrice ?? this.packagePrice,
+      transportFee: transportFee ?? this.transportFee,
+      status: status ?? this.status,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      formToken: formToken ?? this.formToken,
+      formStatus: formStatus ?? this.formStatus,
+      dpAmount: dpAmount ?? this.dpAmount,
+      notes: notes ?? this.notes,
+      clientForm: clientForm ?? this.clientForm,
+    );
+  }
+
 
   factory AgendaItem.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
@@ -127,6 +190,12 @@ class AgendaItem {
       parsedForm = ClientFormModel.fromJson(json['client_form'] as Map<String, dynamic>);
     }
 
+    double parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return AgendaItem(
       id: json['id'] as String? ?? '',
       clientName: json['client_name'] as String? ?? '',
@@ -136,9 +205,13 @@ class AgendaItem {
       mapsUrl: json['maps_url'] as String? ?? '',
       packageId: json['package_id'] as String? ?? '',
       packageName: json['package_name'] as String? ?? '',
+      packagePrice: parseDouble(json['package_price']),
+      transportFee: parseDouble(json['transport_fee']),
       status: json['status'] as String? ?? 'upcoming',
+      paymentStatus: json['payment_status'] as String? ?? 'unpaid',
       formToken: json['form_token'] as String? ?? '',
       formStatus: json['form_status'] as String? ?? 'pending',
+      dpAmount: parseDouble(json['dp_amount']),
       notes: json['notes'] as String? ?? '',
       clientForm: parsedForm,
     );
@@ -154,9 +227,13 @@ class AgendaItem {
       'maps_url': mapsUrl,
       'package_id': packageId,
       'package_name': packageName,
+      'package_price': packagePrice,
+      'transport_fee': transportFee,
       'status': status,
+      'payment_status': paymentStatus,
       'form_token': formToken,
       'form_status': formStatus,
+      'dp_amount': dpAmount,
       'notes': notes,
       if (clientForm != null) 'client_form': clientForm!.toJson(),
     };

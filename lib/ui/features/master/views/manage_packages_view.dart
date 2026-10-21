@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +11,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
+import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 
 final packagesProvider = FutureProvider.autoDispose<List<DecorationPackage>>((ref) async {
@@ -26,11 +28,17 @@ class ManagePackagesView extends ConsumerStatefulWidget {
 
 class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  List<DecorationPackage>? _localPackages;
 
   void _showPackageFormSheet([DecorationPackage? package]) {
     final isEdit = package != null;
+    final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final nameController = TextEditingController(text: package?.name ?? '');
-    final priceController = TextEditingController(text: package != null ? package.basePrice.toStringAsFixed(0) : '');
+    final priceController = TextEditingController(
+      text: package != null && package.basePrice > 0
+          ? thousandFormatter.format(package.basePrice.toInt()).replaceAll(',', '.')
+          : '',
+    );
     final descController = TextEditingController(text: package?.description ?? '');
     final formKey = GlobalKey<FormState>();
 
@@ -208,12 +216,21 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                       const SizedBox(height: 12),
                       DekorinTextField(
                         controller: priceController,
-                        label: 'Harga Dasar (Rp)',
-                        hint: 'Contoh: 4000000',
+                        label: 'Harga Dasar',
+                        hint: 'Contoh: 4.000.000',
+                        prefixText: 'Rp ',
+                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          ThousandsSeparatorInputFormatter(),
+                        ],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
-                          if (double.tryParse(v.trim()) == null) return 'Harga harus berupa angka';
+                          final clean = v.replaceAll(RegExp(r'\D'), '');
+                          if (double.tryParse(clean) == null || double.parse(clean) <= 0) {
+                            return 'Harga harus berupa angka valid';
+                          }
                           return null;
                         },
                       ),
@@ -230,7 +247,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                         height: 48,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGold,
+                             backgroundColor: AppColors.primaryGold,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -243,7 +260,8 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
                                   try {
                                     final service = ref.read(masterServiceProvider);
-                                    final price = double.parse(priceController.text.trim());
+                                    final cleanPrice = priceController.text.replaceAll(RegExp(r'\D'), '');
+                                    final price = double.parse(cleanPrice);
                                     String finalImageUrl = existingImageUrl;
 
                                     // Upload gambar terkompresi ke server jika ada foto baru yang dipilih
@@ -338,6 +356,14 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<DecorationPackage>>>(packagesProvider, (_, next) {
+      next.whenData((data) {
+        setState(() {
+          _localPackages = List.from(data);
+        });
+      });
+    });
+
     final packagesAsync = ref.watch(packagesProvider);
 
     return Scaffold(
@@ -362,102 +388,184 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
             );
           }
 
+          if (_localPackages == null || _localPackages!.length != packages.length) {
+            _localPackages = List.from(packages);
+          }
+          final displayList = _localPackages!;
+
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(packagesProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: packages.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final pkg = packages[index];
-                return Container(
+            child: ReorderableListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              itemCount: displayList.length,
+              header: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.borderLight),
+                    color: AppColors.goldLight.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: pkg.imageUrl.isNotEmpty
-                              ? Image.network(
-                                  pkg.imageUrl,
-                                  width: 70,
-                                  height: 70,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
-                                    width: 70,
-                                    height: 70,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.swap_vert_rounded, size: 18, color: AppColors.primaryGold),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              onReorder: (int oldIndex, int newIndex) async {
+                setState(() {
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = displayList.removeAt(oldIndex);
+                  displayList.insert(newIndex, item);
+                });
+
+                try {
+                  final ids = displayList.map((p) => p.id).toList();
+                  await ref.read(masterServiceProvider).reorderPackages(ids);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Urutan paket berhasil disimpan'),
+                        duration: Duration(milliseconds: 1200),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menyimpan urutan paket: $e')),
+                    );
+                  }
+                  ref.invalidate(packagesProvider);
+                }
+              },
+              itemBuilder: (context, index) {
+                final pkg = displayList[index];
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(pkg.id),
+                  index: index,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(Icons.drag_indicator_rounded, color: AppColors.textLight, size: 22),
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: pkg.imageUrl.isNotEmpty
+                                ? Image.network(
+                                    pkg.imageUrl,
+                                    width: 65,
+                                    height: 65,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 65,
+                                      height: 65,
+                                      color: AppColors.goldLight,
+                                      child: const Icon(Icons.inventory_2, color: AppColors.primaryGold),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 65,
+                                    height: 65,
                                     color: AppColors.goldLight,
                                     child: const Icon(Icons.inventory_2, color: AppColors.primaryGold),
                                   ),
-                                )
-                              : Container(
-                                  width: 70,
-                                  height: 70,
-                                  color: AppColors.goldLight,
-                                  child: const Icon(Icons.inventory_2, color: AppColors.primaryGold),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(pkg.name, style: AppTypography.titleSmall),
-                              const SizedBox(height: 2),
-                              Text(
-                                currencyFormatter.format(pkg.basePrice),
-                                style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold),
-                              ),
-                              if (pkg.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(pkg.name, style: AppTypography.titleSmall),
+                                const SizedBox(height: 2),
                                 Text(
-                                  pkg.description,
-                                  style: AppTypography.caption,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  currencyFormatter.format(pkg.basePrice),
+                                  style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold),
                                 ),
+                                if (pkg.description.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    pkg.description,
+                                    style: AppTypography.caption,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ],
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: AppColors.textLight),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showPackageFormSheet(pkg);
+                              } else if (value == 'delete') {
+                                _confirmDelete(pkg);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.edit, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text('Edit', style: AppTypography.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.delete, size: 18, color: AppColors.errorRed),
+                                    const SizedBox(width: 8),
+                                    Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showPackageFormSheet(pkg);
-                            } else if (value == 'delete') {
-                              _confirmDelete(pkg);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text('Edit', style: AppTypography.bodyMedium),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.delete, size: 18, color: AppColors.errorRed),
-                                  const SizedBox(width: 8),
-                                  Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
