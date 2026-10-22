@@ -6,8 +6,8 @@ class ApiEndpoint {
   ApiEndpoint._(); // Tidak bisa di-instansiasi
 
   // ── Base URL ──────────────────────────────────────────────
-  // Production VPS di Biznet GIO (Port 80 via Nginx reverse proxy)
-  static const String baseUrl = 'http://103.150.191.59/api';
+  // Production VPS di Biznet GIO dengan SSL/HTTPS resmi Let's Encrypt
+  static const String baseUrl = 'https://103.150.191.59.sslip.io/api';
 
   /// Base URL untuk Web Form (mengambil host & port dari baseUrl tanpa path /api)
   static String get webFormBaseUrl {
