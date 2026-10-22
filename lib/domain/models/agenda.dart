@@ -94,6 +94,11 @@ class AgendaItem {
     required this.packageId,
     required this.packageName,
     this.packagePrice = 0.0,
+    this.modelId = '',
+    this.modelName = '',
+    this.modelWidth = '',
+    this.modelImageUrl = '',
+    this.modelAdditionalPrice = 0.0,
     this.transportFee = 0.0,
     this.status = 'upcoming',
     this.paymentStatus = 'unpaid',
@@ -113,6 +118,11 @@ class AgendaItem {
   final String packageId;
   final String packageName;
   final double packagePrice;
+  final String modelId;
+  final String modelName;
+  final String modelWidth;
+  final String modelImageUrl;
+  final double modelAdditionalPrice;
   final double transportFee;
   final String status;
   final String paymentStatus; // 'unpaid', 'dp', 'paid'
@@ -146,6 +156,11 @@ class AgendaItem {
     String? packageId,
     String? packageName,
     double? packagePrice,
+    String? modelId,
+    String? modelName,
+    String? modelWidth,
+    String? modelImageUrl,
+    double? modelAdditionalPrice,
     double? transportFee,
     String? status,
     String? paymentStatus,
@@ -165,6 +180,11 @@ class AgendaItem {
       packageId: packageId ?? this.packageId,
       packageName: packageName ?? this.packageName,
       packagePrice: packagePrice ?? this.packagePrice,
+      modelId: modelId ?? this.modelId,
+      modelName: modelName ?? this.modelName,
+      modelWidth: modelWidth ?? this.modelWidth,
+      modelImageUrl: modelImageUrl ?? this.modelImageUrl,
+      modelAdditionalPrice: modelAdditionalPrice ?? this.modelAdditionalPrice,
       transportFee: transportFee ?? this.transportFee,
       status: status ?? this.status,
       paymentStatus: paymentStatus ?? this.paymentStatus,
@@ -206,6 +226,11 @@ class AgendaItem {
       packageId: json['package_id'] as String? ?? '',
       packageName: json['package_name'] as String? ?? '',
       packagePrice: parseDouble(json['package_price']),
+      modelId: json['model_id'] as String? ?? '',
+      modelName: json['model_name'] as String? ?? '',
+      modelWidth: json['model_width'] as String? ?? '',
+      modelImageUrl: json['model_image_url'] as String? ?? '',
+      modelAdditionalPrice: parseDouble(json['model_additional_price']),
       transportFee: parseDouble(json['transport_fee']),
       status: json['status'] as String? ?? 'upcoming',
       paymentStatus: json['payment_status'] as String? ?? 'unpaid',
@@ -228,6 +253,11 @@ class AgendaItem {
       'package_id': packageId,
       'package_name': packageName,
       'package_price': packagePrice,
+      'model_id': modelId,
+      'model_name': modelName,
+      'model_width': modelWidth,
+      'model_image_url': modelImageUrl,
+      'model_additional_price': modelAdditionalPrice,
       'transport_fee': transportFee,
       'status': status,
       'payment_status': paymentStatus,

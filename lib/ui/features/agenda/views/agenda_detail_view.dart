@@ -840,6 +840,29 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                   ),
                                 ),
                               ),
+                            if (_item.modelName.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.goldLight.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.view_carousel, size: 12, color: AppColors.primaryGold),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${_item.modelName}${_item.modelWidth.isNotEmpty ? ' (${_item.modelWidth})' : ''}',
+                                      style: AppTypography.caption.copyWith(
+                                        color: AppColors.primaryDark,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
 
@@ -1149,6 +1172,76 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             ],
                           ),
                         ),
+                        if (_item.modelName.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: _item.modelImageUrl.isNotEmpty
+                                      ? Image.network(
+                                          _item.modelImageUrl,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            width: 32,
+                                            height: 32,
+                                            color: AppColors.goldLight,
+                                            child: const Icon(Icons.view_carousel, size: 16, color: AppColors.primaryGold),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 32,
+                                          height: 32,
+                                          color: AppColors.goldLight,
+                                          child: const Icon(Icons.view_carousel, size: 16, color: AppColors.primaryGold),
+                                        ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Model: ${_item.modelName}',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                                      ),
+                                      Row(
+                                        children: [
+                                          if (_item.modelWidth.isNotEmpty) ...[
+                                            Text(
+                                              'Lebar: ${_item.modelWidth}',
+                                              style: const TextStyle(fontSize: 11, color: AppColors.textLight),
+                                            ),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          if (_item.modelAdditionalPrice > 0)
+                                            Text(
+                                              '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
+                                              style: const TextStyle(fontSize: 11, color: AppColors.primaryGold, fontWeight: FontWeight.bold),
+                                            )
+                                          else
+                                            const Text(
+                                              'Tanpa Biaya Tambahan',
+                                              style: TextStyle(fontSize: 11, color: AppColors.successGreen, fontWeight: FontWeight.w500),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (addonsPrice > 0) ...[
                           const SizedBox(height: 8),
                           Row(

@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
@@ -28,6 +30,8 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   DecorationPackage? _selectedPackage;
+  DecorationModel? _selectedModel;
+  double _selectedModelAdditionalPrice = 0.0;
   List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
 
@@ -40,7 +44,37 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       ),
     );
     if (result != null) {
-      setState(() => _selectedPackage = result);
+      setState(() {
+        _selectedPackage = result;
+        // Sinkronkan harga tambahan jika model sudah pernah dipilih
+        if (_selectedModel != null) {
+          final matchingPm = result.packageModels
+              .where((pm) => pm.decorationModelId == _selectedModel!.id)
+              .firstOrNull;
+          if (matchingPm != null) {
+            _selectedModelAdditionalPrice = matchingPm.additionalPrice;
+          } else {
+            _selectedModelAdditionalPrice = 0.0;
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _openModelPicker() async {
+    final result = await Navigator.of(context).push<SelectedModelResult>(
+      MaterialPageRoute(
+        builder: (_) => ModelPickerScreen(
+          package: _selectedPackage,
+          selectedModelId: _selectedModel?.id,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _selectedModel = result.model;
+        _selectedModelAdditionalPrice = result.additionalPrice;
+      });
     }
   }
 
@@ -151,6 +185,20 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       final agendaService = ref.read(agendaServiceProvider);
       
       String combinedNotes = _notesController.text.trim();
+
+      // Tambahkan info Model Dekorasi ke Catatan
+      if (_selectedModel != null) {
+        final extraText = _selectedModelAdditionalPrice > 0
+            ? ' (+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)})'
+            : ' (Termasuk Paket)';
+        final modelText = '[Model Dekorasi]: ${_selectedModel!.name}${_selectedModel!.width.isNotEmpty ? ' (Lebar: ${_selectedModel!.width})' : ''}$extraText';
+        if (combinedNotes.isNotEmpty) {
+          combinedNotes = '$combinedNotes\n\n$modelText';
+        } else {
+          combinedNotes = modelText;
+        }
+      }
+
       if (_selectedAddons.isNotEmpty) {
         final addonNames = _selectedAddons.map((item) {
           final unitPriceFormatted = NumberFormat.currency(
@@ -179,6 +227,8 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         }
       }
 
+      final effectivePackagePrice = (_selectedPackage?.basePrice ?? 0.0) + _selectedModelAdditionalPrice;
+
       await agendaService.createAgenda(
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
@@ -186,7 +236,12 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         eventDateTime: eventDateTime,
         mapsUrl: _mapsUrlController.text.trim(),
         packageId: _selectedPackage?.id ?? '',
-        packagePrice: _selectedPackage?.basePrice ?? 0.0,
+        packagePrice: effectivePackagePrice,
+        modelId: _selectedModel?.id ?? '',
+        modelName: _selectedModel?.name ?? '',
+        modelWidth: _selectedModel?.width ?? '',
+        modelImageUrl: _selectedModel?.imageUrl ?? '',
+        modelAdditionalPrice: _selectedModelAdditionalPrice,
         notes: combinedNotes,
       );
 
@@ -572,7 +627,150 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 14),
 
-              // 6. Item Tambahan (Addon)
+              // 6. Model Dekorasi yang dipilih (Master Model Dekorasi)
+              const Text(
+                'Pilih Model Dekorasi (Opsional)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _openModelPicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(
+                      color: _selectedModel != null
+                          ? AppTheme.primaryGold
+                          : Colors.grey.shade300,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _selectedModel != null && _selectedModel!.imageUrl.isNotEmpty
+                            ? Image.network(
+                                _selectedModel!.imageUrl,
+                                width: 38,
+                                height: 38,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  width: 38,
+                                  height: 38,
+                                  color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                                  child: const Icon(Icons.view_carousel, color: AppTheme.primaryGold, size: 20),
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.view_carousel, color: AppTheme.primaryGold, size: 20),
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _selectedModel == null
+                            ? const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Ketuk untuk pilih model dekorasi',
+                                    style: TextStyle(
+                                      color: AppTheme.textLight,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Tersedia model & ukuran lebar backdrop',
+                                    style: TextStyle(
+                                      color: AppTheme.textLight,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedModel!.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppTheme.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      if (_selectedModel!.width.isNotEmpty) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryGold.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Lebar: ${_selectedModel!.width}',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: AppTheme.primaryGold,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Text(
+                                        _selectedModelAdditionalPrice > 0
+                                            ? '+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)}'
+                                            : 'Tanpa Biaya Tambahan',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: _selectedModelAdditionalPrice > 0 ? AppTheme.primaryGold : AppTheme.successGreen,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                      ),
+                      if (_selectedModel != null)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
+                          onPressed: () {
+                            setState(() {
+                              _selectedModel = null;
+                              _selectedModelAdditionalPrice = 0.0;
+                            });
+                          },
+                        )
+                      else
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: _selectedModel != null
+                              ? AppTheme.primaryGold
+                              : AppTheme.textLight,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 7. Item Tambahan (Addon)
               const Text(
                 'Pilih Item Tambahan / Addon (Opsional)',
                 style: TextStyle(

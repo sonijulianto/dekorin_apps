@@ -90,6 +90,11 @@ class AgendaService {
     String mapsUrl = '',
     String packageId = '',
     double packagePrice = 0.0,
+    String modelId = '',
+    String modelName = '',
+    String modelWidth = '',
+    String modelImageUrl = '',
+    double modelAdditionalPrice = 0.0,
     String notes = '',
   }) async {
     final formattedDate = eventDateTime != null
@@ -104,6 +109,11 @@ class AgendaService {
       if (mapsUrl.isNotEmpty) 'maps_url': mapsUrl,
       if (packageId.isNotEmpty) 'package_id': packageId,
       if (packagePrice > 0) 'package_price': packagePrice,
+      if (modelId.isNotEmpty) 'model_id': modelId,
+      if (modelName.isNotEmpty) 'model_name': modelName,
+      if (modelWidth.isNotEmpty) 'model_width': modelWidth,
+      if (modelImageUrl.isNotEmpty) 'model_image_url': modelImageUrl,
+      if (modelAdditionalPrice > 0) 'model_additional_price': modelAdditionalPrice,
       if (notes.isNotEmpty) 'notes': notes,
     };
 
@@ -132,6 +142,11 @@ class AgendaService {
     required String packageId,
     required String packageName,
     required double packagePrice,
+    String modelId = '',
+    String modelName = '',
+    String modelWidth = '',
+    String modelImageUrl = '',
+    double modelAdditionalPrice = 0.0,
     String formToken = '',
     String eventAddress = '',
   }) async {
@@ -139,6 +154,11 @@ class AgendaService {
       'package_id': packageId,
       'package_name': packageName,
       'package_price': packagePrice,
+      if (modelId.isNotEmpty) 'model_id': modelId,
+      if (modelName.isNotEmpty) 'model_name': modelName,
+      if (modelWidth.isNotEmpty) 'model_width': modelWidth,
+      if (modelImageUrl.isNotEmpty) 'model_image_url': modelImageUrl,
+      if (modelAdditionalPrice > 0) 'model_additional_price': modelAdditionalPrice,
     };
 
     try {

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
+import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 
 final masterServiceProvider = Provider<MasterService>((ref) {
@@ -11,6 +12,11 @@ final masterServiceProvider = Provider<MasterService>((ref) {
 final packagesProvider = FutureProvider.autoDispose<List<DecorationPackage>>((ref) async {
   final service = ref.watch(masterServiceProvider);
   return service.getPackages();
+});
+
+final decorationModelsProvider = FutureProvider.autoDispose<List<DecorationModel>>((ref) async {
+  final service = ref.watch(masterServiceProvider);
+  return service.getDecorationModels();
 });
 
 final addonsProvider = FutureProvider.autoDispose<List<DecorationAddon>>((ref) async {
@@ -32,13 +38,17 @@ class MasterService {
     required String description,
     required double basePrice,
     String imageUrl = '',
+    List<Map<String, dynamic>>? packageModels,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'name': name,
       'description': description,
       'base_price': basePrice,
       'image_url': imageUrl,
     };
+    if (packageModels != null) {
+      payload['package_models'] = packageModels;
+    }
     final responseData = await ApiClient.post(ApiEndpoint.packages, body: payload);
     return DecorationPackage.fromJson(responseData['data'] as Map<String, dynamic>);
   }
@@ -49,13 +59,17 @@ class MasterService {
     required String description,
     required double basePrice,
     String imageUrl = '',
+    List<Map<String, dynamic>>? packageModels,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'name': name,
       'description': description,
       'base_price': basePrice,
       'image_url': imageUrl,
     };
+    if (packageModels != null) {
+      payload['package_models'] = packageModels;
+    }
     final responseData = await ApiClient.put('${ApiEndpoint.packages}/$id', body: payload);
     return DecorationPackage.fromJson(responseData['data'] as Map<String, dynamic>);
   }
@@ -68,6 +82,62 @@ class MasterService {
     await ApiClient.put(
       ApiEndpoint.reorderPackages,
       body: {'package_ids': packageIds},
+    );
+  }
+
+  // ── DECORATION MODELS ────────────────────────────────────
+
+  Future<List<DecorationModel>> getDecorationModels() async {
+    final responseData = await ApiClient.get(ApiEndpoint.decorationModels);
+    final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+    return data.map((item) => DecorationModel.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<DecorationModel> createDecorationModel({
+    required String name,
+    required String width,
+    required double price,
+    String description = '',
+    String imageUrl = '',
+  }) async {
+    final payload = {
+      'name': name,
+      'width': width,
+      'price': price,
+      'description': description,
+      'image_url': imageUrl,
+    };
+    final responseData = await ApiClient.post(ApiEndpoint.decorationModels, body: payload);
+    return DecorationModel.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  Future<DecorationModel> updateDecorationModel(
+    String id, {
+    required String name,
+    required String width,
+    required double price,
+    String description = '',
+    String imageUrl = '',
+  }) async {
+    final payload = {
+      'name': name,
+      'width': width,
+      'price': price,
+      'description': description,
+      'image_url': imageUrl,
+    };
+    final responseData = await ApiClient.put('${ApiEndpoint.decorationModels}/$id', body: payload);
+    return DecorationModel.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteDecorationModel(String id) async {
+    await ApiClient.delete('${ApiEndpoint.decorationModels}/$id');
+  }
+
+  Future<void> reorderDecorationModels(List<String> modelIds) async {
+    await ApiClient.put(
+      ApiEndpoint.reorderDecorationModels,
+      body: {'model_ids': modelIds},
     );
   }
 

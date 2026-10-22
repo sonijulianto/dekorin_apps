@@ -78,7 +78,10 @@ class InvoicePdfHelper {
       InvoiceItemData(
         no: 1,
         name: agenda.packageName.isNotEmpty ? agenda.packageName : 'Paket Dekorasi',
-        subtitle: agenda.backdropTitle.isNotEmpty ? 'Acara: ${agenda.backdropTitle}' : '',
+        subtitle: [
+          if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
+          if (agenda.modelName.isNotEmpty) 'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
+        ].join(' • '),
         quantity: 1,
         unitPrice: packagePrice,
         totalPrice: packagePrice,

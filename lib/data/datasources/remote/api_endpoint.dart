@@ -28,10 +28,12 @@ class ApiEndpoint {
   static const String dashboardSummary = '/dashboard/summary';
   static const String expenses = '/expenses';
 
-  // ── Agendas, Packages & Addons ──────────────────────────────
+  // ── Agendas, Packages, Models & Addons ────────────────────
   static const String agendas = '/agendas';
   static const String packages = '/packages';
   static const String reorderPackages = '/packages/reorder';
+  static const String decorationModels = '/decoration-models';
+  static const String reorderDecorationModels = '/decoration-models/reorder';
   static const String addons = '/addons';
   static const String reorderAddons = '/addons/reorder';
   static const String invitations = '/invitations';

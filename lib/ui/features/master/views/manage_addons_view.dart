@@ -421,11 +421,8 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                   ),
                 ),
               ),
-              onReorder: (int oldIndex, int newIndex) async {
+              onReorderItem: (int oldIndex, int newIndex) async {
                 setState(() {
-                  if (newIndex > oldIndex) {
-                    newIndex -= 1;
-                  }
                   final item = displayList.removeAt(oldIndex);
                   displayList.insert(newIndex, item);
                 });
