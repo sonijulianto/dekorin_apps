@@ -6,14 +6,16 @@ class ApiEndpoint {
   ApiEndpoint._(); // Tidak bisa di-instansiasi
 
   // ── Base URL ──────────────────────────────────────────────
-  // Menggunakan ngrok static domain → tidak perlu ubah IP lagi!
-  // Pastikan ngrok sudah berjalan: ngrok http --domain=ashen-mongrel-renounce.ngrok-free.dev 3000
-  static const String baseUrl = 'https://ashen-mongrel-renounce.ngrok-free.dev/api';
+  // Production VPS di Biznet GIO (Port 80 via Nginx reverse proxy)
+  static const String baseUrl = 'http://103.150.191.59/api';
 
   /// Base URL untuk Web Form (mengambil host & port dari baseUrl tanpa path /api)
   static String get webFormBaseUrl {
     final uri = Uri.parse(baseUrl);
-    return '${uri.scheme}://${uri.host}:${uri.port}';
+    if (uri.hasPort && uri.port != 80 && uri.port != 443) {
+      return '${uri.scheme}://${uri.host}:${uri.port}';
+    }
+    return '${uri.scheme}://${uri.host}';
   }
 
   // ── Auth ──────────────────────────────────────────────────
