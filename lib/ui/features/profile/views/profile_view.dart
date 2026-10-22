@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
-import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/manage_invitations_view.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_packages_view.dart';
+import 'package:dekorin_apps/ui/features/team/views/manage_team_view.dart';
 
 class ProfileView extends ConsumerWidget {
   const ProfileView({super.key});
@@ -18,7 +19,7 @@ class ProfileView extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('Profil Admin', style: AppTypography.titleLarge),
+        title: Text('Profil & Usaha', style: AppTypography.titleLarge),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -26,7 +27,87 @@ class ProfileView extends ConsumerWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Company Info Banner (Multi-Company Identity)
+            if (user?.companyName.isNotEmpty ?? false) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2C3E50), Color(0xFF1A252F)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.storefront, color: AppColors.primaryGold, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'BADAN USAHA DEKORASI',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.primaryGold,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user!.companyName,
+                            style: AppTypography.titleMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (user.companyAddress.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              user.companyAddress,
+                              style: AppTypography.caption.copyWith(
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Profile Card
             Container(
               padding: const EdgeInsets.all(20),
@@ -39,8 +120,20 @@ class ProfileView extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppColors.goldLight,
-                    child: const Icon(Icons.person, size: 36, color: AppColors.primaryGold),
+                    backgroundColor: user?.isOwner == true
+                        ? Colors.purple.withValues(alpha: 0.15)
+                        : (user?.isCrew == true
+                            ? Colors.blue.withValues(alpha: 0.15)
+                            : AppColors.goldLight),
+                    child: Icon(
+                      user?.isOwner == true
+                          ? Icons.workspace_premium
+                          : (user?.isCrew == true ? Icons.engineering : Icons.person),
+                      size: 32,
+                      color: user?.isOwner == true
+                          ? Colors.purple
+                          : (user?.isCrew == true ? Colors.blue : AppColors.primaryGold),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -48,15 +141,21 @@ class ProfileView extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.name ?? 'Admin Dekorin',
+                          user?.name ?? 'Pengguna Dekorin',
                           style: AppTypography.titleMedium,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user?.email ?? 'admin@dekorin.com',
-                          style: AppTypography.bodySmall,
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_android, size: 14, color: AppColors.textLight),
+                            const SizedBox(width: 4),
+                            Text(
+                              user?.phone.isNotEmpty == true ? user!.phone : (user?.email ?? '-'),
+                              style: AppTypography.bodySmall.copyWith(fontFamily: 'monospace'),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -87,23 +186,70 @@ class ProfileView extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Master Data Menu Section (Hanya tampil untuk Owner & Admin, disembunyikan untuk Crew)
-            if (user?.canManageMasterData ?? true) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 8),
-                  child: Text(
-                    'MASTER DATA DEKORASI',
-                    style: AppTypography.caption.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: AppColors.textLight,
-                    ),
+            // Team Management Section (Hanya tampil untuk Owner & Admin)
+            if (user?.canManageTeam ?? false) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'MANAJEMEN TIM & KARYAWAN',
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: AppColors.textLight,
                   ),
                 ),
               ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.people_alt_outlined, color: Colors.purple, size: 22),
+                      ),
+                      title: Text('Kelola Tim & Karyawan', style: AppTypography.titleSmall),
+                      subtitle: Text(
+                        user?.isOwner == true
+                            ? 'Atur akun Owner, Admin, dan Staf Lapangan'
+                            : 'Atur akun Crew / Staf Lapangan',
+                        style: AppTypography.caption,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ManageTeamView()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
+            // Master Data Menu Section (Hanya tampil untuk Owner & Admin, disembunyikan untuk Crew)
+            if (user?.canManageMasterData ?? true) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'MASTER DATA DEKORASI',
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,

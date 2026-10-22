@@ -14,11 +14,6 @@ import 'package:flutter/services.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 
-final addonsProvider = FutureProvider.autoDispose<List<DecorationAddon>>((ref) async {
-  final service = ref.watch(masterServiceProvider);
-  return service.getAddons();
-});
-
 class ManageAddonsView extends ConsumerStatefulWidget {
   const ManageAddonsView({super.key});
 

@@ -1,10 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
-import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 
 /// Screen untuk memilih paket dekorasi dengan tampilan card bergambar.
 /// Mengembalikan [DecorationPackage] yang dipilih ke caller via [Navigator.pop].
@@ -61,30 +61,79 @@ class PackagePickerScreen extends ConsumerWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AppTheme.textLight),
                 ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.refresh(packagesProvider),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGold,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Coba Lagi'),
+                ),
               ],
             ),
           ),
         ),
-        data: (packages) => GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: packages.length,
-          itemBuilder: (context, index) {
-            final pkg = packages[index];
-            final isSelected = pkg.id == selectedPackageId;
-            return _PackageCard(
-              package: pkg,
-              isSelected: isSelected,
-              currencyFormatter: currencyFormatter,
-              onTap: () => Navigator.of(context).pop(pkg),
+        data: (packages) {
+          if (packages.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: () async => ref.refresh(packagesProvider),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Belum ada paket dekorasi',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Tambahkan paket di menu Profile > Kelola Paket',
+                          style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             );
-          },
-        ),
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(packagesProvider),
+            child: GridView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.72,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: packages.length,
+              itemBuilder: (context, index) {
+                final pkg = packages[index];
+                final isSelected = pkg.id == selectedPackageId;
+                return _PackageCard(
+                  package: pkg,
+                  isSelected: isSelected,
+                  currencyFormatter: currencyFormatter,
+                  onTap: () => Navigator.of(context).pop(pkg),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -156,7 +205,7 @@ class _PackageCard extends StatelessWidget {
                       height: 110,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildIllustration(bgColor, icon),
+                      errorBuilder: (_, _, _) => _buildIllustration(bgColor, icon),
                     )
                   : _buildIllustration(bgColor, icon),
             ),

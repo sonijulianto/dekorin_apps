@@ -11,8 +11,6 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 /// Concrete implementation of [AuthRepository].
-///
-/// Uses [AuthService] to fetch data and transforms it into domain models.
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({required AuthService authService})
       : _authService = authService;
@@ -21,12 +19,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User> login({
-    required String email,
+    required String phone,
     required String password,
+    String? email,
   }) async {
     final userModel = await _authService.login(
-      email: email,
+      phone: phone,
       password: password,
+      email: email,
     );
     return userModel.toDomain();
   }

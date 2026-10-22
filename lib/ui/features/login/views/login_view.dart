@@ -7,7 +7,7 @@ import 'package:dekorin_apps/ui/features/login/view_models/login_view_model.dart
 
 /// Login screen for the Dekorin app.
 ///
-/// Displays the brand logo, email/password fields, and a login button.
+/// Displays the brand logo, phone/password fields, and a login button.
 /// Listens to [loginViewModelProvider] for state changes via Riverpod.
 class LoginView extends ConsumerStatefulWidget {
   const LoginView({super.key});
@@ -17,21 +17,21 @@ class LoginView extends ConsumerStatefulWidget {
 }
 
 class _LoginViewState extends ConsumerState<LoginView> {
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill kredensial untuk kemudahan testing
-    _emailController.text = 'admin@dekorin.com';
-    _passwordController.text = 'admin123';
+    // Pre-fill nomor HP Owner default untuk kemudahan testing
+    _phoneController.text = '081234567890';
+    _passwordController.text = 'owner123';
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -39,7 +39,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
   void _onLogin() {
     ref.read(loginViewModelProvider.notifier).clearError();
     ref.read(loginViewModelProvider.notifier).login(
-          email: _emailController.text,
+          phone: _phoneController.text,
           password: _passwordController.text,
         );
   }
@@ -71,13 +71,13 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   ),
                   const SizedBox(height: 48),
 
-                  // --- Email Field ---
+                  // --- Phone Field ---
                   DekorinTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hint: 'contoh@dekorin.com',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _phoneController,
+                    label: 'Nomor WhatsApp / HP',
+                    hint: '081234567890',
+                    prefixIcon: Icons.phone_android_outlined,
+                    keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
@@ -155,7 +155,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Masuk'),
+                        : const Text('Masuk ke Aplikasi'),
                   ),
                   const SizedBox(height: 24),
 
@@ -183,7 +183,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                             Expanded(
                               child: _buildRoleChip(
                                 label: 'Owner',
-                                email: 'owner@dekorin.com',
+                                phone: '081234567890',
                                 pass: 'owner123',
                                 color: Colors.purple,
                               ),
@@ -192,7 +192,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                             Expanded(
                               child: _buildRoleChip(
                                 label: 'Admin',
-                                email: 'admin@dekorin.com',
+                                phone: '081234567891',
                                 pass: 'admin123',
                                 color: AppTheme.primaryGold,
                               ),
@@ -201,7 +201,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                             Expanded(
                               child: _buildRoleChip(
                                 label: 'Crew',
-                                email: 'crew@dekorin.com',
+                                phone: '081234567892',
                                 pass: 'crew123',
                                 color: Colors.blue,
                               ),
@@ -270,15 +270,15 @@ class _LoginViewState extends ConsumerState<LoginView> {
 
   Widget _buildRoleChip({
     required String label,
-    required String email,
+    required String phone,
     required String pass,
     required Color color,
   }) {
-    final isSelected = _emailController.text == email;
+    final isSelected = _phoneController.text == phone;
     return InkWell(
       onTap: () {
         setState(() {
-          _emailController.text = email;
+          _phoneController.text = phone;
           _passwordController.text = pass;
         });
       },

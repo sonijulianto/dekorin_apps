@@ -44,7 +44,12 @@ class InvoicePdfHelper {
 
     // ── 1. Penentuan Harga Paket ──
     double packagePrice = 0.0;
-    if (form != null && form.packagePrice > 0) {
+    final isUnselected = agenda.packageName.toLowerCase().contains('belum dipilih') ||
+        (form != null && form.packageName.toLowerCase().contains('belum dipilih'));
+
+    if (isUnselected) {
+      packagePrice = 0.0;
+    } else if (form != null && form.packagePrice > 0) {
       packagePrice = form.packagePrice;
     } else if (agenda.packagePrice > 0) {
       packagePrice = agenda.packagePrice;
@@ -61,7 +66,7 @@ class InvoicePdfHelper {
       } else if (nameLower.contains('ballroom') || nameLower.contains('luxury')) {
         packagePrice = 18000000.0;
       } else {
-        packagePrice = 3500000.0;
+        packagePrice = 0.0;
       }
     }
 

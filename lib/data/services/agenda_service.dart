@@ -16,39 +16,9 @@ final agendaServiceProvider = Provider<AgendaService>((ref) {
 class AgendaService {
   /// Mengambil daftar master paket dekorasi
   Future<List<DecorationPackage>> getPackages() async {
-    try {
-      final responseData = await ApiClient.get(ApiEndpoint.packages);
-      final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
-      return data.map((item) => DecorationPackage.fromJson(item as Map<String, dynamic>)).toList();
-    } catch (_) {
-      // Fallback data jika backend belum tersambung
-      return const [
-        DecorationPackage(
-          id: 'pkg_01',
-          name: 'Paket Akad Minimalis',
-          description: 'Backdrop 2.5m, rangkaian bunga artificial, karpet akad',
-          basePrice: 2500000,
-        ),
-        DecorationPackage(
-          id: 'pkg_02',
-          name: 'Paket Lamaran Rustic / Modern',
-          description: 'Backdrop 3m hexagon/arch, full bunga kombinasi, spotlight, welcome sign',
-          basePrice: 4000000,
-        ),
-        DecorationPackage(
-          id: 'pkg_03',
-          name: 'Paket Pernikahan Elegan Gold',
-          description: 'Pelaminan 6m, pergola, lighting lengkap, karpet jalan',
-          basePrice: 9500000,
-        ),
-        DecorationPackage(
-          id: 'pkg_04',
-          name: 'Paket Grand Luxury Ballroom',
-          description: 'Pelaminan 10-12m full fresh flower, chandelier, photobooth thematic',
-          basePrice: 18000000,
-        ),
-      ];
-    }
+    final responseData = await ApiClient.get(ApiEndpoint.packages);
+    final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+    return data.map((item) => DecorationPackage.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   /// Mengambil daftar agenda mendatang dengan opsional filter tanggal
@@ -154,6 +124,45 @@ class AgendaService {
     final payload = {'transport_fee': transportFee};
     final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/transport', body: payload);
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate paket dekorasi dan harga paket untuk agenda tertentu
+  Future<AgendaItem> updateAgendaPackage(
+    String agendaId, {
+    required String packageId,
+    required String packageName,
+    required double packagePrice,
+    String formToken = '',
+    String eventAddress = '',
+  }) async {
+    final payload = {
+      'package_id': packageId,
+      'package_name': packageName,
+      'package_price': packagePrice,
+    };
+
+    try {
+      final responseData = await ApiClient.put(
+        '${ApiEndpoint.agendas}/$agendaId/package',
+        body: payload,
+      );
+      return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      // Jika endpoint /package belum aktif di VPS (404),
+      // gunakan fallback via endpoint client-form yang sudah aktif di live server
+      if (e.statusCode == 404 && formToken.isNotEmpty) {
+        final formPayload = {
+          'package_id': packageId,
+          'event_address': eventAddress.isNotEmpty ? eventAddress : '-',
+          'addon_ids': <String>[],
+        };
+        await ApiClient.post('/client-form/$formToken', body: formPayload);
+
+        final agendas = await getAgendas();
+        return agendas.firstWhere((a) => a.id == agendaId);
+      }
+      rethrow;
+    }
   }
 
   /// Mengupdate status pembayaran agenda (unpaid, dp, paid)

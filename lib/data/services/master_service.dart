@@ -8,17 +8,23 @@ final masterServiceProvider = Provider<MasterService>((ref) {
   return MasterService();
 });
 
+final packagesProvider = FutureProvider.autoDispose<List<DecorationPackage>>((ref) async {
+  final service = ref.watch(masterServiceProvider);
+  return service.getPackages();
+});
+
+final addonsProvider = FutureProvider.autoDispose<List<DecorationAddon>>((ref) async {
+  final service = ref.watch(masterServiceProvider);
+  return service.getAddons();
+});
+
 class MasterService {
   // ── PACKAGES ─────────────────────────────────────────────
 
   Future<List<DecorationPackage>> getPackages() async {
-    try {
-      final responseData = await ApiClient.get(ApiEndpoint.packages);
-      final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
-      return data.map((item) => DecorationPackage.fromJson(item as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
-    }
+    final responseData = await ApiClient.get(ApiEndpoint.packages);
+    final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+    return data.map((item) => DecorationPackage.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   Future<DecorationPackage> createPackage({
@@ -68,13 +74,9 @@ class MasterService {
   // ── ADDONS ───────────────────────────────────────────────
 
   Future<List<DecorationAddon>> getAddons() async {
-    try {
-      final responseData = await ApiClient.get(ApiEndpoint.addons);
-      final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
-      return data.map((item) => DecorationAddon.fromJson(item as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
-    }
+    final responseData = await ApiClient.get(ApiEndpoint.addons);
+    final List<dynamic> data = responseData['data'] as List<dynamic>? ?? [];
+    return data.map((item) => DecorationAddon.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   Future<DecorationAddon> createAddon({

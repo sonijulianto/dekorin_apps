@@ -11,8 +11,11 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
+
     // Verify login screen elements are present
     expect(find.text('Dekorin'), findsOneWidget);
-    expect(find.text('Masuk'), findsOneWidget);
+    expect(find.text('Masuk ke Aplikasi'), findsOneWidget);
+    expect(find.text('Nomor WhatsApp / HP'), findsOneWidget);
   });
 }

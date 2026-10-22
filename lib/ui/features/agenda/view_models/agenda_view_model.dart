@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+export 'package:dekorin_apps/data/services/master_service.dart' show packagesProvider;
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
-import 'package:dekorin_apps/domain/models/decoration_package.dart';
 
 enum AgendaDateFilterType {
   all,
@@ -38,11 +38,6 @@ class AgendaFilterState {
 
 final agendaFilterProvider =
     StateProvider<AgendaFilterState>((ref) => const AgendaFilterState());
-
-final packagesProvider = FutureProvider<List<DecorationPackage>>((ref) async {
-  final service = ref.watch(agendaServiceProvider);
-  return service.getPackages();
-});
 
 typedef AgendaStateData = ({
   List<AgendaItem> agendas,

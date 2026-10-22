@@ -9,7 +9,9 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
@@ -434,6 +436,253 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     );
   }
 
+  void _showEditPackageDialog(BuildContext context) async {
+    final thousandFormatter = NumberFormat('#,###', 'id_ID');
+
+    final isUnselected = _item.packageName.toLowerCase().contains('belum dipilih') ||
+        _item.packageName.isEmpty;
+
+    double currentPrice = 0.0;
+    if (!isUnselected) {
+      if (_item.clientForm != null && _item.clientForm!.packagePrice > 0) {
+        currentPrice = _item.clientForm!.packagePrice;
+      } else if (_item.packagePrice > 0) {
+        currentPrice = _item.packagePrice;
+      }
+    }
+
+    String selectedPackageId = _item.packageId;
+    final nameController = TextEditingController(
+      text: !isUnselected
+          ? (_item.packageName.isNotEmpty
+              ? _item.packageName
+              : (_item.clientForm?.packageName ?? ''))
+          : '',
+    );
+    final priceController = TextEditingController(
+      text: currentPrice > 0
+          ? thousandFormatter.format(currentPrice.toInt()).replaceAll(',', '.')
+          : '',
+    );
+    bool isSaving = false;
+
+    // Ambil master paket dekorasi untuk opsi quick pick
+    List<DecorationPackage> masterPackages = [];
+    try {
+      masterPackages = await ref.read(masterServiceProvider).getPackages();
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.inventory_2_outlined, color: AppColors.primaryGold, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Ubah Paket Dekorasi',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (masterPackages.isNotEmpty) ...[
+                      const Text(
+                        'Pilihan Master Paket:',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ...masterPackages.map((pkg) {
+                            final isCurrent = selectedPackageId == pkg.id;
+                            return ChoiceChip(
+                              label: Text('${pkg.name} (${thousandFormatter.format(pkg.basePrice.toInt())})'),
+                              selected: isCurrent,
+                              selectedColor: AppColors.goldLight,
+                              backgroundColor: Colors.grey.shade100,
+                              labelStyle: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                color: isCurrent ? AppColors.primaryDark : AppColors.textDark,
+                              ),
+                              side: BorderSide(
+                                color: isCurrent ? AppColors.primaryGold : Colors.grey.shade300,
+                              ),
+                              onSelected: (_) {
+                                setDialogState(() {
+                                  selectedPackageId = pkg.id;
+                                  nameController.text = pkg.name;
+                                  priceController.text = thousandFormatter.format(pkg.basePrice.toInt()).replaceAll(',', '.');
+                                });
+                              },
+                            );
+                          }),
+                          ChoiceChip(
+                            label: const Text('Belum Dipilih (Rp 0)'),
+                            selected: selectedPackageId.isEmpty && (nameController.text == 'Belum Dipilih' || nameController.text.isEmpty),
+                            backgroundColor: Colors.grey.shade100,
+                            selectedColor: Colors.grey.shade200,
+                            labelStyle: const TextStyle(fontSize: 11, color: AppColors.textLight),
+                            onSelected: (_) {
+                              setDialogState(() {
+                                selectedPackageId = '';
+                                nameController.text = 'Belum Dipilih';
+                                priceController.text = '0';
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                    ],
+                    const Text(
+                      'Detail Paket & Harga (Bisa Diedit Manual):',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Nama Paket',
+                        hintText: 'Contoh: Paket Platinum / Custom',
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: priceController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        ThousandsSeparatorInputFormatter(),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Harga Paket',
+                        prefixText: 'Rp ',
+                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        hintText: '1.100.000',
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                  child: const Text('Batal', style: TextStyle(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final cleanDigits = priceController.text.replaceAll(RegExp(r'\D'), '');
+                          final newPrice = double.tryParse(cleanDigits) ?? 0.0;
+                          final pkgName = nameController.text.trim().isNotEmpty
+                              ? nameController.text.trim()
+                              : 'Belum Dipilih';
+
+                          setDialogState(() => isSaving = true);
+                          try {
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaPackage(
+                                  _item.id,
+                                  packageId: selectedPackageId,
+                                  packageName: pkgName,
+                                  packagePrice: newPrice,
+                                  formToken: _item.formToken,
+                                  eventAddress: _item.mapsUrl,
+                                );
+
+                            ref.read(agendaViewModelProvider.notifier).refresh();
+                            ref.invalidate(dashboardViewModelProvider);
+
+                            if (mounted) {
+                              setState(() {
+                                _item = updated;
+                              });
+                            }
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                            }
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Paket dekorasi berhasil disimpan! 🎉'),
+                                  backgroundColor: AppColors.successGreen,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal menyimpan paket: $e'),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 42),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Simpan Paket', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
@@ -442,9 +691,15 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final isFilled = _item.formStatus == 'filled';
     final form = _item.clientForm;
 
+    final isUnselected = _item.packageName.toLowerCase().contains('belum dipilih') ||
+        (form != null && form.packageName.toLowerCase().contains('belum dipilih')) ||
+        (_item.packageName.isEmpty && (form == null || form.packageName.isEmpty));
+
     // Kalkulasi Harga Paket & Addon
     double packagePrice = 0.0;
-    if (form != null && form.packagePrice > 0) {
+    if (isUnselected) {
+      packagePrice = 0.0;
+    } else if (form != null && form.packagePrice > 0) {
       packagePrice = form.packagePrice;
     } else if (_item.packagePrice > 0) {
       packagePrice = _item.packagePrice;
@@ -459,7 +714,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       } else if (nameLower.contains('ballroom') || nameLower.contains('luxury')) {
         packagePrice = 18000000.0;
       } else {
-        packagePrice = 3500000.0;
+        packagePrice = 0.0;
       }
     }
 
@@ -816,18 +1071,83 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         const SizedBox(height: 12),
 
                         // Rincian Paket Dekorasi
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Paket: ${_item.packageName.isNotEmpty ? _item.packageName : (form?.packageName.isNotEmpty == true ? form!.packageName : "Paket Dekorasi")}',
-                              style: AppTypography.bodyMedium,
-                            ),
-                            Text(
-                              packagePrice > 0 ? currencyFormatter.format(packagePrice) : '-',
-                              style: AppTypography.titleSmall,
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.primaryGold),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Paket: ${_item.packageName.isNotEmpty ? _item.packageName : (form?.packageName.isNotEmpty == true ? form!.packageName : "Belum Dipilih")}',
+                                            style: AppTypography.bodySmall.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textDark,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            packagePrice > 0 ? currencyFormatter.format(packagePrice) : 'Rp 0 (Belum diatur)',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: packagePrice > 0 ? AppColors.primaryGold : AppColors.textLight,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => _showEditPackageDialog(context),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.goldLight.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        packagePrice > 0 ? Icons.edit_outlined : Icons.add_circle_outline,
+                                        size: 12,
+                                        color: AppColors.primaryGold,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        packagePrice > 0 ? 'Ubah' : 'Pilih',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         if (addonsPrice > 0) ...[
                           const SizedBox(height: 8),
@@ -1069,50 +1389,58 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         ],
 
                         // Baris Informasi Pembayaran DP
-                        Container(
-                          margin: const EdgeInsets.only(top: 6),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _item.dpAmount > 0 ? Colors.green.shade300 : Colors.amber.shade300,
-                            ),
-                          ),
-
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        _item.dpAmount > 0 ? Icons.check_circle_outline : Icons.pending_outlined,
-                                        size: 16,
-                                        color: _item.dpAmount > 0 ? Colors.green.shade700 : Colors.amber.shade800,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Pembayaran DP Masuk',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _item.dpAmount > 0 ? Colors.green.shade800 : Colors.amber.shade900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    _item.dpAmount > 0 ? currencyFormatter.format(_item.dpAmount) : 'Belum Ada DP',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: _item.dpAmount > 0 ? Colors.green.shade800 : Colors.amber.shade900,
-                                    ),
-                                  ),
-                                ],
+                        InkWell(
+                          onTap: () => _showEditDpDialog(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _item.dpAmount > 0 ? Colors.green.shade300 : Colors.amber.shade300,
                               ),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _item.dpAmount > 0 ? Icons.check_circle_outline : Icons.pending_outlined,
+                                          size: 16,
+                                          color: _item.dpAmount > 0 ? Colors.green.shade700 : Colors.amber.shade800,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Pembayaran DP Masuk',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _item.dpAmount > 0 ? Colors.green.shade800 : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _item.dpAmount > 0 ? currencyFormatter.format(_item.dpAmount) : 'Belum Ada DP',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: _item.dpAmount > 0 ? Colors.green.shade800 : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryGold),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               if (totalBiaya > 0 && _item.dpAmount > 0) ...[
                                 const Divider(height: 16),
                                 Row(
@@ -1140,7 +1468,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                      ),
+                      const SizedBox(height: 12),
 
                         // Tombol Cetak / Lihat Invoice
                         InkWell(

@@ -14,11 +14,6 @@ import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 
-final packagesProvider = FutureProvider.autoDispose<List<DecorationPackage>>((ref) async {
-  final service = ref.watch(masterServiceProvider);
-  return service.getPackages();
-});
-
 class ManagePackagesView extends ConsumerStatefulWidget {
   const ManagePackagesView({super.key});
 

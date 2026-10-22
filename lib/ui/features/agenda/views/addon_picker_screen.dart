@@ -1,10 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
-import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
 
 /// Model pembungkus untuk item tambahan beserta jumlah (kuantitas) yang dipesan.
 class SelectedAddonItem {
@@ -439,7 +439,7 @@ class _AddonCardWithQty extends StatelessWidget {
                         height: 100,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildIllustration(bgColor, icon),
+                        errorBuilder: (_, _, _) => _buildIllustration(bgColor, icon),
                       )
                     : _buildIllustration(bgColor, icon),
               ),

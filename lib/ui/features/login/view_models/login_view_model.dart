@@ -48,16 +48,18 @@ class LoginViewModel extends Notifier<LoginState> {
   }
 
   Future<void> login({
-    required String email,
+    required String phone,
     required String password,
   }) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+
     // Validasi input
-    if (email.trim().isEmpty) {
-      state = state.copyWith(errorMessage: 'Email tidak boleh kosong', clearError: false);
+    if (phone.trim().isEmpty) {
+      state = state.copyWith(errorMessage: 'Nomor Handphone tidak boleh kosong', clearError: false);
       return;
     }
-    if (!_isValidEmail(email.trim())) {
-      state = state.copyWith(errorMessage: 'Format email tidak valid', clearError: false);
+    if (cleanPhone.length < 9) {
+      state = state.copyWith(errorMessage: 'Nomor Handphone minimal 9 digit', clearError: false);
       return;
     }
     if (password.isEmpty) {
@@ -74,13 +76,13 @@ class LoginViewModel extends Notifier<LoginState> {
     try {
       final repository = ref.read(authRepositoryProvider);
       final user = await repository.login(
-        email: email.trim(),
+        phone: phone.trim(),
         password: password,
       );
-      
+
       // Update global auth state, ini akan men-trigger app.dart untuk pindah halaman
       ref.read(globalAuthProvider.notifier).setUser(user);
-      
+
       state = state.copyWith(isLoading: false);
     } on ApiException catch (e) {
       state = state.copyWith(
@@ -93,10 +95,6 @@ class LoginViewModel extends Notifier<LoginState> {
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
     }
-  }
-
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(email);
   }
 }
 
