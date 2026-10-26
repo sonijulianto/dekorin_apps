@@ -572,8 +572,11 @@ class _AgendaCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 16, color: Colors.blue),
+                    Image.asset(
+                      'assets/icons/google-maps-icon.webp',
+                      width: 16,
+                      height: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

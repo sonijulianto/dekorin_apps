@@ -14,6 +14,7 @@ class DekorinTextField extends StatelessWidget {
     this.hint,
     this.helperText,
     this.prefixIcon,
+    this.prefixWidget,
     this.suffixIcon,
     this.prefixText,
     this.prefixStyle,
@@ -32,6 +33,7 @@ class DekorinTextField extends StatelessWidget {
   final String? hint;
   final String? helperText;
   final IconData? prefixIcon;
+  final Widget? prefixWidget;
   final Widget? suffixIcon;
   final String? prefixText;
   final TextStyle? prefixStyle;
@@ -61,7 +63,7 @@ class DekorinTextField extends StatelessWidget {
         labelText: label.isNotEmpty ? label : null,
         hintText: hint,
         helperText: helperText,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+        prefixIcon: prefixWidget ?? (prefixIcon != null ? Icon(prefixIcon) : null),
         prefixText: prefixText,
         prefixStyle: prefixStyle,
         suffixIcon: suffixIcon,

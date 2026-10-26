@@ -918,7 +918,11 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.map_outlined, size: 20, color: Colors.blue),
+                              Image.asset(
+                                'assets/icons/google-maps-icon.webp',
+                                width: 20,
+                                height: 20,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
@@ -1026,7 +1030,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                               children: [
                                 const Icon(Icons.receipt_long_outlined, color: AppColors.primaryGold, size: 22),
                                 const SizedBox(width: 8),
-                                Text('Rincian Pembayaran & DP', style: AppTypography.titleMedium.copyWith(color: AppColors.primaryDark)),
+                                Text('Pembayaran & DP', style: AppTypography.titleMedium.copyWith(color: AppColors.primaryDark)),
                               ],
                             ),
                             // Tombol Edit / Input DP

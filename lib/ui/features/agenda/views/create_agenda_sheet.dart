@@ -533,7 +533,14 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
                   hintText: 'https://maps.google.com/?q=...',
-                  prefixIcon: const Icon(Icons.map_outlined),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'assets/icons/google-maps-icon.webp',
+                      width: 20,
+                      height: 20,
+                    ),
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),

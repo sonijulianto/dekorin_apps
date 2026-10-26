@@ -417,7 +417,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   controller: _akadMapsController,
                   label: 'Link Google Maps Akad',
                   hint: 'https://maps.app.goo.gl/...',
-                  prefixIcon: Icons.map_outlined,
+                  prefixWidget: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'assets/icons/google-maps-icon.webp',
+                      width: 20,
+                      height: 20,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -456,7 +463,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   controller: _resepsiMapsController,
                   label: 'Link Google Maps Resepsi',
                   hint: 'https://maps.app.goo.gl/...',
-                  prefixIcon: Icons.map_outlined,
+                  prefixWidget: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'assets/icons/google-maps-icon.webp',
+                      width: 20,
+                      height: 20,
+                    ),
+                  ),
                 ),
               ],
             ),
