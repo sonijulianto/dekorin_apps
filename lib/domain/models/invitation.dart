@@ -121,6 +121,11 @@ class InvitationItem {
     this.youtubeUrl = '',
     this.loveStory = '',
     this.turutMengundang = '',
+    this.sec1Photo = '',
+    this.akadPhoto = '',
+    this.resepsiPhoto = '',
+    this.eventPhoto = '',
+    this.closingPhoto = '',
     this.isActive = true,
     this.createdAt,
     this.wishes = const [],
@@ -171,6 +176,11 @@ class InvitationItem {
   final String youtubeUrl;
   final String loveStory;
   final String turutMengundang;
+  final String sec1Photo;
+  final String akadPhoto;
+  final String resepsiPhoto;
+  final String eventPhoto;
+  final String closingPhoto;
   final bool isActive;
   final DateTime? createdAt;
   final List<InvitationWishItem> wishes;
@@ -227,6 +237,11 @@ class InvitationItem {
       youtubeUrl: json['youtube_url'] as String? ?? '',
       loveStory: json['love_story'] as String? ?? '',
       turutMengundang: json['turut_mengundang'] as String? ?? '',
+      sec1Photo: json['sec1_photo'] as String? ?? '',
+      akadPhoto: json['akad_photo'] as String? ?? '',
+      resepsiPhoto: json['resepsi_photo'] as String? ?? '',
+      eventPhoto: json['event_photo'] as String? ?? '',
+      closingPhoto: json['closing_photo'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       wishes: wishesList,
@@ -280,6 +295,11 @@ class InvitationItem {
       'youtube_url': youtubeUrl,
       'love_story': loveStory,
       'turut_mengundang': turutMengundang,
+      'sec1_photo': sec1Photo,
+      'akad_photo': akadPhoto,
+      'resepsi_photo': resepsiPhoto,
+      'event_photo': eventPhoto,
+      'closing_photo': closingPhoto,
       'is_active': isActive,
     };
   }

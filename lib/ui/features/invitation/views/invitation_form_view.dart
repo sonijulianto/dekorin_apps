@@ -84,6 +84,12 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   String _coverImageUrl = '';
   String _groomPhotoUrl = '';
   String _bridePhotoUrl = '';
+  String _sec1PhotoUrl = '';
+  String _akadPhotoUrl = '';
+  String _resepsiPhotoUrl = '';
+  String _eventPhotoUrl = '';
+  String _closingPhotoUrl = '';
+  List<String> _galleryUrls = [];
 
   bool _isSubmitting = false;
 
@@ -157,6 +163,18 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         : '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg';
     _groomPhotoUrl = inv?.groomPhoto ?? '';
     _bridePhotoUrl = inv?.bridePhoto ?? '';
+    _sec1PhotoUrl = inv?.sec1Photo ?? '';
+    _akadPhotoUrl = inv?.akadPhoto ?? '';
+    _resepsiPhotoUrl = inv?.resepsiPhoto ?? '';
+    _eventPhotoUrl = inv?.eventPhoto ?? '';
+    _closingPhotoUrl = inv?.closingPhoto ?? '';
+    if (inv != null && inv.galleryImages.isNotEmpty) {
+      _galleryUrls = inv.galleryImages
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
   }
 
   @override
@@ -219,6 +237,34 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal upload gambar: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickGalleryImages() async {
+    try {
+      final picker = ImagePicker();
+      final pickedList = await picker.pickMultiImage(
+        imageQuality: 75,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+      if (pickedList.isNotEmpty) {
+        setState(() => _isSubmitting = true);
+        for (final picked in pickedList) {
+          final uploadedUrl = await ApiClient.uploadImage(File(picked.path));
+          setState(() {
+            _galleryUrls.add(uploadedUrl);
+          });
+        }
+        setState(() => _isSubmitting = false);
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal upload gambar galeri: $e')),
         );
       }
     }
@@ -306,6 +352,12 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'youtube_url': _youtubeUrlController.text.trim(),
       'love_story': _loveStoryController.text.trim(),
       'turut_mengundang': _turutMengundangController.text.trim(),
+      'sec1_photo': _sec1PhotoUrl,
+      'akad_photo': _akadPhotoUrl,
+      'resepsi_photo': _resepsiPhotoUrl,
+      'event_photo': _eventPhotoUrl,
+      'closing_photo': _closingPhotoUrl,
+      'gallery_images': _galleryUrls.join(','),
       'is_active': true,
     };
 
@@ -500,7 +552,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   ),
                   const SizedBox(height: 12),
                   _buildPhotoPicker(
-                    label: 'Foto Mempelai Pria',
+                    label: 'Foto Mempelai Pria (man.jpeg)',
                     imageUrl: _groomPhotoUrl,
                     onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
                     onClear: () => setState(() => _groomPhotoUrl = ''),
@@ -547,7 +599,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   ),
                   const SizedBox(height: 12),
                   _buildPhotoPicker(
-                    label: 'Foto Mempelai Wanita',
+                    label: 'Foto Mempelai Wanita (woman.jpeg)',
                     imageUrl: _bridePhotoUrl,
                     onPick: () => _pickAndUploadImage((url) => setState(() => _bridePhotoUrl = url)),
                     onClear: () => setState(() => _bridePhotoUrl = ''),
@@ -610,6 +662,13 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                _buildPhotoPicker(
+                  label: 'Foto Banner Akad Nikah (akad.jpeg)',
+                  imageUrl: _akadPhotoUrl,
+                  onPick: () => _pickAndUploadImage((url) => setState(() => _akadPhotoUrl = url)),
+                  onClear: () => setState(() => _akadPhotoUrl = ''),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -667,22 +726,56 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                _buildPhotoPicker(
+                  label: 'Foto Banner Resepsi (reception.jpeg)',
+                  imageUrl: _resepsiPhotoUrl,
+                  onPick: () => _pickAndUploadImage((url) => setState(() => _resepsiPhotoUrl = url)),
+                  onClear: () => setState(() => _resepsiPhotoUrl = ''),
+                ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // 7. MEDIA & KISAH MOMEN
+            // 7. FOTO KHUSUS TEMPLATE & MEDIA
             _buildSectionCard(
-              title: '7. Media, Video & Kisah Momen',
-              icon: Icons.video_library_outlined,
+              title: '7. Foto Desain Template & Galeri Momen',
+              icon: Icons.photo_library_outlined,
               children: [
                 _buildPhotoPicker(
-                  label: 'Foto Cover Utama Undangan',
+                  label: 'Foto Cover Utama / Sampul (opening.jpeg)',
                   imageUrl: _coverImageUrl,
                   onPick: () => _pickAndUploadImage((url) => setState(() => _coverImageUrl = url)),
                   onClear: () => setState(() => _coverImageUrl = ''),
                 ),
                 const SizedBox(height: 14),
+                _buildPhotoPicker(
+                  label: 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
+                  imageUrl: _sec1PhotoUrl,
+                  onPick: () => _pickAndUploadImage((url) => setState(() => _sec1PhotoUrl = url)),
+                  onClear: () => setState(() => _sec1PhotoUrl = ''),
+                ),
+                const SizedBox(height: 14),
+                _buildPhotoPicker(
+                  label: 'Foto Countdown Acara (event.jpeg)',
+                  imageUrl: _eventPhotoUrl,
+                  onPick: () => _pickAndUploadImage((url) => setState(() => _eventPhotoUrl = url)),
+                  onClear: () => setState(() => _eventPhotoUrl = ''),
+                ),
+                const SizedBox(height: 14),
+                _buildPhotoPicker(
+                  label: 'Foto Penutup / Terima Kasih (closing.jpeg)',
+                  imageUrl: _closingPhotoUrl,
+                  onPick: () => _pickAndUploadImage((url) => setState(() => _closingPhotoUrl = url)),
+                  onClear: () => setState(() => _closingPhotoUrl = ''),
+                ),
+                const SizedBox(height: 18),
+                const Divider(),
+                const SizedBox(height: 10),
+                _buildGallerySection(),
+                const SizedBox(height: 18),
+                const Divider(),
+                const SizedBox(height: 10),
                 DekorinTextField(
                   controller: _youtubeUrlController,
                   label: 'Link Video YouTube (Opsional)',
@@ -1032,6 +1125,98 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           ...children,
         ],
       ),
+    );
+  }
+
+  Widget _buildGallerySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Galeri Foto (gallery1 - gallery9)', style: AppTypography.labelLarge),
+            TextButton.icon(
+              onPressed: _pickGalleryImages,
+              icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+              label: const Text('Tambah Foto'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primaryGold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (_galleryUrls.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.goldLight.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.photo_library_outlined, color: AppColors.primaryGold, size: 30),
+                const SizedBox(height: 6),
+                Text(
+                  'Belum ada foto galeri ditambahkan.\nKlik "Tambah Foto" untuk memilih multiple foto.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: _galleryUrls.length,
+            itemBuilder: (context, index) {
+              final url = _galleryUrls[index];
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      url.startsWith('http') ? url : '${ApiEndpoint.webFormBaseUrl}$url',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _galleryUrls.removeAt(index);
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+      ],
     );
   }
 
