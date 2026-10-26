@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
@@ -34,6 +35,89 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   double _selectedModelAdditionalPrice = 0.0;
   List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
+
+  Future<void> _searchGoogleMaps() async {
+    String query = _mapsUrlController.text.trim();
+    if (query.isEmpty) {
+      final searchResult = await showDialog<String>(
+        context: context,
+        builder: (ctx) {
+          final tempController = TextEditingController();
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Image.asset('assets/icons/google-maps-icon.webp', width: 22, height: 22),
+                const SizedBox(width: 8),
+                const Text('Cari Lokasi di Maps', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Ketik nama gedung, hotel, venue, atau alamat acara:',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: tempController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Contoh: Gedung Serbaguna Puri Begawan',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, tempController.text.trim()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGold,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Buka Google Maps'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (searchResult == null || searchResult.isEmpty) return;
+      query = searchResult;
+    }
+
+    Uri url;
+    if (query.startsWith('http://') || query.startsWith('https://')) {
+      url = Uri.parse(query);
+    } else {
+      final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+      _mapsUrlController.text = mapsUrl;
+      url = Uri.parse(mapsUrl);
+    }
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal membuka Google Maps: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _openPackagePicker() async {
     final result = await Navigator.of(context).push<DecorationPackage>(
@@ -229,12 +313,17 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
       final effectivePackagePrice = (_selectedPackage?.basePrice ?? 0.0) + _selectedModelAdditionalPrice;
 
+      String mapsUrl = _mapsUrlController.text.trim();
+      if (mapsUrl.isNotEmpty && !mapsUrl.startsWith('http://') && !mapsUrl.startsWith('https://')) {
+        mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(mapsUrl)}';
+      }
+
       await agendaService.createAgenda(
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
         eventDateTime: eventDateTime,
-        mapsUrl: _mapsUrlController.text.trim(),
+        mapsUrl: mapsUrl,
         packageId: _selectedPackage?.id ?? '',
         packagePrice: effectivePackagePrice,
         modelId: _selectedModel?.id ?? '',
@@ -519,20 +608,51 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               const SizedBox(height: 14),
 
               // 4. Link Maps Google Maps
-              const Text(
-                'Link Google Maps Lokasi (Opsional)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textDark,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Link Google Maps Lokasi (Opsional)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _searchGoogleMaps,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/icons/google-maps-icon.webp',
+                            width: 14,
+                            height: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Cari di Maps',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryGold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _mapsUrlController,
-                keyboardType: TextInputType.url,
+                keyboardType: TextInputType.text,
                 decoration: InputDecoration(
-                  hintText: 'https://maps.google.com/?q=...',
+                  hintText: 'Tempel link atau ketik nama gedung/lokasi...',
                   prefixIcon: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: Image.asset(
@@ -541,9 +661,19 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                       height: 20,
                     ),
                   ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search, color: AppTheme.primaryGold, size: 20),
+                    tooltip: 'Cari di Google Maps',
+                    onPressed: _searchGoogleMaps,
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Bisa langsung ketik nama gedung/tempat, lalu tekan "Cari di Maps".',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
               ),
               const SizedBox(height: 14),
 
