@@ -424,9 +424,10 @@ class _AgendaCard extends StatelessWidget {
     }
 
     final message =
-        'Halo Kak ${item.clientName}, terima kasih telah memesan dekorasi di Dekorin! ✨\n\n'
-        'Mohon bantu lengkapi detail acara (alamat, tema, warna, dll) melalui tautan berikut ya:\n'
-        '$formUrl';
+        'Halo Kak ${item.clientName}, terima kasih telah mempercayakan dekorasi acara Anda kepada kami! ✨\n\n'
+        'Berikut adalah rincian detail pesanan / booking acara Anda:\n'
+        '$formUrl\n\n'
+        'Silakan dicek kembali ya Kak. Jika ada hal yang ingin ditanyakan, hubungi kami. Terima kasih! 🙏';
 
     final waUrl = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
 
@@ -461,7 +462,6 @@ class _AgendaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
-    final isFilled = item.formStatus == 'filled';
 
     return InkWell(
       onTap: () {
@@ -620,43 +620,10 @@ class _AgendaCard extends StatelessWidget {
               // Client Web Form Status & Share via WhatsApp Action
               Row(
                 children: [
-                  // Status Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isFilled
-                          ? Colors.green.shade50
-                          : Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isFilled
-                            ? Colors.green.shade200
-                            : Colors.amber.shade300,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isFilled ? Icons.check_circle : Icons.hourglass_top,
-                          size: 14,
-                          color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isFilled ? 'Form Terisi' : 'Menunggu Client',
-                          style: AppTypography.caption.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   if (item.isEventCompleted)
                     Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(20),
@@ -665,15 +632,14 @@ class _AgendaCard extends StatelessWidget {
                       child: Text(
                         'Selesai',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: Colors.green.shade800,
                         ),
                       ),
                     ),
                   Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: item.isPaidOff
                           ? Colors.green.shade50
@@ -693,10 +659,10 @@ class _AgendaCard extends StatelessWidget {
                       item.isPaidOff
                           ? 'Lunas'
                           : item.dpAmount > 0
-                              ? 'DP'
+                              ? 'DP Terbayar'
                               : 'Belum Bayar',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: item.isPaidOff
                             ? Colors.green.shade800
@@ -713,13 +679,13 @@ class _AgendaCard extends StatelessWidget {
                   if (item.formToken.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.copy, size: 18, color: AppTheme.textLight),
-                      tooltip: 'Copy Link Form',
+                      tooltip: 'Salin Link Detail Booking',
                       onPressed: () {
                         final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
                         Clipboard.setData(ClipboardData(text: formUrl));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Link form disalin: $formUrl'),
+                            content: Text('Link detail pesanan disalin: $formUrl'),
                             backgroundColor: AppTheme.primaryGold,
                             duration: const Duration(seconds: 2),
                           ),

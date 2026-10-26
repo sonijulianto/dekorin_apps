@@ -127,9 +127,10 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     }
 
     final message =
-        'Halo Kak ${_item.clientName}, terima kasih telah memesan dekorasi di Dekorin! ✨\n\n'
-        'Mohon bantu lengkapi detail acara (alamat, tema, warna, dll) melalui tautan berikut ya:\n'
-        '$formUrl';
+        'Halo Kak ${_item.clientName}, terima kasih telah mempercayakan dekorasi acara Anda kepada kami! ✨\n\n'
+        'Berikut adalah rincian detail pesanan / booking acara Anda:\n'
+        '$formUrl\n\n'
+        'Silakan dicek kembali ya Kak. Jika ada hal yang ingin ditanyakan, hubungi kami. Terima kasih! 🙏';
 
     final waUrl = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
 
@@ -688,7 +689,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final dateFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    final isFilled = _item.formStatus == 'filled';
     final form = _item.clientForm;
 
     final isUnselected = _item.packageName.toLowerCase().contains('belum dipilih') ||
@@ -796,34 +796,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           runSpacing: 8,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isFilled ? Colors.green.shade50 : Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isFilled ? Colors.green.shade300 : Colors.amber.shade300,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isFilled ? Icons.check_circle : Icons.hourglass_top,
-                                    size: 14,
-                                    color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    isFilled ? 'Form Terisi' : 'Menunggu Form Client',
-                                    style: AppTypography.caption.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isFilled ? Colors.green.shade700 : Colors.amber.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                             _buildEventStatusBadge(),
                             if (_item.packageName.isNotEmpty)
                               Container(
@@ -1631,7 +1603,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         Clipboard.setData(ClipboardData(text: formUrl));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Link form disalin: $formUrl'),
+                            content: Text('Link detail pesanan disalin: $formUrl'),
                             backgroundColor: AppColors.primaryGold,
                           ),
                         );
