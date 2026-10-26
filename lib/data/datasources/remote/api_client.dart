@@ -54,13 +54,30 @@ class ApiClient {
 
   // ── Helper: Handle response ───────────────────────────────
   static dynamic _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body);
+    dynamic body;
+    try {
+      body = jsonDecode(response.body);
+    } catch (_) {
+      // Body bukan format JSON valid (misal: plain text 404 dari Go Fiber / Nginx)
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.body;
+      }
+      throw ApiException(
+        response.body.isNotEmpty
+            ? response.body
+            : 'Terjadi kesalahan pada server (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
       // Ambil pesan error dari API (jika ada), fallback ke pesan generic
-      final errorMessage = body['error'] ?? body['message'] ?? 'Terjadi kesalahan pada server.';
+      String errorMessage = 'Terjadi kesalahan pada server.';
+      if (body is Map) {
+        errorMessage = body['error'] ?? body['message'] ?? errorMessage;
+      }
       throw ApiException(errorMessage, statusCode: response.statusCode);
     }
   }

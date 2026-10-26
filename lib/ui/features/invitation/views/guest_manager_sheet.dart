@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
@@ -9,6 +10,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_generator_view.dart';
 
 class GuestManagerSheet extends ConsumerStatefulWidget {
   const GuestManagerSheet({super.key, required this.invitation});
@@ -248,14 +250,44 @@ Salam hangat kami,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _sendWhatsApp,
-              icon: const Icon(Icons.send_rounded, color: Colors.white),
+              icon: SvgPicture.asset(
+                'assets/icons/wa.svg',
+                width: 20,
+                height: 20,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              ),
               label: const Text(
                 'Kirim Undangan via WhatsApp',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGold,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InvitationGeneratorView(invitation: widget.invitation),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.bolt, color: Colors.white, size: 20),
+              label: const Text(
+                'Buka Generator Undangan Lengkap',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             height: 44,

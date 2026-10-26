@@ -9,13 +9,17 @@ import 'package:dekorin_apps/domain/models/decoration_package.dart';
 
 /// Hasil pemilihan model dekorasi beserta harga tambahan
 class SelectedModelResult {
-  final DecorationModel model;
+  final DecorationModel? model;
   final double additionalPrice;
+  final bool isCleared;
 
   const SelectedModelResult({
-    required this.model,
-    required this.additionalPrice,
+    this.model,
+    this.additionalPrice = 0.0,
+    this.isCleared = false,
   });
+
+  factory SelectedModelResult.clear() => const SelectedModelResult(isCleared: true);
 }
 
 /// Screen untuk memilih model dekorasi yang terhubung dengan paket dekorasi
@@ -24,10 +28,12 @@ class ModelPickerScreen extends ConsumerStatefulWidget {
     super.key,
     this.package,
     this.selectedModelId,
+    this.canClearModel = false,
   });
 
   final DecorationPackage? package;
   final String? selectedModelId;
+  final bool canClearModel;
 
   @override
   ConsumerState<ModelPickerScreen> createState() => _ModelPickerScreenState();
@@ -102,6 +108,26 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               ),
           ],
         ),
+        actions: [
+          if (widget.canClearModel || (widget.selectedModelId != null && widget.selectedModelId!.isNotEmpty))
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop(SelectedModelResult.clear());
+                },
+                icon: const Icon(Icons.close, size: 16, color: AppColors.errorRed),
+                label: const Text(
+                  'Kosongkan',
+                  style: TextStyle(
+                    color: AppColors.errorRed,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
         bottom: _hasPackageModels
             ? TabBar(
                 controller: _tabController,

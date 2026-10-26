@@ -88,8 +88,22 @@ class InvoicePdfHelper {
       ),
     );
 
-    // Item 2+: Addon
-    final addonList = _extractAddonItems(form?.selectedAddons ?? '', agenda.notes, startNo: 2);
+    // Item 2: Model Dekorasi Tambahan (jika ada biaya tambahan)
+    if (agenda.modelAdditionalPrice > 0) {
+      items.add(
+        InvoiceItemData(
+          no: items.length + 1,
+          name: 'Upgrade Model: ${agenda.modelName}',
+          subtitle: agenda.modelWidth.isNotEmpty ? 'Lebar Backdrop: ${agenda.modelWidth}' : '',
+          quantity: 1,
+          unitPrice: agenda.modelAdditionalPrice,
+          totalPrice: agenda.modelAdditionalPrice,
+        ),
+      );
+    }
+
+    // Item Addon
+    final addonList = _extractAddonItems(form?.selectedAddons ?? '', agenda.notes, startNo: items.length + 1);
     items.addAll(addonList);
 
     double addonsTotal = 0.0;
@@ -101,7 +115,7 @@ class InvoicePdfHelper {
     }
 
     // Kalkulasi Total
-    final double subtotal = packagePrice + addonsTotal;
+    final double subtotal = packagePrice + agenda.modelAdditionalPrice + addonsTotal;
     final double transportFee = agenda.transportFee;
     final double totalTagihan = subtotal + transportFee;
     final double dpAmount = agenda.dpAmount;

@@ -137,7 +137,7 @@ class AgendaItem {
   bool get isCancelled => status.toLowerCase() == 'cancelled';
 
   double get calculatedTotalPrice {
-    double total = transportFee;
+    double total = transportFee + modelAdditionalPrice;
     if (clientForm != null && clientForm!.totalPrice > 0) {
       total += clientForm!.totalPrice;
     } else {

@@ -14,6 +14,7 @@ import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
 class AgendaDetailView extends ConsumerStatefulWidget {
@@ -301,6 +302,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditTransportDialog(BuildContext context) {
+    if (_item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acara telah selesai atau dibatalkan, uang transport tidak dapat diubah.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final initialText = _item.transportFee > 0
         ? thousandFormatter.format(_item.transportFee.toInt()).replaceAll(',', '.')
@@ -438,6 +449,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditPackageDialog(BuildContext context) async {
+    if (_item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acara telah selesai atau dibatalkan, paket tidak dapat diubah.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
 
     final isUnselected = _item.packageName.toLowerCase().contains('belum dipilih') ||
@@ -627,6 +648,11 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                   packageId: selectedPackageId,
                                   packageName: pkgName,
                                   packagePrice: newPrice,
+                                  modelId: _item.modelId,
+                                  modelName: _item.modelName,
+                                  modelWidth: _item.modelWidth,
+                                  modelImageUrl: _item.modelImageUrl,
+                                  modelAdditionalPrice: _item.modelAdditionalPrice,
                                   formToken: _item.formToken,
                                   eventAddress: _item.mapsUrl,
                                 );
@@ -681,6 +707,759 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           },
         );
       },
+    );
+  }
+
+  Future<void> _changeDecorationModel(BuildContext context) async {
+    if (_item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acara telah selesai atau dibatalkan, model dekorasi tidak dapat diubah.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    DecorationPackage? currentPackage;
+    if (_item.packageId.isNotEmpty) {
+      try {
+        final packages = await ref.read(masterServiceProvider).getPackages();
+        currentPackage = packages.where((p) => p.id == _item.packageId).firstOrNull;
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return;
+
+    final result = await Navigator.of(context).push<SelectedModelResult>(
+      MaterialPageRoute(
+        builder: (_) => ModelPickerScreen(
+          package: currentPackage,
+          selectedModelId: _item.modelId.isNotEmpty ? _item.modelId : null,
+          canClearModel: _item.modelName.isNotEmpty,
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryGold),
+      ),
+    );
+
+    try {
+      final updated = await ref.read(agendaServiceProvider).updateAgendaModel(
+            _item.id,
+            modelId: result.isCleared ? '' : (result.model?.id ?? ''),
+            modelName: result.isCleared ? '' : (result.model?.name ?? ''),
+            modelWidth: result.isCleared ? '' : (result.model?.width ?? ''),
+            modelImageUrl: result.isCleared ? '' : (result.model?.imageUrl ?? ''),
+            modelAdditionalPrice: result.isCleared ? 0.0 : result.additionalPrice,
+            packageId: _item.packageId,
+            packageName: _item.packageName,
+            packagePrice: _item.packagePrice,
+            formToken: _item.formToken,
+          );
+
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+
+      ref.read(agendaViewModelProvider.notifier).refresh();
+      ref.invalidate(dashboardViewModelProvider);
+
+      if (mounted) {
+        setState(() {
+          _item = updated;
+        });
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.isCleared
+                  ? 'Model dekorasi berhasil dihapus.'
+                  : 'Model dekorasi berhasil diperbarui: ${result.model?.name} 🎉',
+            ),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan model dekorasi: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showModelPhotoPreview(BuildContext context, String title, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: Text(title, style: AppTypography.titleMedium),
+                backgroundColor: Colors.white,
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppColors.textDark),
+                    onPressed: () => Navigator.pop(dialogCtx),
+                  ),
+                ],
+              ),
+              InteractiveViewer(
+                maxScale: 4.0,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Icon(Icons.broken_image, size: 64, color: AppColors.textLight),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDecorationModelSection(BuildContext context) {
+    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
+    final bool hasModel = _item.modelName.trim().isNotEmpty;
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.view_carousel_outlined, size: 20, color: AppColors.primaryGold),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Model Dekorasi',
+                      style: AppTypography.caption,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (canEdit)
+              InkWell(
+                onTap: () => _changeDecorationModel(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        hasModel ? Icons.edit_outlined : Icons.add_circle_outline,
+                        size: 13,
+                        color: AppColors.primaryGold,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        hasModel ? 'Ubah Model' : 'Pilih Model',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _item.isEventCompleted ? Colors.green.shade50 : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _item.isEventCompleted ? Icons.check_circle_outline : Icons.cancel_outlined,
+                      size: 12,
+                      color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _item.isEventCompleted ? 'Selesai (Terkunci)' : 'Dibatalkan',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (hasModel)
+          InkWell(
+            onTap: canEdit ? () => _changeDecorationModel(context) : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: _item.modelImageUrl.isNotEmpty
+                        ? () => _showModelPhotoPreview(context, _item.modelName, _item.modelImageUrl)
+                        : null,
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _item.modelImageUrl.isNotEmpty
+                              ? Image.network(
+                                  _item.modelImageUrl,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: AppColors.goldLight,
+                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 28),
+                                  ),
+                                )
+                              : Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: AppColors.goldLight,
+                                  child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 28),
+                                ),
+                        ),
+                        if (_item.modelImageUrl.isNotEmpty)
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.fullscreen, color: Colors.white, size: 12),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _item.modelName,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        if (_item.modelWidth.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.straighten, size: 13, color: AppColors.textLight),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Lebar: ${_item.modelWidth}',
+                                style: AppTypography.caption.copyWith(color: AppColors.textDark),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                        ],
+                        if (_item.modelAdditionalPrice > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.goldLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGold,
+                              ),
+                            ),
+                          )
+                        else
+                          Text(
+                            'Termasuk dalam paket',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.successGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (canEdit) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                  ],
+                ],
+              ),
+            ),
+          )
+        else
+          InkWell(
+            onTap: canEdit ? () => _changeDecorationModel(context) : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.add_photo_alternate_outlined, size: 18, color: AppColors.primaryGold),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Belum Memilih Model',
+                          style: AppTypography.bodySmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        Text(
+                          canEdit ? 'Ketuk untuk memilih katalog model backdrop' : 'Tidak ada model dipilih',
+                          style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (canEdit)
+                    const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _getDisplayNotes() {
+    String raw = '';
+    if (_item.clientForm != null && _item.clientForm!.specialRequests.trim().isNotEmpty) {
+      raw = _item.clientForm!.specialRequests.trim();
+    } else {
+      raw = _item.notes.trim();
+    }
+
+    const addonTag = '[Item Tambahan / Addon]:';
+    if (raw.contains(addonTag)) {
+      raw = raw.split(addonTag)[0].trim();
+    }
+
+    const modelTag = '[Model Dekorasi]:';
+    if (raw.contains(modelTag)) {
+      raw = raw
+          .split('\n')
+          .where((l) => !l.trim().startsWith(modelTag))
+          .join('\n')
+          .trim();
+    }
+
+    return raw;
+  }
+
+  void _showEditNotesDialog(BuildContext context) {
+    if (_item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acara telah selesai atau dibatalkan, catatan tidak dapat diubah.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final currentNotes = _getDisplayNotes();
+    final notesController = TextEditingController(text: currentNotes);
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.edit_note_rounded, color: AppColors.primaryGold, size: 24),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Catatan / Request Tambahan',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tuliskan detail permintaan dekorasi, konsep acara, atau pesan khusus klien:',
+                      style: TextStyle(fontSize: 12, color: AppColors.textLight),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      maxLines: 6,
+                      minLines: 3,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: Tambah bunga mawar putih di lorong masuk, meja akad di sisi kanan...',
+                        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textLight),
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderLight),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                  child: const Text('Batal', style: TextStyle(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final newNotes = notesController.text.trim();
+                          setDialogState(() => isSaving = true);
+
+                          // Pertahankan data addon jika ada di notes asli
+                          String finalNotes = newNotes;
+                          const addonTag = '[Item Tambahan / Addon]:';
+                          if (_item.notes.contains(addonTag)) {
+                            final parts = _item.notes.split(addonTag);
+                            if (parts.length > 1) {
+                              final addonPart = '$addonTag${parts[1]}';
+                              if (finalNotes.isNotEmpty) {
+                                finalNotes = '$finalNotes\n\n$addonPart';
+                              } else {
+                                finalNotes = addonPart;
+                              }
+                            }
+                          }
+
+                          try {
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaNotes(
+                                  _item.id,
+                                  finalNotes,
+                                  formToken: _item.formToken,
+                                );
+
+                            ref.read(agendaViewModelProvider.notifier).refresh();
+                            ref.invalidate(dashboardViewModelProvider);
+
+                            if (mounted) {
+                              setState(() {
+                                _item = updated;
+                              });
+                            }
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Catatan / request tambahan berhasil disimpan! 🎉'),
+                                  backgroundColor: AppColors.successGreen,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal menyimpan catatan: $e'),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Simpan Catatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNotesAndRequestsSection(BuildContext context) {
+    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
+    final String displayNotes = _getDisplayNotes();
+    final bool hasNotes = displayNotes.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.notes_rounded, size: 20, color: AppColors.primaryGold),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Catatan / Request Tambahan',
+                      style: AppTypography.caption,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (canEdit)
+              InkWell(
+                onTap: () => _showEditNotesDialog(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        hasNotes ? Icons.edit_outlined : Icons.add_circle_outline,
+                        size: 13,
+                        color: AppColors.primaryGold,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        hasNotes ? 'Ubah Catatan' : 'Tambah Catatan',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _item.isEventCompleted ? Colors.green.shade50 : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _item.isEventCompleted ? Icons.check_circle_outline : Icons.cancel_outlined,
+                      size: 12,
+                      color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _item.isEventCompleted ? 'Selesai (Terkunci)' : 'Dibatalkan',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: canEdit ? () => _showEditNotesDialog(context) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: hasNotes ? AppColors.backgroundLight : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasNotes ? AppColors.borderLight : Colors.grey.shade200,
+              ),
+            ),
+            child: hasNotes
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayNotes,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textDark,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      if (canEdit) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.edit_outlined, size: 16, color: AppColors.textLight),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.primaryGold),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Belum ada catatan atau request tambahan',
+                              style: AppTypography.bodySmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            Text(
+                              canEdit ? 'Ketuk untuk menambahkan catatan / permintaan khusus' : 'Tidak ada catatan',
+                              style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (canEdit)
+                        const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                    ],
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -740,7 +1519,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       }
     }
 
-    final double subtotal = packagePrice + addonsPrice;
+    final double subtotal = packagePrice + _item.modelAdditionalPrice + addonsPrice;
     final double transportFee = _item.transportFee;
     final double totalBiaya = subtotal + transportFee;
     final double sisaPelunasan = (totalBiaya - _item.dpAmount) > 0 ? (totalBiaya - _item.dpAmount) : 0.0;
@@ -948,6 +1727,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           const SizedBox(height: 12),
                         ],
 
+                        // Model Dekorasi (Bisa dirubah selama status acara belum selesai)
+                        _buildDecorationModelSection(context),
+                        const SizedBox(height: 12),
+
+                        // Catatan / Request Tambahan (Di bawah Model Dekorasi, bisa diedit selama belum selesai)
+                        _buildNotesAndRequestsSection(context),
+                        const SizedBox(height: 12),
+
                         // Tema Dekorasi
                         if (form != null && form.decorationTheme.isNotEmpty) ...[
                           _buildInfoRow(
@@ -968,8 +1755,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           const SizedBox(height: 12),
                         ],
 
-                        // Permintaan Khusus / Catatan Tambahan & Item Tambahan (Addon)
-                        ..._buildNotesAndAddonsSection(context, form?.specialRequests.isNotEmpty == true ? form!.specialRequests : _item.notes),
+                        // Item Tambahan (Addon) jika ada
+                        ..._buildAddonsSection(context, _item.notes),
 
                         // Foto Inspirasi
                         if (form != null && form.referencePhotoUrl.isNotEmpty) ...[
@@ -1214,6 +2001,29 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     ],
                                   ),
                                 ),
+                                if (!_item.isEventCompleted && !_item.isCancelled) ...[
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => _changeDecorationModel(context),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.goldLight.withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                      ),
+                                      child: const Text(
+                                        'Ubah',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1667,18 +2477,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     );
   }
 
-  List<Widget> _buildNotesAndAddonsSection(BuildContext context, String rawNotes) {
+  List<Widget> _buildAddonsSection(BuildContext context, String rawNotes) {
     final widgets = <Widget>[];
     if (rawNotes.trim().isEmpty) return widgets;
 
     // Deteksi tag addon [Item Tambahan / Addon]:
     const addonTag = '[Item Tambahan / Addon]:';
-    String generalNotes = rawNotes;
     List<String> addonLines = [];
 
     if (rawNotes.contains(addonTag)) {
       final parts = rawNotes.split(addonTag);
-      generalNotes = parts[0].trim();
       if (parts.length > 1) {
         final addonContent = parts[1].trim();
         addonLines = addonContent
@@ -1806,18 +2614,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
               ),
             ),
           ],
-        ),
-      );
-      widgets.add(const SizedBox(height: 12));
-    }
-
-    // 2. Tampilkan Catatan Biasa (jika ada sisa teks selain addon)
-    if (generalNotes.isNotEmpty) {
-      widgets.add(
-        _buildInfoRow(
-          Icons.notes_outlined,
-          'Catatan & Permintaan Khusus',
-          generalNotes,
         ),
       );
       widgets.add(const SizedBox(height: 12));

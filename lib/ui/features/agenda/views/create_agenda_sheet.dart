@@ -151,13 +151,19 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         builder: (_) => ModelPickerScreen(
           package: _selectedPackage,
           selectedModelId: _selectedModel?.id,
+          canClearModel: _selectedModel != null,
         ),
       ),
     );
     if (result != null) {
       setState(() {
-        _selectedModel = result.model;
-        _selectedModelAdditionalPrice = result.additionalPrice;
+        if (result.isCleared) {
+          _selectedModel = null;
+          _selectedModelAdditionalPrice = 0.0;
+        } else {
+          _selectedModel = result.model;
+          _selectedModelAdditionalPrice = result.additionalPrice;
+        }
       });
     }
   }

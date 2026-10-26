@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
@@ -9,6 +10,7 @@ import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/guest_manager_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_form_view.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_generator_view.dart';
 
 final invitationsProvider = FutureProvider.autoDispose<List<InvitationItem>>((ref) async {
   final service = ref.watch(invitationServiceProvider);
@@ -201,21 +203,49 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.goldLight.withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '/${inv.slug}',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryGold,
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      Builder(
+                                        builder: (_) {
+                                          final tmpl = InvitationTemplate.getById(inv.template);
+                                          final tmplColor = tmpl['primaryColor'] as Color;
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: tmplColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: tmplColor.withValues(alpha: 0.3)),
+                                            ),
+                                            child: Text(
+                                              tmpl['name'] as String,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: tmplColor,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.goldLight.withValues(alpha: 0.5),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '/${inv.slug}',
+                                          style: TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -279,26 +309,49 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                                   }
                                 },
-                                icon: const Icon(Icons.open_in_browser, size: 16),
-                                label: const Text('Buka Web', style: TextStyle(fontSize: 12)),
+                                icon: const Icon(Icons.open_in_browser, size: 15),
+                                label: const Text('Buka Web', style: TextStyle(fontSize: 11)),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               flex: 2,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryGold,
+                                  backgroundColor: const Color(0xFF25D366), // WA Green
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                 ),
-                                onPressed: () => _openGuestManager(inv),
-                                icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => InvitationGeneratorView(invitation: inv),
+                                    ),
+                                  );
+                                },
+                                icon: SvgPicture.asset(
+                                  'assets/icons/wa.svg',
+                                  width: 15,
+                                  height: 15,
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                ),
                                 label: const Text(
-                                  'Kelola Tamu & WA',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                  'Generator Undangan',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              style: IconButton.styleFrom(
+                                backgroundColor: AppColors.goldLight,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.all(8),
+                              ),
+                              tooltip: 'Buku Tamu / RSVP',
+                              icon: const Icon(Icons.menu_book, color: AppColors.primaryGold, size: 18),
+                              onPressed: () => _openGuestManager(inv),
                             ),
                           ],
                         ),

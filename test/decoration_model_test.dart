@@ -142,7 +142,71 @@ void main() {
       expect(agenda.modelImageUrl, 'https://example.com/model_b.jpg');
       expect(agenda.modelAdditionalPrice, 200000.0);
       expect(agenda.packagePrice, 5200000.0);
-      expect(agenda.calculatedTotalPrice, 5500000.0); // 5.2jt + 300rb transport
+      expect(agenda.calculatedTotalPrice, 5700000.0); // 5.2jt paket + 200rb model upgrade + 300rb transport
+    });
+
+    test('AgendaItem can be updated with a new model and correctly tracks completion status', () {
+      final initialAgenda = AgendaItem(
+        id: 'agd_01',
+        clientName: 'Sarah & Dimas',
+        backdropTitle: 'The Wedding',
+        eventDateTime: DateTime(2026, 11, 20),
+        mapsUrl: 'https://maps.google.com/?q=test',
+        packageId: 'pkg_platinum',
+        packageName: 'Paket Platinum',
+        packagePrice: 5000000.0,
+        modelId: 'mdl_01',
+        modelName: 'Model Klasik',
+        modelWidth: '3 Meter',
+        status: 'upcoming',
+      );
+
+      expect(initialAgenda.isEventCompleted, false);
+      expect(initialAgenda.isCancelled, false);
+
+      // Ubah model dekorasi selama belum selesai
+      final updatedAgenda = initialAgenda.copyWith(
+        modelId: 'mdl_02',
+        modelName: 'Model Rustic Modern',
+        modelWidth: '4 Meter',
+        modelImageUrl: 'https://example.com/rustic.jpg',
+        modelAdditionalPrice: 150000.0,
+      );
+
+      expect(updatedAgenda.modelId, 'mdl_02');
+      expect(updatedAgenda.modelName, 'Model Rustic Modern');
+      expect(updatedAgenda.modelWidth, '4 Meter');
+      expect(updatedAgenda.modelAdditionalPrice, 150000.0);
+      expect(updatedAgenda.calculatedTotalPrice, 5150000.0);
+
+      // Setelah status completed, isEventCompleted bernilai true
+      final completedAgenda = updatedAgenda.copyWith(status: 'completed');
+      expect(completedAgenda.isEventCompleted, true);
+    });
+
+    test('AgendaItem can update notes / special requests during event lifecycle', () {
+      final agenda = AgendaItem(
+        id: 'agd_02',
+        clientName: 'Lina & Budi',
+        backdropTitle: 'Wedding Celebration',
+        eventDateTime: DateTime(2026, 12, 10),
+        mapsUrl: 'https://maps.google.com/?q=test',
+        packageId: 'pkg_gold',
+        packageName: 'Paket Gold',
+        notes: 'Catatan awal: mohon bunga warna pastel.',
+        status: 'upcoming',
+      );
+
+      expect(agenda.notes, 'Catatan awal: mohon bunga warna pastel.');
+      expect(agenda.isEventCompleted, false);
+
+      // Edit catatan / request tambahan selama belum selesai
+      final updatedAgenda = agenda.copyWith(
+        notes: 'Catatan revisi: tambah 2 standing flower dan karpet merah.',
+      );
+
+      expect(updatedAgenda.notes, 'Catatan revisi: tambah 2 standing flower dan karpet merah.');
+      expect(updatedAgenda.isEventCompleted, false);
     });
   });
 }

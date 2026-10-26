@@ -185,6 +185,87 @@ class AgendaService {
     }
   }
 
+  /// Mengupdate model dekorasi untuk agenda tertentu
+  Future<AgendaItem> updateAgendaModel(
+    String agendaId, {
+    required String modelId,
+    required String modelName,
+    String modelWidth = '',
+    String modelImageUrl = '',
+    double modelAdditionalPrice = 0.0,
+    String packageId = '',
+    String packageName = '',
+    double packagePrice = 0.0,
+    String formToken = '',
+    String eventAddress = '',
+  }) async {
+    final payload = {
+      'model_id': modelId,
+      'model_name': modelName,
+      'model_width': modelWidth,
+      'model_image_url': modelImageUrl,
+      'model_additional_price': modelAdditionalPrice,
+    };
+
+    try {
+      final responseData = await ApiClient.put(
+        '${ApiEndpoint.agendas}/$agendaId/model',
+        body: payload,
+      );
+      return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      final is404 = e.statusCode == 404 || e.message.contains('Cannot PUT') || e.message.contains('404');
+      if (is404 && packageId.isNotEmpty) {
+        // Jika endpoint /model belum aktif di server (404), gunakan fallback ke /package
+        return updateAgendaPackage(
+          agendaId,
+          packageId: packageId,
+          packageName: packageName,
+          packagePrice: packagePrice,
+          modelId: modelId,
+          modelName: modelName,
+          modelWidth: modelWidth,
+          modelImageUrl: modelImageUrl,
+          modelAdditionalPrice: modelAdditionalPrice,
+          formToken: formToken,
+          eventAddress: eventAddress,
+        );
+      }
+      if (is404) {
+        throw ApiException(
+          'Fitur simpan model dekorasi memerlukan pembaruan server. Silakan jalankan ./update.sh pada server VPS.',
+          statusCode: 404,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Mengupdate catatan atau request tambahan untuk agenda tertentu
+  Future<AgendaItem> updateAgendaNotes(
+    String agendaId,
+    String notes, {
+    String formToken = '',
+  }) async {
+    final payload = {'notes': notes};
+    try {
+      final responseData = await ApiClient.put(
+        '${ApiEndpoint.agendas}/$agendaId/notes',
+        body: payload,
+      );
+      return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      final is404 = e.statusCode == 404 || e.message.contains('Cannot PUT') || e.message.contains('404');
+      if (is404) {
+        throw ApiException(
+          'Fitur simpan catatan memerlukan pembaruan server. Silakan jalankan ./update.sh pada server VPS.',
+          statusCode: 404,
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Mengupdate status pembayaran agenda (unpaid, dp, paid)
   Future<AgendaItem> updatePaymentStatus(String agendaId, String paymentStatus) async {
     final payload = {'payment_status': paymentStatus};

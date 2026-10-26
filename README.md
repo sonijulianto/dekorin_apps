@@ -15,3 +15,6 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 # dekorin_apps
+
+script untuk deploy ke biznet (paste kan command ini di terminal biznet)
+curl -sL "https://raw.githubusercontent.com/sonijulianto/dekorin_apps_api/main/update.sh?v=$(date +%s)" | bash
