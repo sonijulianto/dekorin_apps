@@ -22,14 +22,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
   final _formKey = GlobalKey<FormState>();
 
   @override
-  void initState() {
-    super.initState();
-    // Pre-fill nomor HP Owner default untuk kemudahan testing
-    _phoneController.text = '081234567890';
-    _passwordController.text = 'owner123';
-  }
-
-  @override
   void dispose() {
     _phoneController.dispose();
     _passwordController.dispose();
@@ -157,61 +149,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           )
                         : const Text('Masuk ke Aplikasi'),
                   ),
-                  const SizedBox(height: 24),
-
-                  // --- Quick Role Selector for Easy Testing ---
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Pilih Akun Demo / Role:',
-                          style: AppTypography.caption.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textLight,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildRoleChip(
-                                label: 'Owner',
-                                phone: '081234567890',
-                                pass: 'owner123',
-                                color: Colors.purple,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildRoleChip(
-                                label: 'Admin',
-                                phone: '081234567891',
-                                pass: 'admin123',
-                                color: AppTheme.primaryGold,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildRoleChip(
-                                label: 'Crew',
-                                phone: '081234567892',
-                                pass: 'crew123',
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // --- Footer ---
                   Text(
@@ -265,46 +203,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildRoleChip({
-    required String label,
-    required String phone,
-    required String pass,
-    required Color color,
-  }) {
-    final isSelected = _phoneController.text == phone;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _phoneController.text = phone;
-          _passwordController.text = pass;
-        });
-      },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: AppTypography.bodySmall.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isSelected ? color : AppTheme.textDark,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
