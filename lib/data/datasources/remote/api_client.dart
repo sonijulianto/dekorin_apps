@@ -38,6 +38,27 @@ class ApiClient {
   /// dan muncul pesan error (tidak loading selamanya).
   static const _timeout = Duration(seconds: 15);
 
+  /// Callback global yang dipanggil saat token kadaluarsa atau tidak valid (HTTP 401)
+  static void Function()? onUnauthorized;
+  static bool _isHandlingUnauthorized = false;
+
+  static void _triggerUnauthorized() {
+    if (_isHandlingUnauthorized) return;
+    _isHandlingUnauthorized = true;
+
+    // Hapus token & user dari SharedPreferences
+    DataPreferences.logout();
+
+    try {
+      onUnauthorized?.call();
+    } catch (_) {}
+
+    // Reset flag setelah 2 detik untuk menghindari spam popup
+    Future.delayed(const Duration(seconds: 2), () {
+      _isHandlingUnauthorized = false;
+    });
+  }
+
   // ── Helper: Membuat headers ───────────────────────────────
   static Map<String, String> _headers({bool withToken = true}) {
     final headers = <String, String>{
@@ -62,6 +83,9 @@ class ApiClient {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.body;
       }
+      if (response.statusCode == 401) {
+        _triggerUnauthorized();
+      }
       throw ApiException(
         response.body.isNotEmpty
             ? response.body
@@ -73,6 +97,10 @@ class ApiClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     } else {
+      if (response.statusCode == 401) {
+        _triggerUnauthorized();
+      }
+
       // Ambil pesan error dari API (jika ada), fallback ke pesan generic
       String errorMessage = 'Terjadi kesalahan pada server.';
       if (body is Map) {

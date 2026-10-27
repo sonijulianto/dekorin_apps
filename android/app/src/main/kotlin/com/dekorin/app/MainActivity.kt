@@ -1,4 +1,4 @@
-package com.example.dekorin_apps
+package com.dekorin.app
 
 import io.flutter.embedding.android.FlutterActivity
 

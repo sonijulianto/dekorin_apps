@@ -22,8 +22,9 @@ class ApiEndpoint {
   static const String login = '/auth/login';
   static const String changePassword = '/auth/change-password';
 
-  // ── Users ─────────────────────────────────────────────────
+  // ── Users & Company ──────────────────────────────────────
   static const String users = '/users';
+  static const String companyProfile = '/company/profile';
 
   // ── Dashboard & Expenses ──────────────────────────────────
   static const String dashboardSummary = '/dashboard/summary';

@@ -12,6 +12,11 @@ class UserModel {
     this.companyName = '',
     this.companyAddress = '',
     this.companyPhone = '',
+    this.companyLogo = '',
+    this.companyEmail = '',
+    this.companyDescription = '',
+    this.companyInstagram = '',
+    this.companyBankInfo = '',
   });
 
   final String id;
@@ -23,6 +28,11 @@ class UserModel {
   final String companyName;
   final String companyAddress;
   final String companyPhone;
+  final String companyLogo;
+  final String companyEmail;
+  final String companyDescription;
+  final String companyInstagram;
+  final String companyBankInfo;
 
   /// Creates a [UserModel] from a JSON map.
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +46,11 @@ class UserModel {
       companyName: json['company_name'] as String? ?? '',
       companyAddress: json['company_address'] as String? ?? '',
       companyPhone: json['company_phone'] as String? ?? '',
+      companyLogo: json['company_logo'] as String? ?? '',
+      companyEmail: json['company_email'] as String? ?? '',
+      companyDescription: json['company_description'] as String? ?? '',
+      companyInstagram: json['company_instagram'] as String? ?? '',
+      companyBankInfo: json['company_bank_info'] as String? ?? '',
     );
   }
 
@@ -51,6 +66,11 @@ class UserModel {
       'company_name': companyName,
       'company_address': companyAddress,
       'company_phone': companyPhone,
+      'company_logo': companyLogo,
+      'company_email': companyEmail,
+      'company_description': companyDescription,
+      'company_instagram': companyInstagram,
+      'company_bank_info': companyBankInfo,
     };
   }
 
@@ -66,6 +86,11 @@ class UserModel {
       companyName: companyName,
       companyAddress: companyAddress,
       companyPhone: companyPhone,
+      companyLogo: companyLogo,
+      companyEmail: companyEmail,
+      companyDescription: companyDescription,
+      companyInstagram: companyInstagram,
+      companyBankInfo: companyBankInfo,
     );
   }
 }

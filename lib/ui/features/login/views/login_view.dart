@@ -177,41 +177,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
   }
 
   Widget _buildLogo() {
-    return Column(
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.primaryGold, Color(0xFFE8C9A0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryGold.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.auto_awesome,
-            color: Colors.white,
-            size: 40,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'Dekorin',
-          style: AppTypography.h1.copyWith(
-            fontSize: 32,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ],
+    return Image.asset(
+      'assets/images/logo.png',
+      height: 150,
+      fit: BoxFit.contain,
     );
   }
 }

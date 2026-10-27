@@ -5,6 +5,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/app_update_service.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
+import 'package:dekorin_apps/ui/features/company/views/edit_company_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/manage_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
@@ -35,78 +36,132 @@ class ProfileView extends ConsumerWidget {
           children: [
             // Company Info Banner (Multi-Company Identity)
             if (user?.companyName.isNotEmpty ?? false) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2C3E50), Color(0xFF1A252F)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: (user?.canManageCompany ?? false)
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EditCompanyView()),
+                          );
+                        }
+                      : null,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2C3E50), Color(0xFF1A252F)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      child: const Icon(Icons.storefront, color: AppColors.primaryGold, size: 28),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.primaryGold.withValues(alpha: 0.4),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(13),
+                            child: user?.companyLogo.isNotEmpty == true
+                                ? Image.network(
+                                    user!.companyLogo,
+                                    width: 52,
+                                    height: 52,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => _buildFallbackStoreLogo(),
+                                  )
+                                : _buildFallbackStoreLogo(),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'BADAN USAHA DEKORASI',
-                                style: AppTypography.caption.copyWith(
-                                  color: AppColors.primaryGold,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.8,
-                                  fontSize: 10,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'BADAN USAHA DEKORASI',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.primaryGold,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  if (user?.canManageCompany ?? false) ...[
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryGold.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.edit, size: 10, color: AppColors.primaryGold),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            'Edit',
+                                            style: AppTypography.caption.copyWith(
+                                              color: AppColors.primaryGold,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
+                              const SizedBox(height: 2),
+                              Text(
+                                user!.companyName,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (user.companyAddress.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  user.companyAddress,
+                                  style: AppTypography.caption.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            user!.companyName,
-                            style: AppTypography.titleMedium.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (user.companyAddress.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              user.companyAddress,
-                              style: AppTypography.caption.copyWith(
-                                color: Colors.white.withValues(alpha: 0.7),
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -233,6 +288,55 @@ class ProfileView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
+
+            // Company Profile Section (Hanya tampil untuk Owner & Admin)
+            if (user?.canManageCompany ?? false) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'PENGATURAN USAHA & BISNIS',
+                  style: AppTypography.caption.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.storefront_rounded, color: AppColors.primaryGold, size: 22),
+                      ),
+                      title: Text('Profil & Data Usaha Dekorasi', style: AppTypography.titleSmall),
+                      subtitle: Text(
+                        'Atur nama usaha, logo resmi, kontak, alamat, dan data invoice',
+                        style: AppTypography.caption,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const EditCompanyView()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
             // Team Management Section (Hanya tampil untuk Owner & Admin)
             if (user?.canManageTeam ?? false) ...[
@@ -467,6 +571,24 @@ class ProfileView extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackStoreLogo() {
+    return Container(
+      color: Colors.white.withValues(alpha: 0.15),
+      child: Center(
+        child: Image.asset(
+          'assets/images/logo_icon.png',
+          width: 30,
+          height: 30,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.storefront,
+            color: AppColors.primaryGold,
+            size: 26,
+          ),
         ),
       ),
     );

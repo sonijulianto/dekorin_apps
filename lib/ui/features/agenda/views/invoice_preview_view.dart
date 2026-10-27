@@ -1,19 +1,22 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_pdf_helper.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 /// Screen Preview & Cetak Invoice PDF ukuran standar A4.
-class InvoicePreviewView extends StatelessWidget {
+class InvoicePreviewView extends ConsumerWidget {
   const InvoicePreviewView({super.key, required this.agenda});
 
   final AgendaItem agenda;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(globalAuthProvider).value;
     final fileName = 'Invoice_${agenda.clientName.replaceAll(RegExp(r'\s+'), '_')}.pdf';
 
     return Scaffold(
@@ -36,7 +39,7 @@ class InvoicePreviewView extends StatelessWidget {
         ),
       ),
       body: PdfPreview(
-        build: (format) => InvoicePdfHelper.generateInvoicePdf(agenda),
+        build: (format) => InvoicePdfHelper.generateInvoicePdf(agenda, companyUser: user),
         initialPageFormat: PdfPageFormat.a4,
         allowPrinting: true,
         allowSharing: true,

@@ -1,9 +1,11 @@
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/user.dart';
 
 class InvoiceItemData {
   final int no;
@@ -32,8 +34,49 @@ class InvoicePdfHelper {
     'pkg_04': 18000000.0,
   };
 
-  static Future<Uint8List> generateInvoicePdf(AgendaItem agenda) async {
+  static Future<Uint8List> generateInvoicePdf(
+    AgendaItem agenda, {
+    User? companyUser,
+  }) async {
     final pdf = pw.Document();
+
+    // Unduh gambar logo vendor jika URL logo valid
+    pw.MemoryImage? companyLogoImage;
+    if (companyUser != null && companyUser.companyLogo.isNotEmpty) {
+      try {
+        final res = await http.get(Uri.parse(companyUser.companyLogo)).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          companyLogoImage = pw.MemoryImage(res.bodyBytes);
+        }
+      } catch (_) {
+        companyLogoImage = null;
+      }
+    }
+
+    final companyName = (companyUser?.companyName.isNotEmpty ?? false)
+        ? companyUser!.companyName
+        : 'Dekorin';
+    final companyDescription = (companyUser?.companyDescription.isNotEmpty ?? false)
+        ? companyUser!.companyDescription
+        : 'Wedding & Event Decoration';
+    final companyPhone = (companyUser?.companyPhone.isNotEmpty ?? false)
+        ? companyUser!.companyPhone
+        : '+62 812-3456-7890';
+    final companyEmail = (companyUser?.companyEmail.isNotEmpty ?? false)
+        ? companyUser!.companyEmail
+        : 'hello@dekorin.id';
+    final companyAddress = (companyUser?.companyAddress.isNotEmpty ?? false)
+        ? companyUser!.companyAddress
+        : 'Jakarta, Indonesia';
+    final companyBankInfo = (companyUser?.companyBankInfo.isNotEmpty ?? false)
+        ? companyUser!.companyBankInfo
+        : 'Bank Name : Bank Central Asia (BCA)\nAccount Number : 873-501-9920\nAccount Name : Dekorin Official';
+    final signerName = (companyUser?.name.isNotEmpty ?? false)
+        ? companyUser!.name
+        : 'Administrator';
+    final signerRole = (companyUser?.roleDisplayName.isNotEmpty ?? false)
+        ? companyUser!.roleDisplayName
+        : 'Administrator';
 
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
@@ -217,26 +260,54 @@ class InvoicePdfHelper {
                 child: pw.Row(
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.SvgImage(svg: logoSvg, width: 34, height: 34),
+                    if (companyLogoImage != null)
+                      pw.Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+                        ),
+                        child: pw.ClipRRect(
+                          horizontalRadius: 6,
+                          verticalRadius: 6,
+                          child: pw.Image(
+                            companyLogoImage,
+                            width: 36,
+                            height: 36,
+                            fit: pw.BoxFit.cover,
+                          ),
+                        ),
+                      )
+                    else
+                      pw.SvgImage(svg: logoSvg, width: 34, height: 34),
                     pw.SizedBox(width: 10),
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(
-                          'Dekorin',
-                          style: pw.TextStyle(
-                            font: boldFont,
-                            fontSize: 18,
-                            color: PdfColors.white,
-                            letterSpacing: 0.8,
+                        pw.ConstrainedBox(
+                          constraints: const pw.BoxConstraints(maxWidth: 160),
+                          child: pw.Text(
+                            companyName,
+                            style: pw.TextStyle(
+                              font: boldFont,
+                              fontSize: companyName.length > 20 ? 13 : 16,
+                              color: PdfColors.white,
+                              letterSpacing: 0.5,
+                            ),
+                            maxLines: 1,
                           ),
                         ),
-                        pw.Text(
-                          'Wedding & Event Decoration',
-                          style: pw.TextStyle(
-                            font: baseFont,
-                            fontSize: 7.5,
-                            color: PdfColors.white,
+                        pw.ConstrainedBox(
+                          constraints: const pw.BoxConstraints(maxWidth: 160),
+                          child: pw.Text(
+                            companyDescription,
+                            style: pw.TextStyle(
+                              font: baseFont,
+                              fontSize: 7.5,
+                              color: PdfColors.white,
+                            ),
+                            maxLines: 1,
                           ),
                         ),
                       ],
@@ -269,15 +340,15 @@ class InvoicePdfHelper {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        '+62 812-3456-7890',
+                        companyPhone,
                         style: pw.TextStyle(font: boldFont, fontSize: 8.5, color: navyColor),
                       ),
                       pw.Text(
-                        'hello@dekorin.id',
+                        companyEmail,
                         style: pw.TextStyle(font: boldFont, fontSize: 8.5, color: navyColor),
                       ),
                       pw.Text(
-                        'Jakarta, Indonesia',
+                        companyAddress,
                         style: pw.TextStyle(font: boldFont, fontSize: 8.5, color: navyColor),
                       ),
                     ],
@@ -618,7 +689,7 @@ class InvoicePdfHelper {
                               pw.SvgImage(svg: signatureSvg, width: 105, height: 40),
                               pw.SizedBox(height: 4),
                               pw.Text(
-                                'Adeline Cia',
+                                signerName,
                                 style: pw.TextStyle(
                                   font: boldFont,
                                   fontSize: 11,
@@ -627,7 +698,7 @@ class InvoicePdfHelper {
                               ),
                               pw.SizedBox(height: 1),
                               pw.Text(
-                                'Administrator',
+                                signerRole,
                                 style: pw.TextStyle(
                                   font: baseFont,
                                   fontSize: 9,
@@ -803,7 +874,7 @@ class InvoicePdfHelper {
                                 ),
                                 pw.SizedBox(height: 4),
                                 pw.Text(
-                                  'Bank Name : Bank Central Asia (BCA)\nAccount Number : 873-501-9920\nAccount Name : Dekorin Official',
+                                  companyBankInfo,
                                   style: pw.TextStyle(
                                     font: baseFont,
                                     fontSize: 7.5,
