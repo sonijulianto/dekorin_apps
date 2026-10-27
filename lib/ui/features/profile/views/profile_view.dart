@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
+import 'package:dekorin_apps/data/services/app_update_service.dart';
+import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/manage_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
@@ -343,6 +345,62 @@ class ProfileView extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
             ],
+
+            // App Information & Update Section
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'INFORMASI APLIKASI',
+                style: AppTypography.caption.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: AppColors.textLight,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: FutureBuilder<String>(
+                future: AppUpdateService.getCurrentVersionName(),
+                builder: (context, snapshot) {
+                  final versionStr = snapshot.data ?? '1.0.0';
+                  return ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.goldLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.system_update_rounded,
+                        color: AppColors.primaryGold,
+                        size: 22,
+                      ),
+                    ),
+                    title: Text(
+                      'Periksa Pembaruan',
+                      style: AppTypography.titleSmall,
+                    ),
+                    subtitle: Text(
+                      'Versi $versionStr (Ketuk untuk cek pembaruan)',
+                      style: AppTypography.caption,
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.textLight,
+                    ),
+                    onTap: () {
+                      AppUpdateChecker.check(context, showToastIfLatest: true);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 32),
 
             // Logout Button
             SizedBox(

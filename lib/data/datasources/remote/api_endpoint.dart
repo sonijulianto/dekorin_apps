@@ -38,6 +38,9 @@ class ApiEndpoint {
   static const String reorderAddons = '/addons/reorder';
   static const String invitations = '/invitations';
 
+  // ── App Version / In-App Update ───────────────────────────
+  static const String appVersion = '/app/version';
+
   /// Helper untuk membuat URL publik undangan digital
   static String getInvitationWebUrl(String slug, [String? guestName]) {
     final base = '$webFormBaseUrl/invitation/$slug';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_view.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
@@ -16,6 +17,14 @@ class MainView extends ConsumerStatefulWidget {
 
 class _MainViewState extends ConsumerState<MainView> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateChecker.check(context);
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {

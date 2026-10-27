@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/login_view_model.dart';
 
@@ -20,6 +21,14 @@ class _LoginViewState extends ConsumerState<LoginView> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateChecker.check(context);
+    });
+  }
 
   @override
   void dispose() {
