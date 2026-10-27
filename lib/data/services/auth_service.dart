@@ -56,6 +56,20 @@ class AuthService {
     await DataPreferences.logout();
   }
 
+  /// Mengubah password akun pengguna yang sedang login
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await ApiClient.post(
+      ApiEndpoint.changePassword,
+      body: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+  }
+
   // ── Manajemen Tim / Pengguna ─────────────────────────────────────────
 
   /// Mengambil daftar semua anggota tim dalam perusahaan

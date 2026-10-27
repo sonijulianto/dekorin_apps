@@ -10,6 +10,7 @@ import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_decoration_models_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_packages_view.dart';
+import 'package:dekorin_apps/ui/features/profile/views/change_password_view.dart';
 import 'package:dekorin_apps/ui/features/team/views/manage_team_view.dart';
 
 class ProfileView extends ConsumerWidget {
@@ -183,6 +184,50 @@ class ProfileView extends ConsumerWidget {
                         ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Akun & Keamanan Section (Tampil untuk semua role: Owner, Admin, Crew)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'AKUN & KEAMANAN',
+                style: AppTypography.caption.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: AppColors.textLight,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.goldLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.lock_reset_rounded, color: AppColors.primaryGold, size: 22),
+                    ),
+                    title: Text('Ubah Kata Sandi', style: AppTypography.titleSmall),
+                    subtitle: Text('Perbarui kata sandi akun Anda untuk keamanan', style: AppTypography.caption),
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ChangePasswordView()),
+                      );
+                    },
                   ),
                 ],
               ),

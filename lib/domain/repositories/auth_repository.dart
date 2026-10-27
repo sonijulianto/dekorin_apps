@@ -8,4 +8,10 @@ abstract class AuthRepository {
     required String password,
     String? email,
   });
+
+  /// Mengubah password akun user yang sedang aktif
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
 }

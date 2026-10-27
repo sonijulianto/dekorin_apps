@@ -20,6 +20,7 @@ class ApiEndpoint {
 
   // ── Auth ──────────────────────────────────────────────────
   static const String login = '/auth/login';
+  static const String changePassword = '/auth/change-password';
 
   // ── Users ─────────────────────────────────────────────────
   static const String users = '/users';
