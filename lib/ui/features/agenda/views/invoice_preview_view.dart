@@ -8,6 +8,8 @@ import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_pdf_helper.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
+import 'package:dekorin_apps/config/theme/app_typography.dart';
+
 /// Screen Preview & Cetak Invoice PDF ukuran standar A4.
 class InvoicePreviewView extends ConsumerWidget {
   const InvoicePreviewView({super.key, required this.agenda});
@@ -22,9 +24,9 @@ class InvoicePreviewView extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF424242),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Invoice Resmi (A4 PDF)',
-          style: TextStyle(
+          style: AppTypography.titleLarge.copyWith(
             color: AppColors.textDark,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -59,14 +61,14 @@ class InvoicePreviewView extends ConsumerWidget {
                   Text(
                     'Gagal memuat PDF: $error',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: AppTypography.bodyMedium.copyWith(color: Colors.white70, fontSize: 13),
                   ),
                 ],
               ),
             ),
           );
         },
-        loadingWidget: const Center(
+        loadingWidget: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -74,7 +76,7 @@ class InvoicePreviewView extends ConsumerWidget {
               SizedBox(height: 14),
               Text(
                 'Menyiapkan Dokumen PDF A4...',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: AppTypography.bodyMedium.copyWith(color: Colors.white70, fontSize: 13),
               ),
             ],
           ),

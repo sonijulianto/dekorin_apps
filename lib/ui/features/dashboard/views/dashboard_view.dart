@@ -9,8 +9,7 @@ import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
-import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart'
-    hide ThousandsSeparatorInputFormatter;
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart' hide ThousandsSeparatorInputFormatter;
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
 class DashboardView extends ConsumerWidget {
@@ -20,148 +19,129 @@ class DashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard Keuangan & Booking'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Segarkan Data',
-            onPressed: () =>
-                ref.read(dashboardViewModelProvider.notifier).refresh(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddExpenseModal(context, ref),
-        backgroundColor: AppTheme.primaryGold,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_shopping_cart),
-        label: const Text('Catat Pengeluaran', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: dashboardState.when(
-        data: (data) => RefreshIndicator(
-          onRefresh: () =>
-              ref.read(dashboardViewModelProvider.notifier).refresh(),
-          child: ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              // 1. Ringkasan Finansial & Booking
-              _buildSummaryCards(data.summary),
-              const SizedBox(height: 16),
-
-              // 2. Tombol Aksi Cepat Input Pengeluaran
-              InkWell(
-                onTap: () => _showAddExpenseModal(context, ref),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryGold.withValues(alpha: 0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.post_add, color: AppTheme.primaryGold, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ada Pengeluaran Baru?',
-                              style: AppTypography.bodySmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textDark,
-                              ),
-                            ),
-                            Text(
-                              'Catat belanja bunga, properti dekor, sewa mobil, dll',
-                              style: AppTypography.caption.copyWith(
-                                color: AppTheme.textLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: AppTheme.textLight),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 3. Section Pengeluaran Terkini
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Pengeluaran Terkini',
-                    style: AppTypography.titleLarge,
-                  ),
-                  Text(
-                    '${data.summary.recentExpenses.length} transaksi',
-                    style: AppTypography.caption.copyWith(color: AppTheme.textLight),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildRecentExpensesList(context, ref, data.summary.recentExpenses),
-              const SizedBox(height: 24),
-
-              // 4. Section Booking Mendatang
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Booking Mendatang (>= Hari Ini)',
-                    style: AppTypography.titleLarge,
-                  ),
-                  Text(
-                    '${data.summary.upcomingBookingsCount} Event',
-                    style: AppTypography.caption.copyWith(
-                      color: AppTheme.primaryGold,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildUpcomingAgendasList(context, ref, data.summary.upcomingAgendas),
-              const SizedBox(height: 80), // Padding untuk FAB
-            ],
+    return SafeArea(
+      child: Scaffold(
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _showAddExpenseModal(context, ref),
+          backgroundColor: AppTheme.primaryGold,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add_shopping_cart),
+          label: Text(
+            'Catat Pengeluaran',
+            style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 48),
-              const SizedBox(height: 16),
-              Text('Terjadi kesalahan:\n$error', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.read(dashboardViewModelProvider.notifier).refresh(),
-                child: const Text('Coba Lagi'),
-              ),
-            ],
+        body: dashboardState.when(
+          data: (data) => RefreshIndicator(
+            onRefresh: () => ref.read(dashboardViewModelProvider.notifier).refresh(),
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                // 1. Ringkasan Finansial & Booking
+                _buildSummaryCards(data.summary),
+                const SizedBox(height: 16),
+
+                // 2. Tombol Aksi Cepat Input Pengeluaran
+                InkWell(
+                  onTap: () => _showAddExpenseModal(context, ref),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGold.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.post_add, color: AppTheme.primaryGold, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ada Pengeluaran Baru?',
+                                style: AppTypography.bodySmall.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textDark,
+                                ),
+                              ),
+                              Text(
+                                'Catat belanja bunga, properti dekor, sewa mobil, dll',
+                                style: AppTypography.caption.copyWith(color: AppTheme.textLight),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: AppTheme.textLight),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // 3. Section Pengeluaran Terkini
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Pengeluaran Terkini', style: AppTypography.titleLarge),
+                    Text(
+                      '${data.summary.recentExpenses.length} transaksi',
+                      style: AppTypography.caption.copyWith(color: AppTheme.textLight),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildRecentExpensesList(context, ref, data.summary.recentExpenses),
+                const SizedBox(height: 24),
+
+                // 4. Section Booking Mendatang
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Booking Mendatang (>= Hari Ini)', style: AppTypography.titleLarge),
+                    Text(
+                      '${data.summary.upcomingBookingsCount} Event',
+                      style: AppTypography.caption.copyWith(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildUpcomingAgendasList(context, ref, data.summary.upcomingAgendas),
+                const SizedBox(height: 80), // Padding untuk FAB
+              ],
+            ),
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 48),
+                const SizedBox(height: 16),
+                Text('Terjadi kesalahan:\n$error', style: AppTypography.bodyMedium, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.read(dashboardViewModelProvider.notifier).refresh(),
+                  child: Text('Coba Lagi', style: AppTypography.button),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -169,11 +149,7 @@ class DashboardView extends ConsumerWidget {
   }
 
   Widget _buildSummaryCards(DashboardSummary summary) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Column(
       children: [
@@ -231,11 +207,7 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentExpensesList(
-    BuildContext context,
-    WidgetRef ref,
-    List<ExpenseItem> expenses,
-  ) {
+  Widget _buildRecentExpensesList(BuildContext context, WidgetRef ref, List<ExpenseItem> expenses) {
     if (expenses.isEmpty) {
       return Container(
         width: double.infinity,
@@ -245,10 +217,10 @@ class DashboardView extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade200),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'Belum ada catatan pengeluaran.',
-            style: TextStyle(color: AppTheme.textLight, fontSize: 13),
+            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, fontSize: 13),
           ),
         ),
       );
@@ -306,14 +278,14 @@ class DashboardView extends ConsumerWidget {
                   children: [
                     Text(
                       exp.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${exp.category} \u2022 ${dateFormatter.format(exp.date)}',
-                      style: const TextStyle(color: AppTheme.textLight, fontSize: 11),
+                      style: AppTypography.caption.copyWith(color: AppTheme.textLight, fontSize: 11),
                     ),
                   ],
                 ),
@@ -323,7 +295,7 @@ class DashboardView extends ConsumerWidget {
                 children: [
                   Text(
                     '- ${currencyFormatter.format(exp.amount)}',
-                    style: TextStyle(
+                    style: AppTypography.labelLarge.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                       color: Colors.red.shade700,
@@ -331,12 +303,9 @@ class DashboardView extends ConsumerWidget {
                   ),
                   InkWell(
                     onTap: () => _confirmDeleteExpense(context, ref, exp),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Hapus',
-                        style: TextStyle(color: Colors.grey, fontSize: 11),
-                      ),
+                      child: Text('Hapus', style: AppTypography.caption.copyWith(color: Colors.grey, fontSize: 11)),
                     ),
                   ),
                 ],
@@ -352,12 +321,12 @@ class DashboardView extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Pengeluaran?'),
-        content: Text('Yakin ingin menghapus catatan "${exp.title}"?'),
+        title: Text('Hapus Pengeluaran?', style: AppTypography.h3),
+        content: Text('Yakin ingin menghapus catatan "${exp.title}"?', style: AppTypography.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -367,8 +336,11 @@ class DashboardView extends ConsumerWidget {
                 ref.read(dashboardViewModelProvider.notifier).refresh();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Pengeluaran berhasil dihapus'),
+                    SnackBar(
+                      content: Text(
+                        'Pengeluaran berhasil dihapus',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -377,7 +349,10 @@ class DashboardView extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Gagal menghapus: $e'),
+                      content: Text(
+                        'Gagal menghapus: $e',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -385,18 +360,14 @@ class DashboardView extends ConsumerWidget {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus'),
+            child: Text('Hapus', style: AppTypography.button),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildUpcomingAgendasList(
-    BuildContext context,
-    WidgetRef ref,
-    List<AgendaItem> agendas,
-  ) {
+  Widget _buildUpcomingAgendasList(BuildContext context, WidgetRef ref, List<AgendaItem> agendas) {
     if (agendas.isEmpty) {
       return Container(
         width: double.infinity,
@@ -406,10 +377,10 @@ class DashboardView extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade200),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'Tidak ada booking mendatang yang terjadwal.',
-            style: TextStyle(color: AppTheme.textLight),
+            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
           ),
         ),
       );
@@ -428,12 +399,7 @@ class DashboardView extends ConsumerWidget {
 
         return InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AgendaDetailView(item: agenda),
-              ),
-            ).then((_) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaDetailView(item: agenda))).then((_) {
               ref.read(dashboardViewModelProvider.notifier).refresh();
             });
           },
@@ -445,11 +411,7 @@ class DashboardView extends ConsumerWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 3)),
               ],
             ),
             child: Column(
@@ -461,10 +423,7 @@ class DashboardView extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         agenda.clientName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                        style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 15),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -481,7 +440,7 @@ class DashboardView extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         agenda.backdropTitle.isNotEmpty ? agenda.backdropTitle : agenda.packageName,
-                        style: const TextStyle(color: AppTheme.textDark, fontSize: 12),
+                        style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -495,12 +454,12 @@ class DashboardView extends ConsumerWidget {
                     const SizedBox(width: 6),
                     Text(
                       dateFormatter.format(agenda.eventDateTime),
-                      style: const TextStyle(color: AppTheme.textLight, fontSize: 12),
+                      style: AppTypography.bodySmall.copyWith(color: AppTheme.textLight, fontSize: 12),
                     ),
                     const Spacer(),
                     Text(
                       currencyFormatter.format(agenda.calculatedTotalPrice),
-                      style: const TextStyle(
+                      style: AppTypography.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         color: AppTheme.primaryDark,
@@ -520,9 +479,7 @@ class DashboardView extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _AddExpenseBottomSheet(ref: ref),
     );
   }
@@ -551,7 +508,7 @@ class _PaymentStatusBadge extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               'Lunas',
-              style: TextStyle(
+              style: AppTypography.caption.copyWith(
                 color: Colors.green.shade700,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -570,7 +527,7 @@ class _PaymentStatusBadge extends StatelessWidget {
         ),
         child: Text(
           'DP Masuk',
-          style: TextStyle(
+          style: AppTypography.caption.copyWith(
             color: Colors.amber.shade900,
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -587,11 +544,7 @@ class _PaymentStatusBadge extends StatelessWidget {
         ),
         child: Text(
           'Belum Bayar',
-          style: TextStyle(
-            color: Colors.red.shade700,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTypography.caption.copyWith(color: Colors.red.shade700, fontSize: 10, fontWeight: FontWeight.bold),
         ),
       );
     }
@@ -620,13 +573,7 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
@@ -636,10 +583,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                 child: Icon(icon, color: color, size: 18),
               ),
               const SizedBox(width: 8),
@@ -649,7 +593,7 @@ class _SummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: AppTypography.labelMedium.copyWith(
                         color: AppTheme.textDark,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -660,10 +604,7 @@ class _SummaryCard extends StatelessWidget {
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          color: AppTheme.textLight,
-                          fontSize: 9,
-                        ),
+                        style: AppTypography.caption.copyWith(color: AppTheme.textLight, fontSize: 9),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -675,11 +616,7 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: color,
-            ),
+            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 15, color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -707,14 +644,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
 
-  final List<String> _categories = [
-    'Bunga',
-    'Properti Dekor',
-    'Operasional',
-    'Transport',
-    'Honor Crew',
-    'Lainnya',
-  ];
+  final List<String> _categories = ['Bunga', 'Properti Dekor', 'Operasional', 'Transport', 'Honor Crew', 'Lainnya'];
 
   @override
   void dispose() {
@@ -731,21 +661,33 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
 
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan masukkan judul/keterangan pengeluaran')),
+        SnackBar(
+          content: Text(
+            'Silakan masukkan judul/keterangan pengeluaran',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+        ),
       );
       return;
     }
 
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan masukkan nominal pengeluaran yang valid')),
+        SnackBar(
+          content: Text(
+            'Silakan masukkan nominal pengeluaran yang valid',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+        ),
       );
       return;
     }
 
     setState(() => _isSaving = true);
     try {
-      await widget.ref.read(expenseServiceProvider).createExpense(
+      await widget.ref
+          .read(expenseServiceProvider)
+          .createExpense(
             title: title,
             amount: amount,
             category: _selectedCategory,
@@ -758,8 +700,11 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pengeluaran berhasil dicatat!'),
+          SnackBar(
+            content: Text(
+              'Pengeluaran berhasil dicatat!',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -769,7 +714,10 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mencatat pengeluaran: $e'),
+            content: Text(
+              'Gagal mencatat pengeluaran: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -782,12 +730,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
     final dateFormatter = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+      padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -807,22 +750,19 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
                       child: const Icon(Icons.add_shopping_cart, color: AppTheme.primaryGold, size: 22),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      'Catat Pengeluaran',
-                      style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold),
-                    ),
+                    Text('Catat Pengeluaran', style: AppTypography.titleLarge.copyWith(fontWeight: FontWeight.bold)),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
             const SizedBox(height: 16),
 
             // Keterangan / Judul
-            const Text('Keterangan Pengeluaran *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              'Keterangan Pengeluaran *',
+              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _titleController,
@@ -836,18 +776,18 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
             const SizedBox(height: 14),
 
             // Nominal Pengeluaran
-            const Text('Nominal Biaya (Rp) *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              'Nominal Biaya (Rp) *',
+              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                ThousandsSeparatorInputFormatter(),
-              ],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
               decoration: InputDecoration(
                 prefixText: 'Rp ',
-                prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppTheme.textDark),
                 hintText: '500.000',
                 filled: true,
                 fillColor: Colors.grey.shade50,
@@ -857,7 +797,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
             const SizedBox(height: 14),
 
             // Kategori
-            const Text('Kategori *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text('Kategori *', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,
@@ -865,14 +805,16 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
               children: _categories.map((cat) {
                 final isSelected = _selectedCategory == cat;
                 return ChoiceChip(
-                  label: Text(cat),
+                  label: Text(
+                    cat,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: isSelected ? AppTheme.primaryGold : AppTheme.textDark,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                  ),
                   selected: isSelected,
                   selectedColor: AppTheme.primaryGold.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: isSelected ? AppTheme.primaryGold : AppTheme.textDark,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
                   onSelected: (selected) {
                     if (selected) setState(() => _selectedCategory = cat);
                   },
@@ -882,7 +824,10 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
             const SizedBox(height: 14),
 
             // Tanggal Pengeluaran
-            const Text('Tanggal Transaksi', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              'Tanggal Transaksi',
+              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
             const SizedBox(height: 6),
             InkWell(
               onTap: () async {
@@ -906,7 +851,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(dateFormatter.format(_selectedDate), style: const TextStyle(fontSize: 13)),
+                    Text(dateFormatter.format(_selectedDate), style: AppTypography.bodyMedium.copyWith(fontSize: 13)),
                     const Icon(Icons.calendar_month, color: AppTheme.primaryGold, size: 20),
                   ],
                 ),
@@ -915,7 +860,10 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
             const SizedBox(height: 14),
 
             // Catatan Tambahan
-            const Text('Catatan Tambahan (Opsional)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              'Catatan Tambahan (Opsional)',
+              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
             const SizedBox(height: 6),
             TextField(
               controller: _notesController,
@@ -946,9 +894,13 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text(
+                    : Text(
                         'Simpan Pengeluaran',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ),

@@ -45,11 +45,9 @@ class AgendaView extends ConsumerWidget {
     );
 
     if (pickedRange != null) {
-      ref.read(agendaViewModelProvider.notifier).setFilter(
-            AgendaDateFilterType.customRange,
-            start: pickedRange.start,
-            end: pickedRange.end,
-          );
+      ref
+          .read(agendaViewModelProvider.notifier)
+          .setFilter(AgendaDateFilterType.customRange, start: pickedRange.start, end: pickedRange.end);
     }
   }
 
@@ -61,18 +59,10 @@ class AgendaView extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Agenda Dekorasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Segarkan',
-            onPressed: () =>
-                ref.read(agendaViewModelProvider.notifier).refresh(),
-          ),
-        ],
       ),
       floatingActionButton: (user?.canCreateAgenda ?? true)
           ? FloatingActionButton.extended(
@@ -80,9 +70,9 @@ class AgendaView extends ConsumerWidget {
               backgroundColor: AppTheme.primaryGold,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_task),
-              label: const Text(
+              label: Text(
                 'Buat Agenda',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             )
           : null,
@@ -104,8 +94,7 @@ class AgendaView extends ConsumerWidget {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () =>
-                      ref.read(agendaViewModelProvider.notifier).refresh(),
+                  onRefresh: () => ref.read(agendaViewModelProvider.notifier).refresh(),
                   child: ListView.separated(
                     padding: const EdgeInsets.only(
                       left: 16,
@@ -114,8 +103,7 @@ class AgendaView extends ConsumerWidget {
                       bottom: 80, // Ruang untuk FAB
                     ),
                     itemCount: data.agendas.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final item = data.agendas[index];
                       return _AgendaCard(item: item);
@@ -123,32 +111,25 @@ class AgendaView extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryGold),
-              ),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
               error: (error, _) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: AppTheme.errorRed),
+                      const Icon(Icons.error_outline, size: 48, color: AppTheme.errorRed),
                       const SizedBox(height: 12),
                       Text(
                         'Gagal memuat agenda:\n$error',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.textDark),
+                        style: AppTypography.bodyMedium.copyWith(color: AppTheme.textDark),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () => ref
-                            .read(agendaViewModelProvider.notifier)
-                            .refresh(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryGold,
-                        ),
-                        child: const Text('Coba Lagi'),
+                        onPressed: () => ref.read(agendaViewModelProvider.notifier).refresh(),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGold),
+                        child: Text('Coba Lagi', style: AppTypography.button),
                       ),
                     ],
                   ),
@@ -161,11 +142,7 @@ class AgendaView extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterBar(
-    BuildContext context,
-    WidgetRef ref,
-    AgendaFilterState filterState,
-  ) {
+  Widget _buildFilterBar(BuildContext context, WidgetRef ref, AgendaFilterState filterState) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -177,58 +154,43 @@ class AgendaView extends ConsumerWidget {
             _FilterChip(
               label: 'Semua',
               icon: Icons.calendar_view_week,
-              isSelected:
-                  filterState.filterType == AgendaDateFilterType.all,
+              isSelected: filterState.filterType == AgendaDateFilterType.all,
               onTap: () {
-                ref
-                    .read(agendaViewModelProvider.notifier)
-                    .setFilter(AgendaDateFilterType.all);
+                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.all);
               },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Hari Ini',
               icon: Icons.today,
-              isSelected:
-                  filterState.filterType == AgendaDateFilterType.today,
+              isSelected: filterState.filterType == AgendaDateFilterType.today,
               onTap: () {
-                ref
-                    .read(agendaViewModelProvider.notifier)
-                    .setFilter(AgendaDateFilterType.today);
+                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.today);
               },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Minggu Ini',
               icon: Icons.view_week_outlined,
-              isSelected:
-                  filterState.filterType == AgendaDateFilterType.thisWeek,
+              isSelected: filterState.filterType == AgendaDateFilterType.thisWeek,
               onTap: () {
-                ref
-                    .read(agendaViewModelProvider.notifier)
-                    .setFilter(AgendaDateFilterType.thisWeek);
+                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.thisWeek);
               },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Bulan Ini',
               icon: Icons.calendar_month,
-              isSelected:
-                  filterState.filterType == AgendaDateFilterType.thisMonth,
+              isSelected: filterState.filterType == AgendaDateFilterType.thisMonth,
               onTap: () {
-                ref
-                    .read(agendaViewModelProvider.notifier)
-                    .setFilter(AgendaDateFilterType.thisMonth);
+                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.thisMonth);
               },
             ),
             const SizedBox(width: 8),
             _FilterChip(
-              label: filterState.filterType == AgendaDateFilterType.customRange
-                  ? 'Kustom Tanggal ✓'
-                  : 'Pilih Tanggal',
+              label: filterState.filterType == AgendaDateFilterType.customRange ? 'Kustom Tanggal ✓' : 'Pilih Tanggal',
               icon: Icons.date_range,
-              isSelected: filterState.filterType ==
-                  AgendaDateFilterType.customRange,
+              isSelected: filterState.filterType == AgendaDateFilterType.customRange,
               onTap: () => _pickCustomDateRange(context, ref),
             ),
           ],
@@ -237,26 +199,19 @@ class AgendaView extends ConsumerWidget {
     );
   }
 
-  Widget _buildActiveFilterInfo(
-    BuildContext context,
-    WidgetRef ref,
-    AgendaFilterState filterState,
-  ) {
+  Widget _buildActiveFilterInfo(BuildContext context, WidgetRef ref, AgendaFilterState filterState) {
     String description = 'Menampilkan seluruh agenda mendatang';
     if (filterState.filterType == AgendaDateFilterType.today) {
-      description =
-          'Agenda hari ini: ${DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now())}';
+      description = 'Agenda hari ini: ${DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now())}';
     } else if (filterState.filterType == AgendaDateFilterType.thisWeek) {
       description = 'Agenda dalam 7 hari ke depan';
     } else if (filterState.filterType == AgendaDateFilterType.thisMonth) {
-      description =
-          'Agenda bulan ${DateFormat('MMMM yyyy', 'id_ID').format(DateTime.now())}';
+      description = 'Agenda bulan ${DateFormat('MMMM yyyy', 'id_ID').format(DateTime.now())}';
     } else if (filterState.filterType == AgendaDateFilterType.customRange &&
         filterState.customStartDate != null &&
         filterState.customEndDate != null) {
       final df = DateFormat('dd MMM yyyy', 'id_ID');
-      description =
-          'Rentang: ${df.format(filterState.customStartDate!)} - ${df.format(filterState.customEndDate!)}';
+      description = 'Rentang: ${df.format(filterState.customStartDate!)} - ${df.format(filterState.customEndDate!)}';
     }
 
     return Container(
@@ -269,7 +224,7 @@ class AgendaView extends ConsumerWidget {
           Expanded(
             child: Text(
               description,
-              style: const TextStyle(
+              style: AppTypography.labelMedium.copyWith(
                 fontSize: 12,
                 color: AppTheme.textDark,
                 fontWeight: FontWeight.w500,
@@ -279,13 +234,11 @@ class AgendaView extends ConsumerWidget {
           if (filterState.filterType != AgendaDateFilterType.all)
             GestureDetector(
               onTap: () {
-                ref
-                    .read(agendaViewModelProvider.notifier)
-                    .setFilter(AgendaDateFilterType.all);
+                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.all);
               },
-              child: const Text(
+              child: Text(
                 'Reset',
-                style: TextStyle(
+                style: AppTypography.labelMedium.copyWith(
                   fontSize: 12,
                   color: AppTheme.errorRed,
                   fontWeight: FontWeight.bold,
@@ -306,30 +259,23 @@ class AgendaView extends ConsumerWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.event_busy,
-                size: 64,
-                color: AppTheme.primaryGold,
-              ),
+              decoration: BoxDecoration(color: AppTheme.primaryGold.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.event_busy, size: 64, color: AppTheme.primaryGold),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Tidak Ada Agenda',
-              style: TextStyle(
+              style: AppTypography.titleLarge.copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textDark,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Belum ada agenda pada periode ini.\nKlik tombol "Buat Agenda" untuk menambahkan acara.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+              style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
             ),
           ],
         ),
@@ -339,12 +285,7 @@ class AgendaView extends ConsumerWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _FilterChip({required this.label, required this.icon, required this.isSelected, required this.onTap});
 
   final String label;
   final IconData icon;
@@ -362,40 +303,29 @@ class _FilterChip extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected
-                ? AppTheme.primaryGold
-                : Colors.grey.shade100,
+            color: isSelected ? AppTheme.primaryGold : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? AppTheme.primaryGold
-                  : Colors.grey.shade300,
-            ),
+            border: Border.all(color: isSelected ? AppTheme.primaryGold : Colors.grey.shade300),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
                       color: AppTheme.primaryGold.withValues(alpha: 0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ]
                 : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? Colors.white : AppTheme.textDark,
-              ),
+              Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.textDark),
               const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(
+                style: AppTypography.bodySmall.copyWith(
                   fontSize: 12,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   color: isSelected ? Colors.white : AppTheme.textDark,
                 ),
               ),
@@ -438,8 +368,11 @@ class _AgendaCard extends StatelessWidget {
         await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!'),
+            SnackBar(
+              content: Text(
+                'Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!',
+                style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+              ),
               backgroundColor: AppTheme.primaryGold,
             ),
           );
@@ -449,8 +382,11 @@ class _AgendaCard extends StatelessWidget {
       await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pesan & Link disalin ke Clipboard!'),
+          SnackBar(
+            content: Text(
+              'Pesan & Link disalin ke Clipboard!',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
             backgroundColor: AppTheme.primaryGold,
           ),
         );
@@ -465,12 +401,7 @@ class _AgendaCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AgendaDetailView(item: item),
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaDetailView(item: item)));
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -478,256 +409,225 @@ class _AgendaCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3)),
           ],
         ),
         child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: const BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: AppTheme.primaryGold,
-                width: 4,
-              ),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: const BoxDecoration(
+              border: Border(left: BorderSide(color: AppTheme.primaryGold, width: 4)),
             ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Client Name & Package Badge
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              item.clientName,
-                              style: AppTypography.titleMedium,
-                            ),
-                            if (item.clientPhone.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '• ${item.clientPhone}',
-                                style: AppTypography.bodySmall,
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.backdropTitle,
-                          style: AppTypography.titleSmall.copyWith(
-                            color: AppTheme.primaryGold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.packageName.isNotEmpty
-                          ? item.packageName
-                          : 'Paket Custom',
-                      style: AppTypography.caption.copyWith(
-                        color: AppTheme.primaryGold,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 20),
-
-              // Date & Time
-              Row(
-                children: [
-                  const Icon(Icons.access_time_rounded,
-                      size: 16, color: AppTheme.textLight),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${dateFormat.format(item.eventDateTime)} • ${timeFormat.format(item.eventDateTime)} WIB',
-                    style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark),
-                  ),
-                ],
-              ),
-
-              // Maps URL
-              if (item.mapsUrl.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/icons/google-maps-icon.webp',
-                      width: 16,
-                      height: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        item.mapsUrl,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Notes if any
-              if (item.notes.isNotEmpty) ...[
-                const SizedBox(height: 8),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Client Name & Package Badge
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.notes,
-                        size: 16, color: AppTheme.textLight),
-                    const SizedBox(width: 8),
                     Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(item.clientName, style: AppTypography.titleMedium),
+                              if (item.clientPhone.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Text('• ${item.clientPhone}', style: AppTypography.bodySmall),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.backdropTitle,
+                            style: AppTypography.titleSmall.copyWith(color: AppTheme.primaryGold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Text(
-                        item.notes,
-                        style: AppTypography.bodySmall.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        item.packageName.isNotEmpty ? item.packageName : 'Paket Custom',
+                        style: AppTypography.caption.copyWith(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
-              ],
+                const Divider(height: 20),
 
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
+                // Date & Time
+                Row(
+                  children: [
+                    const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textLight),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${dateFormat.format(item.eventDateTime)} • ${timeFormat.format(item.eventDateTime)} WIB',
+                      style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark),
+                    ),
+                  ],
+                ),
 
-              // Client Web Form Status & Share via WhatsApp Action
-              Row(
-                children: [
-                  if (item.isEventCompleted)
+                // Maps URL
+                if (item.mapsUrl.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Image.asset('assets/icons/google-maps-icon.webp', width: 16, height: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.mapsUrl,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Notes if any
+                if (item.notes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.notes, size: 16, color: AppTheme.textLight),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.notes,
+                          style: AppTypography.bodySmall.copyWith(fontStyle: FontStyle.italic),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // Client Web Form Status & Share via WhatsApp Action
+                Row(
+                  children: [
+                    if (item.isEventCompleted)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Text(
+                          'Selesai',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade800,
+                          ),
+                        ),
+                      ),
                     Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: item.isPaidOff
+                            ? Colors.green.shade50
+                            : item.dpAmount > 0
+                            ? Colors.amber.shade50
+                            : Colors.red.shade50,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.green.shade300),
+                        border: Border.all(
+                          color: item.isPaidOff
+                              ? Colors.green.shade400
+                              : item.dpAmount > 0
+                              ? Colors.amber.shade400
+                              : Colors.red.shade300,
+                        ),
                       ),
                       child: Text(
-                        'Selesai',
-                        style: TextStyle(
+                        item.isPaidOff
+                            ? 'Lunas'
+                            : item.dpAmount > 0
+                            ? 'DP Terbayar'
+                            : 'Belum Bayar',
+                        style: AppTypography.caption.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800,
+                          color: item.isPaidOff
+                              ? Colors.green.shade800
+                              : item.dpAmount > 0
+                              ? Colors.amber.shade900
+                              : Colors.red.shade700,
                         ),
                       ),
                     ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: item.isPaidOff
-                          ? Colors.green.shade50
-                          : item.dpAmount > 0
-                              ? Colors.amber.shade50
-                              : Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: item.isPaidOff
-                            ? Colors.green.shade400
-                            : item.dpAmount > 0
-                                ? Colors.amber.shade400
-                                : Colors.red.shade300,
-                      ),
-                    ),
-                    child: Text(
-                      item.isPaidOff
-                          ? 'Lunas'
-                          : item.dpAmount > 0
-                              ? 'DP Terbayar'
-                              : 'Belum Bayar',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: item.isPaidOff
-                            ? Colors.green.shade800
-                            : item.dpAmount > 0
-                                ? Colors.amber.shade900
-                                : Colors.red.shade700,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
+                    const Spacer(),
 
+                    // Copy link icon
+                    if (item.formToken.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18, color: AppTheme.textLight),
+                        tooltip: 'Salin Link Detail Booking',
+                        onPressed: () {
+                          final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
+                          Clipboard.setData(ClipboardData(text: formUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Link detail pesanan disalin: $formUrl',
+                                style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                              ),
+                              backgroundColor: AppTheme.primaryGold,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
 
-                  // Copy link icon
-                  if (item.formToken.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18, color: AppTheme.textLight),
-                      tooltip: 'Salin Link Detail Booking',
-                      onPressed: () {
-                        final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
-                        Clipboard.setData(ClipboardData(text: formUrl));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Link detail pesanan disalin: $formUrl'),
-                            backgroundColor: AppTheme.primaryGold,
-                            duration: const Duration(seconds: 2),
+                    // Share to WhatsApp Button
+                    if (item.formToken.isNotEmpty)
+                      ElevatedButton.icon(
+                        onPressed: () => _sendWhatsAppMessage(context, item),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        icon: const Icon(Icons.send_rounded, size: 14),
+                        label: Text(
+                          'Bagikan ke WA',
+                          style: AppTypography.labelMedium.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                        );
-                      },
-                    ),
-                  
-                  // Share to WhatsApp Button
-                  if (item.formToken.isNotEmpty)
-                    ElevatedButton.icon(
-                      onPressed: () => _sendWhatsAppMessage(context, item),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      icon: const Icon(Icons.send_rounded, size: 14),
-                      label: const Text(
-                        'Bagikan ke WA',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
-}
-

@@ -16,11 +16,7 @@ class PackagePickerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packagesAsync = ref.watch(packagesProvider);
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
@@ -31,13 +27,9 @@ class PackagePickerScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textDark),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Pilih Paket Dekorasi',
-          style: TextStyle(
-            color: AppTheme.textDark,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: AppTypography.titleLarge.copyWith(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -45,9 +37,7 @@ class PackagePickerScreen extends ConsumerWidget {
         ),
       ),
       body: packagesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryGold),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -59,16 +49,13 @@ class PackagePickerScreen extends ConsumerWidget {
                 Text(
                   'Gagal memuat paket: $e',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textLight),
+                  style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.refresh(packagesProvider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGold,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGold, foregroundColor: Colors.white),
+                  child: Text('Coba Lagi', style: AppTypography.button),
                 ),
               ],
             ),
@@ -88,18 +75,18 @@ class PackagePickerScreen extends ConsumerWidget {
                       children: [
                         Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Belum ada paket dekorasi',
-                          style: TextStyle(
+                          style: AppTypography.titleMedium.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textDark,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Tambahkan paket di menu Profile > Kelola Paket',
-                          style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+                          style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
                         ),
                       ],
                     ),
@@ -152,19 +139,9 @@ class _PackageCard extends StatelessWidget {
   final NumberFormat currencyFormatter;
   final VoidCallback onTap;
 
-  static const _cardColors = [
-    Color(0xFFFFF8E7),
-    Color(0xFFF0F7FF),
-    Color(0xFFF5F0FF),
-    Color(0xFFF0FFF5),
-  ];
+  static const _cardColors = [Color(0xFFFFF8E7), Color(0xFFF0F7FF), Color(0xFFF5F0FF), Color(0xFFF0FFF5)];
 
-  static const _cardIcons = [
-    Icons.auto_awesome,
-    Icons.diamond_outlined,
-    Icons.workspace_premium,
-    Icons.stars_rounded,
-  ];
+  static const _cardIcons = [Icons.auto_awesome, Icons.diamond_outlined, Icons.workspace_premium, Icons.stars_rounded];
 
   @override
   Widget build(BuildContext context) {
@@ -179,15 +156,10 @@ class _PackageCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryGold : Colors.transparent,
-            width: 2.5,
-          ),
+          border: Border.all(color: isSelected ? AppTheme.primaryGold : Colors.transparent, width: 2.5),
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? AppTheme.primaryGold.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.06),
+              color: isSelected ? AppTheme.primaryGold.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.06),
               blurRadius: isSelected ? 12 : 8,
               offset: const Offset(0, 3),
             ),
@@ -219,7 +191,7 @@ class _PackageCard extends StatelessWidget {
                   children: [
                     Text(
                       package.name,
-                      style: const TextStyle(
+                      style: AppTypography.labelMedium.copyWith(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textDark,
@@ -231,11 +203,7 @@ class _PackageCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       package.description,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.textLight,
-                        height: 1.4,
-                      ),
+                      style: AppTypography.caption.copyWith(fontSize: 10, color: AppTheme.textLight, height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -248,7 +216,7 @@ class _PackageCard extends StatelessWidget {
                       ),
                       child: Text(
                         currencyFormatter.format(package.basePrice),
-                        style: const TextStyle(
+                        style: AppTypography.caption.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryGold,
@@ -269,14 +237,14 @@ class _PackageCard extends StatelessWidget {
                   color: AppTheme.primaryGold,
                   borderRadius: BorderRadius.vertical(bottom: Radius.circular(13)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.check_circle, size: 14, color: Colors.white),
                     SizedBox(width: 4),
                     Text(
                       'Dipilih',
-                      style: TextStyle(
+                      style: AppTypography.caption.copyWith(
                         color: Colors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -296,9 +264,7 @@ class _PackageCard extends StatelessWidget {
       height: 110,
       width: double.infinity,
       color: bgColor,
-      child: Center(
-        child: Icon(icon, size: 48, color: AppTheme.primaryGold),
-      ),
+      child: Center(child: Icon(icon, size: 48, color: AppTheme.primaryGold)),
     );
   }
 }

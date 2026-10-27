@@ -13,23 +13,14 @@ class SelectedModelResult {
   final double additionalPrice;
   final bool isCleared;
 
-  const SelectedModelResult({
-    this.model,
-    this.additionalPrice = 0.0,
-    this.isCleared = false,
-  });
+  const SelectedModelResult({this.model, this.additionalPrice = 0.0, this.isCleared = false});
 
   factory SelectedModelResult.clear() => const SelectedModelResult(isCleared: true);
 }
 
 /// Screen untuk memilih model dekorasi yang terhubung dengan paket dekorasi
 class ModelPickerScreen extends ConsumerStatefulWidget {
-  const ModelPickerScreen({
-    super.key,
-    this.package,
-    this.selectedModelId,
-    this.canClearModel = false,
-  });
+  const ModelPickerScreen({super.key, this.package, this.selectedModelId, this.canClearModel = false});
 
   final DecorationPackage? package;
   final String? selectedModelId;
@@ -40,11 +31,7 @@ class ModelPickerScreen extends ConsumerStatefulWidget {
 }
 
 class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with SingleTickerProviderStateMixin {
-  final currencyFormatter = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
+  final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
   TabController? _tabController;
   bool _hasPackageModels = false;
@@ -65,12 +52,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
   }
 
   void _selectModel(DecorationModel model, double additionalPrice) {
-    Navigator.of(context).pop(
-      SelectedModelResult(
-        model: model,
-        additionalPrice: additionalPrice,
-      ),
-    );
+    Navigator.of(context).pop(SelectedModelResult(model: model, additionalPrice: additionalPrice));
   }
 
   @override
@@ -89,9 +71,9 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Pilih Model Dekorasi',
-              style: TextStyle(
+              style: AppTypography.titleLarge.copyWith(
                 color: AppTheme.textDark,
                 fontWeight: FontWeight.bold,
                 fontSize: 17,
@@ -100,7 +82,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
             if (widget.package != null)
               Text(
                 'Paket: ${widget.package!.name}',
-                style: const TextStyle(
+                style: AppTypography.labelMedium.copyWith(
                   color: AppColors.primaryGold,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -117,9 +99,9 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                   Navigator.of(context).pop(SelectedModelResult.clear());
                 },
                 icon: const Icon(Icons.close, size: 16, color: AppColors.errorRed),
-                label: const Text(
+                label: Text(
                   'Kosongkan',
-                  style: TextStyle(
+                  style: AppTypography.labelMedium.copyWith(
                     color: AppColors.errorRed,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -134,7 +116,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                 indicatorColor: AppColors.primaryGold,
                 labelColor: AppColors.primaryDark,
                 unselectedLabelColor: AppColors.textLight,
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                labelStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
                 tabs: [
                   Tab(text: 'Model Paket (${widget.package!.packageModels.length})'),
                   const Tab(text: 'Semua Model'),
@@ -146,9 +128,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               ),
       ),
       body: allModelsAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryGold),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -157,15 +137,16 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               children: [
                 const Icon(Icons.error_outline, size: 48, color: AppTheme.errorRed),
                 const SizedBox(height: 12),
-                Text('Gagal memuat model: $e', textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textLight)),
+                Text(
+                  'Gagal memuat model: $e',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.refresh(decorationModelsProvider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGold,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Coba Lagi'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGold, foregroundColor: Colors.white),
+                  child: Text('Coba Lagi', style: AppTypography.button),
                 ),
               ],
             ),
@@ -179,9 +160,16 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                 children: [
                   Icon(Icons.view_carousel_outlined, size: 64, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
-                  const Text('Belum ada master data model dekorasi', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Belum ada master data model dekorasi',
+                    style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Silakan buat model dekorasi di menu Profil > Kelola Model Dekorasi', textAlign: TextAlign.center),
+                  Text(
+                    'Silakan buat model dekorasi di menu Profil > Kelola Model Dekorasi',
+                    style: AppTypography.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             );
@@ -234,13 +222,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               },
             );
 
-            return TabBarView(
-              controller: _tabController,
-              children: [
-                packageModelsView,
-                allModelsView,
-              ],
-            );
+            return TabBarView(controller: _tabController, children: [packageModelsView, allModelsView]);
           }
 
           // Jika paket belum memiliki model terhubung, tampilkan semua model master
@@ -251,12 +233,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               final model = allModels[idx];
               final isSelected = widget.selectedModelId == model.id;
 
-              return _buildModelCard(
-                model: model,
-                additionalPrice: 0.0,
-                isSelected: isSelected,
-                isFromPackage: false,
-              );
+              return _buildModelCard(model: model, additionalPrice: 0.0, isSelected: isSelected, isFromPackage: false);
             },
           );
         },
@@ -275,17 +252,8 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isSelected ? AppTheme.primaryGold : Colors.grey.shade200,
-          width: isSelected ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: isSelected ? AppTheme.primaryGold : Colors.grey.shade200, width: isSelected ? 2 : 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Material(
         color: Colors.transparent,
@@ -336,7 +304,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                               Expanded(
                                 child: Text(
                                   model.name,
-                                  style: const TextStyle(
+                                  style: AppTypography.titleMedium.copyWith(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.textDark,
@@ -350,14 +318,14 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                                     color: AppTheme.primaryGold,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.check, size: 12, color: Colors.white),
                                       SizedBox(width: 4),
                                       Text(
                                         'Terpilih',
-                                        style: TextStyle(
+                                        style: AppTypography.caption.copyWith(
                                           color: Colors.white,
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
@@ -384,7 +352,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                                 const SizedBox(width: 4),
                                 Text(
                                   model.width.isNotEmpty ? 'Lebar: ${model.width}' : 'Lebar Standar',
-                                  style: const TextStyle(
+                                  style: AppTypography.caption.copyWith(
                                     color: AppColors.primaryGold,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 11,
@@ -403,7 +371,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                                 const SizedBox(width: 4),
                                 Text(
                                   'Tambahan Biaya: +${currencyFormatter.format(additionalPrice)}',
-                                  style: const TextStyle(
+                                  style: AppTypography.labelMedium.copyWith(
                                     color: AppColors.primaryGold,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
@@ -412,13 +380,13 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                               ],
                             )
                           else if (isFromPackage)
-                            const Row(
+                            Row(
                               children: [
                                 Icon(Icons.check_circle_outline, size: 14, color: AppTheme.successGreen),
                                 SizedBox(width: 4),
                                 Text(
-                                  'Termasuk Paket (Tanpa Biaya Tambahan)',
-                                  style: TextStyle(
+                                  'Termasuk Paket',
+                                  style: AppTypography.caption.copyWith(
                                     color: AppTheme.successGreen,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 11,
@@ -429,10 +397,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                           else
                             Text(
                               'Harga Model: ${currencyFormatter.format(model.price)}',
-                              style: const TextStyle(
-                                color: AppColors.textLight,
-                                fontSize: 11,
-                              ),
+                              style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
                             ),
                         ],
                       ),
@@ -444,11 +409,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                   const SizedBox(height: 10),
                   Text(
                     model.description,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textLight,
-                      height: 1.3,
-                    ),
+                    style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppTheme.textLight, height: 1.3),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -463,14 +424,12 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                       backgroundColor: isSelected ? Colors.grey.shade200 : AppTheme.primaryGold,
                       foregroundColor: isSelected ? AppTheme.textDark : Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () => _selectModel(model, additionalPrice),
                     child: Text(
                       isSelected ? '✓ Model Ini Dipilih' : 'Pilih Model Ini',
-                      style: TextStyle(
+                      style: AppTypography.labelLarge.copyWith(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: isSelected ? AppTheme.textDark : Colors.white,

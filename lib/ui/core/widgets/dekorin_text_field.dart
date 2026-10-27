@@ -58,7 +58,7 @@ class DekorinTextField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       onChanged: onChanged,
       maxLines: maxLines,
-      style: AppTypography.bodyLarge,
+      style: AppTypography.bodyMedium,
       decoration: InputDecoration(
         labelText: label.isNotEmpty ? label : null,
         hintText: hint,

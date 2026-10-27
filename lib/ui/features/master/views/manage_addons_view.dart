@@ -30,9 +30,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final nameController = TextEditingController(text: addon?.name ?? '');
     final priceController = TextEditingController(
-      text: addon != null && addon.price > 0
-          ? thousandFormatter.format(addon.price.toInt()).replaceAll(',', '.')
-          : '',
+      text: addon != null && addon.price > 0 ? thousandFormatter.format(addon.price.toInt()).replaceAll(',', '.') : '',
     );
     final descController = TextEditingController(text: addon?.description ?? '');
     final formKey = GlobalKey<FormState>();
@@ -48,7 +46,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
         final XFile? pickedFile = await picker.pickImage(
           source: source,
           imageQuality: 70, // Kompres kualitas gambar ke 70%
-          maxWidth: 1080,   // Resize resolusi maksimal 1080px
+          maxWidth: 1080, // Resize resolusi maksimal 1080px
           maxHeight: 1080,
         );
 
@@ -60,7 +58,9 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memilih foto: $e')),
+            SnackBar(
+              content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            ),
           );
         }
       }
@@ -69,41 +69,41 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isEdit ? 'Edit Item Tambahan' : 'Tambah Addon Baru',
-                            style: AppTypography.titleLarge,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
+            return SafeArea(
+              top: true,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                isEdit ? 'Edit Item Tambahan' : 'Tambah Addon Baru',
+                                style: AppTypography.titleLarge,
+                              ),
+                            ),
+                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                          ],
+                        ),
                       const SizedBox(height: 16),
-                      
+
                       // Label Upload Foto
                       Text('Foto Item Tambahan', style: AppTypography.labelLarge),
                       const SizedBox(height: 8),
@@ -137,36 +137,36 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                           ),
                                           child: Text(
                                             '✓ Terkompresi',
-                                            style: AppTypography.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                                            style: AppTypography.caption.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ],
                                   )
                                 : existingImageUrl.isNotEmpty
-                                    ? Image.network(
-                                        existingImageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Center(
-                                          child: Icon(Icons.broken_image, size: 40, color: AppColors.textMuted),
-                                        ),
-                                      )
-                                    : Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.primaryGold),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            'Pilih Foto dari Galeri / Kamera',
-                                            style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Foto otomatis dikompresi sebelum di-upload',
-                                            style: AppTypography.caption,
-                                          ),
-                                        ],
+                                ? Image.network(
+                                    existingImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(
+                                      child: Icon(Icons.broken_image, size: 40, color: AppColors.textMuted),
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.primaryGold),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Pilih Foto dari Galeri / Kamera',
+                                        style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold),
                                       ),
+                                      const SizedBox(height: 2),
+                                      Text('Foto otomatis dikompresi sebelum di-upload', style: AppTypography.caption),
+                                    ],
+                                  ),
                           ),
                         ),
                       ),
@@ -179,7 +179,10 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.gallery, setModalState),
                               icon: const Icon(Icons.photo_library, size: 18),
-                              label: const Text('Galeri'),
+                              label: Text(
+                                'Galeri',
+                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -191,7 +194,10 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.camera, setModalState),
                               icon: const Icon(Icons.camera_alt, size: 18),
-                              label: const Text('Kamera'),
+                              label: Text(
+                                'Kamera',
+                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -214,12 +220,12 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                         label: 'Harga Item',
                         hint: 'Contoh: 300.000',
                         prefixText: 'Rp ',
-                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        prefixStyle: AppTypography.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          ThousandsSeparatorInputFormatter(),
-                        ],
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
                           final clean = v.replaceAll(RegExp(r'\D'), '');
@@ -243,9 +249,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGold,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: isSubmitting
                               ? null
@@ -286,7 +290,12 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                     setModalState(() => isSubmitting = false);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Gagal menyimpan addon: $e')),
+                                        SnackBar(
+                                          content: Text(
+                                            'Gagal menyimpan addon: $e',
+                                            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                          ),
+                                        ),
                                       );
                                     }
                                   }
@@ -297,21 +306,19 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                   height: 20,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                 )
-                              : Text(
-                                  isEdit ? 'Simpan Perubahan' : 'Tambah Addon',
-                                  style: AppTypography.button,
-                                ),
+                              : Text(isEdit ? 'Simpan Perubahan' : 'Tambah Addon', style: AppTypography.button),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    },
+  );
   }
 
   void _confirmDelete(DecorationAddon addon) {
@@ -319,10 +326,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Hapus Addon', style: AppTypography.titleMedium),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus addon "${addon.name}"?',
-          style: AppTypography.bodyMedium,
-        ),
+        content: Text('Apakah Anda yakin ingin menghapus addon "${addon.name}"?', style: AppTypography.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -337,7 +341,12 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menghapus addon: $e')),
+                    SnackBar(
+                      content: Text(
+                        'Gagal menghapus addon: $e',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
+                    ),
                   );
                 }
               }
@@ -378,9 +387,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
       body: addonsAsync.when(
         data: (addons) {
           if (addons.isEmpty) {
-            return Center(
-              child: Text('Belum ada item tambahan.', style: AppTypography.bodyMedium),
-            );
+            return Center(child: Text('Belum ada item tambahan.', style: AppTypography.bodyMedium));
           }
 
           if (_localAddons == null || _localAddons!.length != addons.length) {
@@ -411,10 +418,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                       Expanded(
                         child: Text(
                           'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textDark,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -432,8 +436,11 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                   await ref.read(masterServiceProvider).reorderAddons(ids);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Urutan addon berhasil disimpan'),
+                      SnackBar(
+                        content: Text(
+                          'Urutan addon berhasil disimpan',
+                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                        ),
                         duration: Duration(milliseconds: 1200),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -442,7 +449,12 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Gagal menyimpan urutan addon: $e')),
+                      SnackBar(
+                        content: Text(
+                          'Gagal menyimpan urutan addon: $e',
+                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                        ),
+                      ),
                     );
                   }
                   ref.invalidate(addonsProvider);

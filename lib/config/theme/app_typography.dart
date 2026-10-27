@@ -84,7 +84,7 @@ class AppTypography {
 
   // Buttons
   static TextStyle button = GoogleFonts.poppins(
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.textWhite,
   );

@@ -122,7 +122,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memilih logo: $e'),
+            content: Text('Gagal memilih logo: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: AppColors.errorRed,
           ),
         );
@@ -133,9 +133,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
@@ -192,8 +190,11 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
     final user = ref.read(globalAuthProvider).value;
     if (user == null || (!user.isOwner && !user.isAdmin)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hanya Owner dan Administrator yang dapat memperbarui data usaha.'),
+        SnackBar(
+          content: Text(
+            'Hanya Owner dan Administrator yang dapat memperbarui data usaha.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.errorRed,
         ),
       );
@@ -214,7 +215,9 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       }
 
       // 2. Simpan perubahan ke backend
-      final updatedProfile = await ref.read(companyServiceProvider).updateCompanyProfile(
+      final updatedProfile = await ref
+          .read(companyServiceProvider)
+          .updateCompanyProfile(
             name: _nameController.text.trim(),
             address: _addressController.text.trim(),
             phone: _phoneController.text.trim(),
@@ -226,7 +229,9 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
           );
 
       // 3. Update global session auth agar perubahan langsung terlihat di seluruh aplikasi
-      await ref.read(globalAuthProvider.notifier).updateCompanyData(
+      await ref
+          .read(globalAuthProvider.notifier)
+          .updateCompanyData(
             name: updatedProfile.name,
             address: updatedProfile.address,
             phone: updatedProfile.phone,
@@ -239,8 +244,11 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data profil usaha dekorasi berhasil disimpan!'),
+          SnackBar(
+            content: Text(
+              'Data profil usaha dekorasi berhasil disimpan!',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
             backgroundColor: Color(0xFF2E7D32),
           ),
         );
@@ -250,7 +258,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menyimpan: $e'),
+            content: Text('Gagal menyimpan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: AppColors.errorRed,
           ),
         );
@@ -282,286 +290,257 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryGold))
           : !isAuthorized
-              ? _buildUnauthorizedView()
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Section Header: Logo Usaha
-                        Center(
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: _showImageSourceDialog,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 110,
-                                      height: 110,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(
-                                          color: AppColors.primaryGold,
-                                          width: 2.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.primaryGold.withValues(alpha: 0.15),
-                                            blurRadius: 16,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(21),
-                                        child: _buildLogoPreview(),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 2,
-                                      right: 2,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(7),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryGold,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 4,
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(
-                                          Icons.camera_alt,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              TextButton.icon(
-                                onPressed: _showImageSourceDialog,
-                                icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                                label: Text(
-                                  _selectedImageFile != null || _currentLogoUrl.isNotEmpty
-                                      ? 'Ubah Logo Usaha'
-                                      : 'Unggah Logo Usaha',
-                                  style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
-                                ),
-                              ),
-                              Text(
-                                'Logo akan tampil di Profil Aplikasi dan Invoice Resmi',
-                                style: AppTypography.caption.copyWith(color: AppColors.textLight),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-
-                        // Info Audit Terakhir Diperbarui (jika ada)
-                        if (_companyProfile?.updatedByName.isNotEmpty == true ||
-                            _companyProfile?.updatedAt != null) ...[
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                            ),
-                            child: Row(
+          ? _buildUnauthorizedView()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Section Header: Logo Usaha
+                    Center(
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: _showImageSourceDialog,
+                            child: Stack(
                               children: [
-                                const Icon(Icons.history_edu_rounded, size: 20, color: Colors.blue),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    _formatAuditText(_companyProfile!),
-                                    style: AppTypography.caption.copyWith(
-                                      color: const Color(0xFF1565C0),
-                                      fontWeight: FontWeight.w500,
+                                Container(
+                                  width: 110,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(color: AppColors.primaryGold, width: 2.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primaryGold.withValues(alpha: 0.15),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(borderRadius: BorderRadius.circular(21), child: _buildLogoPreview()),
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  right: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(7),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryGold,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4)],
                                     ),
+                                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                        ],
-
-                        // Identitas Pokok Usaha
-                        _buildSectionHeader('INFORMASI UTAMA USAHA'),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: Column(
-                            children: [
-                              DekorinTextField(
-                                controller: _nameController,
-                                label: 'Nama Usaha Dekorasi *',
-                                hint: 'Contoh: Dekorin Wedding & Event',
-                                prefixIcon: Icons.storefront,
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Nama usaha tidak boleh kosong';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              DekorinTextField(
-                                controller: _descriptionController,
-                                label: 'Slogan / Deskripsi Singkat',
-                                hint: 'Contoh: Wedding & Event Decoration Vendor',
-                                prefixIcon: Icons.info_outline,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Kontak & Alamat
-                        _buildSectionHeader('KONTAK & ALAMAT'),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: Column(
-                            children: [
-                              DekorinTextField(
-                                controller: _phoneController,
-                                label: 'Nomor WhatsApp / Telp Usaha *',
-                                hint: '081234567890',
-                                keyboardType: TextInputType.phone,
-                                prefixIcon: Icons.phone_android,
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Nomor telepon usaha wajib diisi';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              DekorinTextField(
-                                controller: _emailController,
-                                label: 'Email Resmi Usaha',
-                                hint: 'kontak@dekorin.id',
-                                keyboardType: TextInputType.emailAddress,
-                                prefixIcon: Icons.mail_outline,
-                              ),
-                              const SizedBox(height: 16),
-                              DekorinTextField(
-                                controller: _addressController,
-                                label: 'Alamat Workshop / Kantor Usaha',
-                                hint: 'Jl. Melati Raya No. 123, Jakarta Selatan',
-                                maxLines: 3,
-                                prefixIcon: Icons.location_on_outlined,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Rekening Pembayaran & Medsos (Untuk Tampil di Invoice & Profil)
-                        _buildSectionHeader('DATA INVOICE & REKENING PEMBAYARAN'),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              DekorinTextField(
-                                controller: _bankInfoController,
-                                label: 'Informasi Rekening Pembayaran',
-                                hint: 'Contoh: Bank BCA\nNo Rek: 873-501-9920\na.n Dekorin Official',
-                                maxLines: 3,
-                                prefixIcon: Icons.account_balance_outlined,
-                                helperText: 'Akan dicetak di bagian "Payment Method" pada Invoice PDF',
-                              ),
-                              const SizedBox(height: 16),
-                              DekorinTextField(
-                                controller: _instagramController,
-                                label: 'Instagram / Media Sosial',
-                                hint: '@dekorin_wedding',
-                                prefixIcon: Icons.camera_alt_outlined,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Tombol Simpan
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: _isSaving ? null : _saveCompanyProfile,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGold,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              elevation: 2,
+                          const SizedBox(height: 10),
+                          TextButton.icon(
+                            onPressed: _showImageSourceDialog,
+                            icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                            label: Text(
+                              _selectedImageFile != null || _currentLogoUrl.isNotEmpty
+                                  ? 'Ubah Logo Usaha'
+                                  : 'Unggah Logo Usaha',
+                              style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
                             ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.save_rounded, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Simpan Data Profil Usaha',
-                                        style: AppTypography.button.copyWith(fontSize: 16),
-                                      ),
-                                    ],
-                                  ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
+                          Text(
+                            'Logo akan tampil di Profil Aplikasi dan Invoice Resmi',
+                            style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 28),
+
+                    // Info Audit Terakhir Diperbarui (jika ada)
+                    if (_companyProfile?.updatedByName.isNotEmpty == true || _companyProfile?.updatedAt != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.history_edu_rounded, size: 20, color: Colors.blue),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _formatAuditText(_companyProfile!),
+                                style: AppTypography.caption.copyWith(
+                                  color: const Color(0xFF1565C0),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // Identitas Pokok Usaha
+                    _buildSectionHeader('INFORMASI UTAMA USAHA'),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Column(
+                        children: [
+                          DekorinTextField(
+                            controller: _nameController,
+                            label: 'Nama Usaha Dekorasi *',
+                            hint: 'Contoh: Dekorin Wedding & Event',
+                            prefixIcon: Icons.storefront,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Nama usaha tidak boleh kosong';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          DekorinTextField(
+                            controller: _descriptionController,
+                            label: 'Slogan / Deskripsi Singkat',
+                            hint: 'Contoh: Wedding & Event Decoration Vendor',
+                            prefixIcon: Icons.info_outline,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Kontak & Alamat
+                    _buildSectionHeader('KONTAK & ALAMAT'),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Column(
+                        children: [
+                          DekorinTextField(
+                            controller: _phoneController,
+                            label: 'Nomor WhatsApp / Telp Usaha *',
+                            hint: '081234567890',
+                            keyboardType: TextInputType.phone,
+                            prefixIcon: Icons.phone_android,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Nomor telepon usaha wajib diisi';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          DekorinTextField(
+                            controller: _emailController,
+                            label: 'Email Resmi Usaha',
+                            hint: 'kontak@dekorin.id',
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: Icons.mail_outline,
+                          ),
+                          const SizedBox(height: 16),
+                          DekorinTextField(
+                            controller: _addressController,
+                            label: 'Alamat Workshop / Kantor Usaha',
+                            hint: 'Jl. Melati Raya No. 123, Jakarta Selatan',
+                            maxLines: 3,
+                            prefixIcon: Icons.location_on_outlined,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Rekening Pembayaran & Medsos (Untuk Tampil di Invoice & Profil)
+                    _buildSectionHeader('DATA INVOICE & REKENING PEMBAYARAN'),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DekorinTextField(
+                            controller: _bankInfoController,
+                            label: 'Informasi Rekening Pembayaran',
+                            hint: 'Contoh: Bank BCA\nNo Rek: 873-501-9920\na.n Dekorin Official',
+                            maxLines: 3,
+                            prefixIcon: Icons.account_balance_outlined,
+                            helperText: 'Akan dicetak di bagian "Payment Method" pada Invoice PDF',
+                          ),
+                          const SizedBox(height: 16),
+                          DekorinTextField(
+                            controller: _instagramController,
+                            label: 'Instagram / Media Sosial',
+                            hint: '@dekorin_wedding',
+                            prefixIcon: Icons.camera_alt_outlined,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Tombol Simpan
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveCompanyProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGold,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 2,
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.save_rounded, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('Simpan Data Profil Usaha', style: AppTypography.button),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
   Widget _buildLogoPreview() {
     if (_selectedImageFile != null) {
-      return Image.file(
-        _selectedImageFile!,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-      );
+      return Image.file(_selectedImageFile!, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
     }
 
     if (_currentLogoUrl.isNotEmpty) {
@@ -585,11 +564,8 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
           'assets/images/logo_icon.png',
           width: 52,
           height: 52,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.storefront,
-            size: 48,
-            color: AppColors.primaryGold,
-          ),
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.storefront, size: 48, color: AppColors.primaryGold),
         ),
       ),
     );

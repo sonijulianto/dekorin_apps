@@ -39,10 +39,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
 
   void _onLogin() {
     ref.read(loginViewModelProvider.notifier).clearError();
-    ref.read(loginViewModelProvider.notifier).login(
-          phone: _phoneController.text,
-          password: _passwordController.text,
-        );
+    ref.read(loginViewModelProvider.notifier).login(phone: _phoneController.text, password: _passwordController.text);
   }
 
   @override
@@ -65,10 +62,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   Text(
                     'Kelola bisnis dekorasi Anda\ndengan mudah dan efisien',
                     textAlign: TextAlign.center,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppTheme.textLight,
-                      height: 1.5,
-                    ),
+                    style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, height: 1.5),
                   ),
                   const SizedBox(height: 48),
 
@@ -94,15 +88,11 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     onFieldSubmitted: (_) => _onLogin(),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        state.isPasswordVisible
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                        state.isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                         color: AppTheme.textLight,
                       ),
                       onPressed: () {
-                        ref
-                            .read(loginViewModelProvider.notifier)
-                            .togglePasswordVisibility();
+                        ref.read(loginViewModelProvider.notifier).togglePasswordVisibility();
                       },
                     ),
                   ),
@@ -113,29 +103,19 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppTheme.errorRed.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: AppTheme.errorRed,
-                            size: 20,
-                          ),
+                          const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               state.errorMessage!,
-                              style: const TextStyle(
-                                color: AppTheme.errorRed,
-                                fontSize: 13,
-                              ),
+                              style: AppTypography.bodyMedium.copyWith(color: AppTheme.errorRed, fontSize: 13),
                             ),
                           ),
                         ],
@@ -151,21 +131,16 @@ class _LoginViewState extends ConsumerState<LoginView> {
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                           )
-                        : const Text('Masuk ke Aplikasi'),
+                        : Text('Masuk ke Aplikasi', style: AppTypography.button),
                   ),
                   const SizedBox(height: 32),
 
                   // --- Footer ---
                   Text(
                     '© 2026 Dekorin. All rights reserved.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppTheme.textLight.withValues(alpha: 0.6),
-                    ),
+                    style: AppTypography.bodySmall.copyWith(color: AppTheme.textLight.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
@@ -177,10 +152,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
   }
 
   Widget _buildLogo() {
-    return Image.asset(
-      'assets/images/logo.png',
-      height: 150,
-      fit: BoxFit.contain,
-    );
+    return Image.asset('assets/images/logo.png', height: 150, fit: BoxFit.contain);
   }
 }

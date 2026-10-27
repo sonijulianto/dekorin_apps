@@ -104,7 +104,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     _titleController = TextEditingController(text: inv?.title ?? '');
     _slugController = TextEditingController(text: inv?.slug ?? '');
     _quotesController = TextEditingController(
-      text: inv?.quotes ??
+      text:
+          inv?.quotes ??
           '"Dan di antara tanda-tanda kekuasaan-Nya ialah Dia menciptakan untukmu isteri-isteri dari jenismu sendiri, supaya kamu cenderung dan merasa tenteram kepadanya, dan dijadikan-Nya di antaramu rasa kasih dan sayang." (QS. Ar-Rum: 21)',
     );
 
@@ -158,9 +159,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     _loveStoryController = TextEditingController(text: inv?.loveStory ?? '');
     _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? '');
 
-    _coverImageUrl = inv != null 
-        ? inv.coverImage 
-        : '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg';
+    _coverImageUrl = inv != null ? inv.coverImage : '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg';
     _groomPhotoUrl = inv?.groomPhoto ?? '';
     _bridePhotoUrl = inv?.bridePhoto ?? '';
     _sec1PhotoUrl = inv?.sec1Photo ?? '';
@@ -169,11 +168,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     _eventPhotoUrl = inv?.eventPhoto ?? '';
     _closingPhotoUrl = inv?.closingPhoto ?? '';
     if (inv != null && inv.galleryImages.isNotEmpty) {
-      _galleryUrls = inv.galleryImages
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
+      _galleryUrls = inv.galleryImages.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     }
   }
 
@@ -236,7 +231,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal upload gambar: $e')),
+          SnackBar(
+            content: Text('Gagal upload gambar: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          ),
         );
       }
     }
@@ -245,11 +242,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   Future<void> _pickGalleryImages() async {
     try {
       final picker = ImagePicker();
-      final pickedList = await picker.pickMultiImage(
-        imageQuality: 75,
-        maxWidth: 1080,
-        maxHeight: 1080,
-      );
+      final pickedList = await picker.pickMultiImage(imageQuality: 75, maxWidth: 1080, maxHeight: 1080);
       if (pickedList.isNotEmpty) {
         setState(() => _isSubmitting = true);
         for (final picked in pickedList) {
@@ -264,7 +257,12 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       setState(() => _isSubmitting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal upload gambar galeri: $e')),
+          SnackBar(
+            content: Text(
+              'Gagal upload gambar galeri: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+          ),
         );
       }
     }
@@ -292,7 +290,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           _slugController.text = '$g-$b';
         }
         if (_titleController.text.trim().isEmpty) {
-          _titleController.text = 'The Wedding of ${_groomNicknameController.text.trim()} & ${_brideNicknameController.text.trim()}';
+          _titleController.text =
+              'The Wedding of ${_groomNicknameController.text.trim()} & ${_brideNicknameController.text.trim()}';
         }
       }
     }
@@ -312,7 +311,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'quotes': _quotesController.text.trim(),
       'cover_image': _coverImageUrl,
       'groom_name': _selectedEventType == 'khitan'
-          ? (_childNameController.text.trim().isNotEmpty ? _childNameController.text.trim() : _groomNameController.text.trim())
+          ? (_childNameController.text.trim().isNotEmpty
+                ? _childNameController.text.trim()
+                : _groomNameController.text.trim())
           : _groomNameController.text.trim(),
       'groom_nickname': _selectedEventType == 'khitan'
           ? _childNicknameController.text.trim()
@@ -373,7 +374,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.invitation != null ? 'Undangan berhasil diperbarui' : 'Undangan berhasil dibuat!'),
+            content: Text(
+              widget.invitation != null ? 'Undangan berhasil diperbarui' : 'Undangan berhasil dibuat!',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -382,7 +386,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       if (mounted) {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan: $e')),
+          SnackBar(
+            content: Text('Gagal menyimpan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          ),
         );
       }
     }
@@ -410,10 +416,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               title: '1. Pilihan Template Desain',
               icon: Icons.palette_outlined,
               children: [
-                Text(
-                  'Pilih desain tema visual untuk undangan digital Anda:',
-                  style: AppTypography.caption,
-                ),
+                Text('Pilih desain tema visual untuk undangan digital Anda:', style: AppTypography.caption),
                 const SizedBox(height: 12),
                 _buildTemplateSelector(),
               ],
@@ -493,11 +496,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     onChanged: (_) => _generateDefaultSlugAndTitle(),
                   ),
                   const SizedBox(height: 12),
-                  DekorinTextField(
-                    controller: _childOrderController,
-                    label: 'Urutan Anak',
-                    hint: 'Putra pertama dari',
-                  ),
+                  DekorinTextField(controller: _childOrderController, label: 'Urutan Anak', hint: 'Putra pertama dari'),
                   const SizedBox(height: 12),
                   DekorinTextField(
                     controller: _groomParentsController,
@@ -627,11 +626,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
-                      child: DekorinTextField(
-                        controller: _akadTimeController,
-                        label: 'Waktu / Jam',
-                        hint: '08:00 WIB',
-                      ),
+                      child: DekorinTextField(controller: _akadTimeController, label: 'Waktu / Jam', hint: '08:00 WIB'),
                     ),
                   ],
                 ),
@@ -655,11 +650,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   hint: 'https://maps.app.goo.gl/...',
                   prefixWidget: Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: Image.asset(
-                      'assets/icons/google-maps-icon.webp',
-                      width: 20,
-                      height: 20,
-                    ),
+                    child: Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -675,7 +666,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
 
             // 6. JADWAL RESEPSI / TASYAKURAN
             _buildSectionCard(
-              title: _selectedEventType == 'khitan' ? '5. Acara Tasyakuran & Ramah Tamah' : '6. Jadwal & Lokasi Resepsi',
+              title: _selectedEventType == 'khitan'
+                  ? '5. Acara Tasyakuran & Ramah Tamah'
+                  : '6. Jadwal & Lokasi Resepsi',
               icon: Icons.celebration_outlined,
               children: [
                 Row(
@@ -719,11 +712,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   hint: 'https://maps.app.goo.gl/...',
                   prefixWidget: Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: Image.asset(
-                      'assets/icons/google-maps-icon.webp',
-                      width: 20,
-                      height: 20,
-                    ),
+                    child: Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -819,11 +808,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   children: [
                     Expanded(
                       flex: 2,
-                      child: DekorinTextField(
-                        controller: _bankName1Controller,
-                        label: 'Bank 1',
-                        hint: 'BCA',
-                      ),
+                      child: DekorinTextField(controller: _bankName1Controller, label: 'Bank 1', hint: 'BCA'),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -919,11 +904,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     );
   }
 
-  Widget _buildEventTypeChip({
-    required String label,
-    required String value,
-    required bool isSelected,
-  }) {
+  Widget _buildEventTypeChip({required String label, required String value, required bool isSelected}) {
     return InkWell(
       onTap: () {
         setState(() {
@@ -950,7 +931,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
+          style: AppTypography.bodyMedium.copyWith(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? AppColors.primaryGold : AppColors.textDark,
@@ -996,7 +977,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                         color: AppColors.primaryGold.withValues(alpha: 0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : null,
             ),
@@ -1019,10 +1000,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                         child: Container(
                           width: 20,
                           height: 20,
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            shape: BoxShape.circle,
-                          ),
+                          decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
                         ),
                       ),
                       Positioned(
@@ -1030,10 +1008,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                         child: Container(
                           width: 20,
                           height: 20,
-                          decoration: BoxDecoration(
-                            color: secondaryColor,
-                            shape: BoxShape.circle,
-                          ),
+                          decoration: BoxDecoration(color: secondaryColor, shape: BoxShape.circle),
                         ),
                       ),
                     ],
@@ -1063,7 +1038,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                             ),
                             child: Text(
                               tmpl['tag'] as String,
-                              style: TextStyle(
+                              style: AppTypography.caption.copyWith(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: primaryColor,
@@ -1094,11 +1069,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
+  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1114,10 +1085,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               Icon(icon, color: AppColors.primaryGold, size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold),
-                ),
+                child: Text(title, style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold)),
               ),
             ],
           ),
@@ -1139,7 +1107,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             TextButton.icon(
               onPressed: _pickGalleryImages,
               icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-              label: const Text('Tambah Foto'),
+              label: Text('Tambah Foto', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
               style: TextButton.styleFrom(foregroundColor: AppColors.primaryGold),
             ),
           ],
@@ -1204,10 +1172,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                       },
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade600,
-                          shape: BoxShape.circle,
-                        ),
+                        decoration: BoxDecoration(color: Colors.red.shade600, shape: BoxShape.circle),
                         child: const Icon(Icons.close, color: Colors.white, size: 14),
                       ),
                     ),
@@ -1244,10 +1209,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                       const SizedBox(width: 4),
                       Text(
                         'Hapus Foto',
-                        style: AppTypography.caption.copyWith(
-                          color: Colors.red.shade400,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTypography.caption.copyWith(color: Colors.red.shade400, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -1273,13 +1235,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          imageUrl.startsWith('http')
-                              ? imageUrl
-                              : '${ApiEndpoint.webFormBaseUrl}$imageUrl',
+                          imageUrl.startsWith('http') ? imageUrl : '${ApiEndpoint.webFormBaseUrl}$imageUrl',
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Center(
-                            child: Icon(Icons.broken_image, color: AppColors.primaryGold),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(child: Icon(Icons.broken_image, color: AppColors.primaryGold)),
                         ),
                         Positioned(
                           right: 8,
@@ -1290,7 +1249,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                               color: Colors.black.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('Ganti Foto', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            child: Text(
+                              'Ganti Foto',
+                              style: AppTypography.caption.copyWith(color: Colors.white, fontSize: 11),
+                            ),
                           ),
                         ),
                         if (onClear != null)
@@ -1304,12 +1266,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade600,
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
                                 ),
                                 child: const Icon(Icons.close, color: Colors.white, size: 16),
                               ),
@@ -1323,7 +1280,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     children: [
                       const Icon(Icons.cloud_upload_outlined, color: AppColors.primaryGold, size: 28),
                       const SizedBox(width: 10),
-                      Text('Pilih Foto dari Galeri', style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold)),
+                      Text(
+                        'Pilih Foto dari Galeri',
+                        style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold),
+                      ),
                     ],
                   ),
           ),

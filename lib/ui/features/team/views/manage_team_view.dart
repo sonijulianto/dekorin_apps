@@ -34,15 +34,10 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
         onPressed: () => _showAddMemberDialog(context, currentUser?.isOwner ?? false),
         backgroundColor: AppColors.primaryGold,
         icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
-        label: Text(
-          currentUser?.isOwner == true ? 'Tambah Anggota' : 'Tambah Staff',
-          style: AppTypography.button,
-        ),
+        label: Text(currentUser?.isOwner == true ? 'Tambah Anggota' : 'Tambah Staff', style: AppTypography.button),
       ),
       body: teamState.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryGold),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGold)),
         error: (err, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -60,7 +55,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                 ElevatedButton(
                   onPressed: () => ref.read(teamViewModelProvider.notifier).refresh(),
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
-                  child: const Text('Coba Lagi'),
+                  child: Text('Coba Lagi', style: AppTypography.button),
                 ),
               ],
             ),
@@ -194,13 +189,15 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                     ),
                   ),
                 ] else ...[
-                  ...filteredMembers.map((member) => _buildMemberTile(
-                        context,
-                        member,
-                        currentUser?.id ?? '',
-                        currentUser?.isOwner ?? false,
-                        currentUser?.isAdmin ?? false,
-                      )),
+                  ...filteredMembers.map(
+                    (member) => _buildMemberTile(
+                      context,
+                      member,
+                      currentUser?.id ?? '',
+                      currentUser?.isOwner ?? false,
+                      currentUser?.isAdmin ?? false,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -210,12 +207,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
     );
   }
 
-  Widget _buildSummaryCard({
-    required String title,
-    required int count,
-    required Color color,
-    required IconData icon,
-  }) {
+  Widget _buildSummaryCard({required String title, required int count, required Color color, required IconData icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
       decoration: BoxDecoration(
@@ -229,10 +221,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
           const SizedBox(height: 6),
           Text(
             count.toString(),
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, color: color),
           ),
           Text(title, style: AppTypography.caption.copyWith(color: AppColors.textLight)),
         ],
@@ -243,18 +232,18 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedRoleFilter == value;
     return ChoiceChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: AppTypography.bodySmall.copyWith(
+          color: isSelected ? AppColors.primaryGold : AppColors.textLight,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 12,
+        ),
+      ),
       selected: isSelected,
       selectedColor: AppColors.goldLight,
       backgroundColor: Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? AppColors.primaryGold : AppColors.textLight,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
-      ),
-      side: BorderSide(
-        color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
-      ),
+      side: BorderSide(color: isSelected ? AppColors.primaryGold : AppColors.borderLight),
       onSelected: (_) {
         setState(() {
           _selectedRoleFilter = value;
@@ -263,13 +252,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
     );
   }
 
-  Widget _buildMemberTile(
-    BuildContext context,
-    UserModel member,
-    String currentUserId,
-    bool isOwner,
-    bool isAdmin,
-  ) {
+  Widget _buildMemberTile(BuildContext context, UserModel member, String currentUserId, bool isOwner, bool isAdmin) {
     final isMe = member.id == currentUserId;
     final role = member.role.toLowerCase();
 
@@ -331,11 +314,15 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
+                        decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(6)),
+                        child: Text(
+                          'Saya',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
                         ),
-                        child: const Text('Saya', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],
@@ -360,11 +347,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                   ),
                   child: Text(
                     roleLabel,
-                    style: TextStyle(
-                      color: roleColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppTypography.caption.copyWith(color: roleColor, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -382,24 +365,24 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
               },
               itemBuilder: (context) => [
                 if (canEdit)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
                     child: Row(
                       children: [
                         Icon(Icons.edit_outlined, size: 18),
                         SizedBox(width: 8),
-                        Text('Edit Anggota'),
+                        Text('Edit Anggota', style: AppTypography.labelLarge),
                       ],
                     ),
                   ),
                 if (canDelete)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
                         Icon(Icons.delete_outline, color: AppColors.errorRed, size: 18),
                         SizedBox(width: 8),
-                        Text('Hapus Anggota', style: TextStyle(color: AppColors.errorRed)),
+                        Text('Hapus Anggota', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
                       ],
                     ),
                   ),
@@ -424,19 +407,12 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              ),
+              padding: EdgeInsets.only(left: 20, right: 20, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -446,10 +422,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Tambah Anggota Tim', style: AppTypography.titleMedium),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -541,14 +514,14 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.info_outline, color: Colors.blue, size: 20),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Role terkunci: Admin hanya memiliki izin untuk menambahkan akun Crew / Staf Lapangan.',
-                                style: TextStyle(fontSize: 12, color: Colors.blue),
+                                style: AppTypography.bodySmall.copyWith(fontSize: 12, color: Colors.blue),
                               ),
                             ),
                           ],
@@ -573,20 +546,32 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
 
                           if (name.isEmpty || phone.isEmpty || pass.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Harap lengkapi semua kolom wajib')),
+                              SnackBar(
+                                content: Text(
+                                  'Harap lengkapi semua kolom wajib',
+                                  style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                ),
+                              ),
                             );
                             return;
                           }
 
                           if (pass.length < 6) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Password minimal 6 karakter')),
+                              SnackBar(
+                                content: Text(
+                                  'Password minimal 6 karakter',
+                                  style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                ),
+                              ),
                             );
                             return;
                           }
 
                           try {
-                            await ref.read(teamViewModelProvider.notifier).createMember(
+                            await ref
+                                .read(teamViewModelProvider.notifier)
+                                .createMember(
                                   fullName: name,
                                   phone: phone,
                                   password: pass,
@@ -596,18 +581,32 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Anggota $name berhasil ditambahkan!')),
+                                SnackBar(
+                                  content: Text(
+                                    'Anggota $name berhasil ditambahkan!',
+                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                  ),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Gagal: $e'), backgroundColor: AppColors.errorRed),
+                                SnackBar(
+                                  content: Text(
+                                    'Gagal: $e',
+                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                  ),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
                               );
                             }
                           }
                         },
-                        child: const Text('Simpan Anggota Baru', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Simpan Anggota Baru',
+                          style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -636,16 +635,23 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
         decoration: BoxDecoration(
           color: selected ? color.withValues(alpha: 0.12) : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? color : Colors.grey.shade300,
-            width: selected ? 2.0 : 1.0,
-          ),
+          border: Border.all(color: selected ? color : Colors.grey.shade300, width: selected ? 2.0 : 1.0),
         ),
         child: Column(
           children: [
-            Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: selected ? color : AppColors.textDark, fontSize: 13)),
+            Text(
+              label,
+              style: AppTypography.labelLarge.copyWith(
+                fontWeight: FontWeight.bold,
+                color: selected ? color : AppColors.textDark,
+                fontSize: 13,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(desc, style: TextStyle(fontSize: 10, color: selected ? color : AppColors.textLight)),
+            Text(
+              desc,
+              style: AppTypography.caption.copyWith(fontSize: 10, color: selected ? color : AppColors.textLight),
+            ),
           ],
         ),
       ),
@@ -669,12 +675,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              ),
+              padding: EdgeInsets.only(left: 20, right: 20, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -768,7 +769,9 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                         ),
                         onPressed: () async {
                           try {
-                            await ref.read(teamViewModelProvider.notifier).updateMember(
+                            await ref
+                                .read(teamViewModelProvider.notifier)
+                                .updateMember(
                                   id: member.id,
                                   fullName: nameCtrl.text.trim(),
                                   phone: phoneCtrl.text.trim(),
@@ -778,18 +781,32 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Data anggota berhasil diperbarui!')),
+                                SnackBar(
+                                  content: Text(
+                                    'Data anggota berhasil diperbarui!',
+                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                  ),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Gagal: $e'), backgroundColor: AppColors.errorRed),
+                                SnackBar(
+                                  content: Text(
+                                    'Gagal: $e',
+                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                  ),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
                               );
                             }
                           }
                         },
-                        child: const Text('Simpan Perubahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Simpan Perubahan',
+                          style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -809,12 +826,15 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Anggota Tim?'),
-        content: Text('Apakah Anda yakin ingin menghapus akun "${member.fullName}"? Tindakan ini tidak dapat dibatalkan.'),
+        title: Text('Hapus Anggota Tim?', style: AppTypography.h3),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus akun "${member.fullName}"? Tindakan ini tidak dapat dibatalkan.',
+          style: AppTypography.bodyMedium,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
@@ -824,18 +844,29 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                 await ref.read(teamViewModelProvider.notifier).deleteMember(member.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Akun ${member.fullName} berhasil dihapus')),
+                    SnackBar(
+                      content: Text(
+                        'Akun ${member.fullName} berhasil dihapus',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menghapus: $e'), backgroundColor: AppColors.errorRed),
+                    SnackBar(
+                      content: Text(
+                        'Gagal menghapus: $e',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
+                      backgroundColor: AppColors.errorRed,
+                    ),
                   );
                 }
               }
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
           ),
         ],
       ),

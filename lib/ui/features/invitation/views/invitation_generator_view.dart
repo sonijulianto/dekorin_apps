@@ -9,12 +9,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 
-enum MessageTemplateType {
-  formal,
-  casual,
-  family,
-  custom,
-}
+enum MessageTemplateType { formal, casual, family, custom }
 
 class InvitationGeneratorView extends StatefulWidget {
   const InvitationGeneratorView({super.key, required this.invitation});
@@ -93,9 +88,7 @@ Wassalamu'alaikum Wr. Wb.''';
 
   String _getCoupleOrHost() {
     if (widget.invitation.eventType == 'khitan') {
-      return widget.invitation.groomParents.isNotEmpty
-          ? widget.invitation.groomParents
-          : 'Keluarga Besar';
+      return widget.invitation.groomParents.isNotEmpty ? widget.invitation.groomParents : 'Keluarga Besar';
     }
     return '${widget.invitation.groomNickname} & ${widget.invitation.brideNickname}';
   }
@@ -209,7 +202,12 @@ Hormat kami sekeluarga,
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+          SnackBar(
+            content: Text(
+              'Tidak dapat membuka WhatsApp',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+          ),
         );
       }
     }
@@ -220,8 +218,11 @@ Hormat kami sekeluarga,
     Clipboard.setData(ClipboardData(text: message));
     setState(() => _copiedStatus = 'Tersalin! ✅');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Teks undangan berhasil disalin ke clipboard!'),
+      SnackBar(
+        content: Text(
+          'Teks undangan berhasil disalin ke clipboard!',
+          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+        ),
         behavior: SnackBarBehavior.floating,
         duration: Duration(milliseconds: 1500),
       ),
@@ -236,8 +237,11 @@ Hormat kami sekeluarga,
     Clipboard.setData(ClipboardData(text: url));
     setState(() => _isCopiedLink = true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tautan undangan berhasil disalin!'),
+      SnackBar(
+        content: Text(
+          'Tautan undangan berhasil disalin!',
+          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+        ),
         behavior: SnackBarBehavior.floating,
         duration: Duration(milliseconds: 1500),
       ),
@@ -251,10 +255,7 @@ Hormat kami sekeluarga,
     final name = _quickGuestInputController.text.trim();
     if (name.isEmpty) return;
     setState(() {
-      _quickGuestList.add({
-        'name': name,
-        'sent': false,
-      });
+      _quickGuestList.add({'name': name, 'sent': false});
       _quickGuestInputController.clear();
       if (_recipientController.text.isEmpty) {
         _recipientController.text = name;
@@ -285,10 +286,7 @@ Hormat kami sekeluarga,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.primaryGold.withValues(alpha: 0.15),
-                  AppColors.goldLight,
-                ],
+                colors: [AppColors.primaryGold.withValues(alpha: 0.15), AppColors.goldLight],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -327,13 +325,10 @@ Hormat kami sekeluarga,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: primaryColor,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                            decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(6)),
                             child: Text(
                               tmpl['name'] as String,
-                              style: const TextStyle(
+                              style: AppTypography.caption.copyWith(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -343,7 +338,7 @@ Hormat kami sekeluarga,
                           const SizedBox(width: 8),
                           Text(
                             '/${widget.invitation.slug}',
-                            style: const TextStyle(
+                            style: AppTypography.caption.copyWith(
                               fontSize: 11,
                               fontFamily: 'monospace',
                               color: AppColors.textLight,
@@ -411,20 +406,13 @@ Hormat kami sekeluarga,
                     Expanded(
                       child: Text(
                         currentUrl,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textDark,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w600),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
-                      icon: Icon(
-                        _isCopiedLink ? Icons.check : Icons.copy,
-                        color: AppColors.primaryGold,
-                        size: 20,
-                      ),
+                      icon: Icon(_isCopiedLink ? Icons.check : Icons.copy, color: AppColors.primaryGold, size: 20),
                       tooltip: 'Salin Tautan',
                       onPressed: _copyLinkOnly,
                     ),
@@ -444,25 +432,13 @@ Hormat kami sekeluarga,
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildTemplateChoiceChip(
-                      label: 'Formal (Santun)',
-                      type: MessageTemplateType.formal,
-                    ),
+                    _buildTemplateChoiceChip(label: 'Formal (Santun)', type: MessageTemplateType.formal),
                     const SizedBox(width: 8),
-                    _buildTemplateChoiceChip(
-                      label: 'Sahabat (Kasual)',
-                      type: MessageTemplateType.casual,
-                    ),
+                    _buildTemplateChoiceChip(label: 'Sahabat (Kasual)', type: MessageTemplateType.casual),
                     const SizedBox(width: 8),
-                    _buildTemplateChoiceChip(
-                      label: 'Keluarga',
-                      type: MessageTemplateType.family,
-                    ),
+                    _buildTemplateChoiceChip(label: 'Keluarga', type: MessageTemplateType.family),
                     const SizedBox(width: 8),
-                    _buildTemplateChoiceChip(
-                      label: 'Custom Teks',
-                      type: MessageTemplateType.custom,
-                    ),
+                    _buildTemplateChoiceChip(label: 'Custom Teks', type: MessageTemplateType.custom),
                   ],
                 ),
               ),
@@ -479,13 +455,10 @@ Hormat kami sekeluarga,
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
                   child: Text(
                     '💡 Gunakan tag [NAMA] untuk nama tamu dan [LINK] untuk tautan undangan.',
-                    style: TextStyle(fontSize: 11, color: Colors.blue.shade800),
+                    style: AppTypography.caption.copyWith(fontSize: 11, color: Colors.blue.shade800),
                   ),
                 ),
               ],
@@ -508,7 +481,7 @@ Hormat kami sekeluarga,
                 ),
                 child: SelectableText(
                   messagePreview,
-                  style: const TextStyle(
+                  style: AppTypography.bodySmall.copyWith(
                     fontSize: 12.5,
                     height: 1.6,
                     color: Color(0xFF1E293B),
@@ -531,7 +504,13 @@ Hormat kami sekeluarga,
                       ),
                       onPressed: _copyMessage,
                       icon: const Icon(Icons.copy, size: 18),
-                      label: Text(_copiedStatus, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text(
+                        _copiedStatus,
+                        style: AppTypography.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -550,7 +529,7 @@ Hormat kami sekeluarga,
                         }
                       },
                       icon: const Icon(Icons.open_in_browser, size: 18),
-                      label: const Text('Buka Web', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text('Buka Web', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -574,9 +553,9 @@ Hormat kami sekeluarga,
                     height: 22,
                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
-                  label: const Text(
+                  label: Text(
                     'Kirim Langsung via WhatsApp',
-                    style: TextStyle(
+                    style: AppTypography.titleMedium.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -620,7 +599,10 @@ Hormat kami sekeluarga,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     onPressed: _addQuickGuest,
-                    child: const Text('Tambah', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Tambah',
+                      style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -640,9 +622,7 @@ Hormat kami sekeluarga,
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
                         radius: 16,
-                        backgroundColor: isSent
-                            ? Colors.green.shade100
-                            : AppColors.goldLight,
+                        backgroundColor: isSent ? Colors.green.shade100 : AppColors.goldLight,
                         child: Icon(
                           isSent ? Icons.check : Icons.person,
                           size: 18,
@@ -670,7 +650,11 @@ Hormat kami sekeluarga,
                               ),
                               child: Text(
                                 'Terkirim',
-                                style: TextStyle(fontSize: 10, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                                style: AppTypography.caption.copyWith(
+                                  fontSize: 10,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           IconButton(
@@ -705,14 +689,18 @@ Hormat kami sekeluarga,
     );
   }
 
-  Widget _buildTemplateChoiceChip({
-    required String label,
-    required MessageTemplateType type,
-  }) {
+  Widget _buildTemplateChoiceChip({required String label, required MessageTemplateType type}) {
     final isSelected = _selectedTemplateType == type;
 
     return ChoiceChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: AppTypography.bodySmall.copyWith(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : AppColors.textDark,
+        ),
+      ),
       selected: isSelected,
       onSelected: (selected) {
         if (selected) {
@@ -720,26 +708,15 @@ Hormat kami sekeluarga,
         }
       },
       selectedColor: AppColors.primaryGold,
-      labelStyle: TextStyle(
-        fontSize: 12,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected ? Colors.white : AppColors.textDark,
-      ),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
-        ),
+        side: BorderSide(color: isSelected ? AppColors.primaryGold : AppColors.borderLight),
       ),
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
+  Widget _buildCard({required String title, required IconData icon, required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -755,10 +732,7 @@ Hormat kami sekeluarga,
               Icon(icon, color: AppColors.primaryGold, size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold),
-                ),
+                child: Text(title, style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold)),
               ),
             ],
           ),

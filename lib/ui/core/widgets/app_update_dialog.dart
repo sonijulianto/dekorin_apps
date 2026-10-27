@@ -51,10 +51,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
 
     try {
       _otaSubscription = OtaUpdate()
-          .execute(
-            widget.info.downloadUrl,
-            destinationFilename: 'dekorin_${widget.info.versionName}.apk',
-          )
+          .execute(widget.info.downloadUrl, destinationFilename: 'dekorin_${widget.info.versionName}.apk')
           .listen(
             (OtaEvent event) {
               if (!mounted) return;
@@ -81,8 +78,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
                   setState(() {
                     _isDownloading = false;
-                    _errorMessage =
-                        'Izin pemasangan aplikasi dari sumber ini tidak diberikan.';
+                    _errorMessage = 'Izin pemasangan aplikasi dari sumber ini tidak diberikan.';
                   });
                   break;
                 case OtaStatus.DOWNLOAD_ERROR:
@@ -90,8 +86,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 case OtaStatus.CHECKSUM_ERROR:
                   setState(() {
                     _isDownloading = false;
-                    _errorMessage =
-                        'Gagal mengunduh APK (${event.status.name}). Silakan unduh langsung via browser.';
+                    _errorMessage = 'Gagal mengunduh APK (${event.status.name}). Silakan unduh langsung via browser.';
                   });
                   break;
                 case OtaStatus.CANCELED:
@@ -110,8 +105,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               if (!mounted) return;
               setState(() {
                 _isDownloading = false;
-                _errorMessage =
-                    'Terjadi kendala saat update: $e. Anda dapat mengunduh langsung via browser.';
+                _errorMessage = 'Terjadi kendala saat update: $e. Anda dapat mengunduh langsung via browser.';
               });
             },
           );
@@ -149,15 +143,8 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.goldLight,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.system_update_rounded,
-                      color: AppColors.primaryGold,
-                      size: 26,
-                    ),
+                    decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.system_update_rounded, color: AppColors.primaryGold, size: 26),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -166,9 +153,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       children: [
                         Text(
                           'Pembaruan Tersedia',
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -188,20 +173,12 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               // Description & Changelog
               Text(
                 'Versi terbaru Dekorin telah tersedia. Segera perbarui untuk menikmati fitur dan perbaikan terbaru.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textDark,
-                  height: 1.4,
-                ),
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textDark, height: 1.4),
               ),
               const SizedBox(height: 12),
 
               if (widget.info.releaseNotes.isNotEmpty) ...[
-                Text(
-                  'Catatan Rilis:',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text('Catatan Rilis:', style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 Container(
                   constraints: const BoxConstraints(maxHeight: 140),
@@ -233,19 +210,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     value: (_downloadProgress ?? 0) / 100,
                     minHeight: 8,
                     backgroundColor: AppColors.goldLight,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppColors.primaryGold,
-                    ),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   _statusText,
                   textAlign: TextAlign.center,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -257,12 +229,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     color: AppColors.errorRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    _errorMessage!,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.errorRed,
-                    ),
-                  ),
+                  child: Text(_errorMessage!, style: AppTypography.caption.copyWith(color: AppColors.errorRed)),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -278,12 +245,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                         _isDownloading = false;
                       });
                     },
-                    child: Text(
-                      'Batal',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textLight,
-                      ),
-                    ),
+                    child: Text('Batal', style: AppTypography.bodySmall.copyWith(color: AppColors.textLight)),
                   ),
               ] else ...[
                 Row(
@@ -294,17 +256,12 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.borderLight),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: Text(
                             'Nanti',
-                            style: AppTypography.button.copyWith(
-                              color: AppColors.textLight,
-                              fontSize: 14,
-                            ),
+                            style: AppTypography.button.copyWith(color: AppColors.textLight, fontSize: 14),
                           ),
                         ),
                       ),
@@ -318,9 +275,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                           backgroundColor: AppColors.primaryGold,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         child: Text(
@@ -335,11 +290,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: _openInBrowser,
-                    icon: const Icon(
-                      Icons.open_in_browser,
-                      size: 18,
-                      color: AppColors.secondaryGold,
-                    ),
+                    icon: const Icon(Icons.open_in_browser, size: 18, color: AppColors.secondaryGold),
                     label: Text(
                       'Unduh Langsung Lewat Browser',
                       style: AppTypography.caption.copyWith(
@@ -364,10 +315,7 @@ class AppUpdateChecker {
 
   /// Memeriksa apakah ada update baru
   /// [showToastIfLatest]: jika true, menampilkan feedback jika sudah versi terbaru (cocok untuk tombol manual di Profile)
-  static Future<void> check(
-    BuildContext context, {
-    bool showToastIfLatest = false,
-  }) async {
+  static Future<void> check(BuildContext context, {bool showToastIfLatest = false}) async {
     if (_isChecking) return;
     _isChecking = true;
 
@@ -387,11 +335,8 @@ class AppUpdateChecker {
         showDialog(
           context: context,
           barrierDismissible: !isForce,
-          builder: (dialogCtx) => AppUpdateDialog(
-            info: latest,
-            currentVersion: currentVersion,
-            currentBuildNumber: currentBuild,
-          ),
+          builder: (dialogCtx) =>
+              AppUpdateDialog(info: latest, currentVersion: currentVersion, currentBuildNumber: currentBuild),
         );
       } else if (showToastIfLatest) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -399,7 +344,7 @@ class AppUpdateChecker {
             backgroundColor: AppColors.primaryDark,
             content: Text(
               'Aplikasi Dekorin sudah menggunakan versi terbaru (v$currentVersion).',
-              style: const TextStyle(color: Colors.white),
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
@@ -413,9 +358,9 @@ class AppUpdateChecker {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.errorRed,
-            content: const Text(
+            content: Text(
               'Gagal memeriksa pembaruan. Silakan periksa koneksi internet Anda.',
-              style: TextStyle(color: Colors.white),
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

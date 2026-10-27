@@ -8,10 +8,7 @@ import 'package:dekorin_apps/domain/models/decoration_addon.dart';
 
 /// Model pembungkus untuk item tambahan beserta jumlah (kuantitas) yang dipesan.
 class SelectedAddonItem {
-  SelectedAddonItem({
-    required this.addon,
-    this.quantity = 1,
-  });
+  SelectedAddonItem({required this.addon, this.quantity = 1});
 
   final DecorationAddon addon;
   int quantity;
@@ -22,10 +19,7 @@ class SelectedAddonItem {
 /// Screen untuk memilih item tambahan (addon) dengan kuantitas (qty) dan fitur pencarian.
 /// Mengembalikan `List<SelectedAddonItem>` ke caller via [Navigator.pop].
 class AddonPickerScreen extends ConsumerStatefulWidget {
-  const AddonPickerScreen({
-    super.key,
-    required this.initiallySelectedAddons,
-  });
+  const AddonPickerScreen({super.key, required this.initiallySelectedAddons});
 
   final List<SelectedAddonItem> initiallySelectedAddons;
 
@@ -44,10 +38,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
     super.initState();
     _selectedMap = {
       for (final item in widget.initiallySelectedAddons)
-        item.addon.id: SelectedAddonItem(
-          addon: item.addon,
-          quantity: item.quantity,
-        ),
+        item.addon.id: SelectedAddonItem(addon: item.addon, quantity: item.quantity),
     };
   }
 
@@ -82,21 +73,11 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final addonsAsync = ref.watch(addonsProvider);
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
-    final totalSelectedPrice = _selectedMap.values.fold<double>(
-      0.0,
-      (sum, item) => sum + item.totalPrice,
-    );
+    final totalSelectedPrice = _selectedMap.values.fold<double>(0.0, (sum, item) => sum + item.totalPrice);
 
-    final totalItemsCount = _selectedMap.values.fold<int>(
-      0,
-      (sum, item) => sum + item.quantity,
-    );
+    final totalItemsCount = _selectedMap.values.fold<int>(0, (sum, item) => sum + item.quantity);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
@@ -107,13 +88,9 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textDark),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Pilih Item Tambahan (Addon)',
-          style: TextStyle(
-            color: AppTheme.textDark,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: AppTypography.titleLarge.copyWith(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -135,7 +112,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
               },
               decoration: InputDecoration(
                 hintText: 'Cari nama item addon...',
-                hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+                hintStyle: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
                 prefixIcon: const Icon(Icons.search, size: 20, color: AppTheme.textLight),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -151,10 +128,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 filled: true,
                 fillColor: AppTheme.backgroundLight,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: Colors.grey.shade200),
@@ -170,9 +144,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
           // ── Grid & Content Area ──
           Expanded(
             child: addonsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryGold),
-              ),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
               error: (e, _) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -184,7 +156,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                       Text(
                         'Gagal memuat item addon: $e',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.textLight),
+                        style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -193,7 +165,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                           backgroundColor: AppTheme.primaryGold,
                           minimumSize: const Size(0, 44),
                         ),
-                        child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                        child: Text('Coba Lagi', style: AppTypography.button),
                       ),
                     ],
                   ),
@@ -216,19 +188,19 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                             child: const Icon(Icons.extension_off_outlined, size: 56, color: AppTheme.primaryGold),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Belum Ada Item Tambahan',
-                            style: TextStyle(
+                            style: AppTypography.titleMedium.copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textDark,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Anda belum menambahkan item tambahan di menu Kelola Addon (Profile).',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+                            style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
                           ),
                         ],
                       ),
@@ -255,7 +227,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                           const SizedBox(height: 14),
                           Text(
                             'Tidak Ditemukan',
-                            style: const TextStyle(
+                            style: AppTypography.titleMedium.copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textDark,
@@ -265,7 +237,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                           Text(
                             'Tidak ada addon yang sesuai kata kunci "$_searchQuery"',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+                            style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
                           ),
                         ],
                       ),
@@ -306,11 +278,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, -3),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, -3)),
           ],
         ),
         child: SafeArea(
@@ -323,7 +291,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                   children: [
                     Text(
                       '${_selectedMap.length} Jenis ($totalItemsCount Item)',
-                      style: const TextStyle(
+                      style: AppTypography.titleSmall.copyWith(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textDark,
@@ -332,7 +300,7 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                     const SizedBox(height: 2),
                     Text(
                       currencyFormatter.format(totalSelectedPrice),
-                      style: const TextStyle(
+                      style: AppTypography.titleMedium.copyWith(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryGold,
@@ -351,13 +319,15 @@ class _AddonPickerScreenState extends ConsumerState<AddonPickerScreen> {
                   foregroundColor: Colors.white,
                   minimumSize: const Size(0, 48),
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
+                child: Text(
                   'Terapkan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -417,9 +387,7 @@ class _AddonCardWithQty extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected
-                ? AppTheme.primaryGold.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.04),
+            color: isSelected ? AppTheme.primaryGold.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.04),
             blurRadius: isSelected ? 10 : 6,
             offset: const Offset(0, 2),
           ),
@@ -452,16 +420,11 @@ class _AddonCardWithQty extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.primaryGold,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 4,
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4)],
                     ),
                     child: Text(
                       '${quantity}x',
-                      style: const TextStyle(
+                      style: AppTypography.caption.copyWith(
                         color: Colors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -481,7 +444,7 @@ class _AddonCardWithQty extends StatelessWidget {
                 children: [
                   Text(
                     addon.name,
-                    style: const TextStyle(
+                    style: AppTypography.labelMedium.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textDark,
@@ -493,7 +456,7 @@ class _AddonCardWithQty extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${currencyFormatter.format(addon.price)} / unit',
-                    style: const TextStyle(
+                    style: AppTypography.caption.copyWith(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.primaryGold,
@@ -512,18 +475,16 @@ class _AddonCardWithQty extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppTheme.primaryGold.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppTheme.primaryGold.withValues(alpha: 0.3),
-                          ),
+                          border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add, size: 14, color: AppTheme.primaryGold),
                             SizedBox(width: 4),
                             Text(
                               'Tambah',
-                              style: TextStyle(
+                              style: AppTypography.caption.copyWith(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.primaryGold,
@@ -556,7 +517,7 @@ class _AddonCardWithQty extends StatelessWidget {
                           ),
                           Text(
                             '$quantity',
-                            style: const TextStyle(
+                            style: AppTypography.labelMedium.copyWith(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textDark,
@@ -589,9 +550,7 @@ class _AddonCardWithQty extends StatelessWidget {
       height: 100,
       width: double.infinity,
       color: bgColor,
-      child: Center(
-        child: Icon(icon, size: 40, color: AppTheme.primaryGold),
-      ),
+      child: Center(child: Icon(icon, size: 40, color: AppTheme.primaryGold)),
     );
   }
 }

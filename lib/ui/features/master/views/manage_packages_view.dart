@@ -20,11 +20,7 @@ class _PackageModelItemEntry {
   double additionalPrice;
   final TextEditingController controller;
 
-  _PackageModelItemEntry({
-    required this.model,
-    required this.additionalPrice,
-    required this.controller,
-  });
+  _PackageModelItemEntry({required this.model, required this.additionalPrice, required this.controller});
 }
 
 class ManagePackagesView extends ConsumerStatefulWidget {
@@ -47,17 +43,18 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
     if (masterModels.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Belum ada master data model dekorasi. Silakan buat di menu Kelola Model Dekorasi terlebih dahulu.'),
+        SnackBar(
+          content: Text(
+            'Belum ada master data model dekorasi. Silakan buat di menu Kelola Model Dekorasi terlebih dahulu.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.primaryGold,
         ),
       );
       return;
     }
 
-    final selectedMap = <String, _PackageModelItemEntry>{
-      for (final item in currentSelected) item.model.id: item,
-    };
+    final selectedMap = <String, _PackageModelItemEntry>{for (final item in currentSelected) item.model.id: item};
 
     if (!mounted) return;
 
@@ -77,66 +74,69 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: masterModels.length,
-                  separatorBuilder: (_, unused) => const Divider(height: 1),
-                  itemBuilder: (context, idx) {
-                    final m = masterModels[idx];
-                    final isChecked = selectedMap.containsKey(m.id);
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: masterModels.length,
+                    separatorBuilder: (_, unused) => const Divider(height: 1),
+                    itemBuilder: (context, idx) {
+                      final m = masterModels[idx];
+                      final isChecked = selectedMap.containsKey(m.id);
 
-                    return CheckboxListTile(
-                      value: isChecked,
-                      activeColor: AppColors.primaryGold,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(m.name, style: AppTypography.titleSmall),
-                      subtitle: Text(
-                        '${m.width.isNotEmpty ? 'Lebar: ${m.width} • ' : ''}${currencyFormatter.format(m.price)}',
-                        style: AppTypography.caption,
-                      ),
-                      secondary: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: m.imageUrl.isNotEmpty
-                            ? Image.network(
-                                m.imageUrl,
-                                width: 44,
-                                height: 44,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
+                      return CheckboxListTile(
+                        value: isChecked,
+                        activeColor: AppColors.primaryGold,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(m.name, style: AppTypography.titleSmall),
+                        subtitle: Text(
+                          '${m.width.isNotEmpty ? 'Lebar: ${m.width} • ' : ''}${currencyFormatter.format(m.price)}',
+                          style: AppTypography.caption,
+                        ),
+                        secondary: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: m.imageUrl.isNotEmpty
+                              ? Image.network(
+                                  m.imageUrl,
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    width: 44,
+                                    height: 44,
+                                    color: AppColors.goldLight,
+                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                  ),
+                                )
+                              : Container(
                                   width: 44,
                                   height: 44,
                                   color: AppColors.goldLight,
                                   child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
                                 ),
-                              )
-                            : Container(
-                                width: 44,
-                                height: 44,
-                                color: AppColors.goldLight,
-                                child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                              ),
-                      ),
-                      onChanged: (val) {
-                        setDlgState(() {
-                          if (val == true) {
-                            selectedMap[m.id] = _PackageModelItemEntry(
-                              model: m,
-                              additionalPrice: 0,
-                              controller: TextEditingController(text: '0'),
-                            );
-                          } else {
-                            selectedMap.remove(m.id);
-                          }
-                        });
-                      },
-                    );
-                  },
+                        ),
+                        onChanged: (val) {
+                          setDlgState(() {
+                            if (val == true) {
+                              selectedMap[m.id] = _PackageModelItemEntry(
+                                model: m,
+                                additionalPrice: 0,
+                                controller: TextEditingController(text: '0'),
+                              );
+                            } else {
+                              selectedMap.remove(m.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dlgContext),
-                  child: const Text('Batal', style: TextStyle(color: AppColors.textLight)),
+                  child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
@@ -144,7 +144,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                     onUpdated(selectedMap.values.toList());
                     Navigator.pop(dlgContext);
                   },
-                  child: const Text('Simpan Pilihan', style: TextStyle(color: Colors.white)),
+                  child: Text('Simpan Pilihan', style: AppTypography.button),
                 ),
               ],
             );
@@ -159,9 +159,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final nameController = TextEditingController(text: package?.name ?? '');
     final priceController = TextEditingController(
-      text: package != null && package.basePrice > 0
-          ? thousandFormatter.format(package.basePrice.toInt()).replaceAll(',', '.')
-          : '',
+      text: package != null && package.basePrice > 0 ? thousandFormatter.format(package.basePrice.toInt()).replaceAll(',', '.') : '',
     );
     final descController = TextEditingController(text: package?.description ?? '');
     final formKey = GlobalKey<FormState>();
@@ -195,12 +193,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
       try {
         final picker = ImagePicker();
-        final XFile? pickedFile = await picker.pickImage(
-          source: source,
-          imageQuality: 70,
-          maxWidth: 1080,
-          maxHeight: 1080,
-        );
+        final XFile? pickedFile = await picker.pickImage(source: source, imageQuality: 70, maxWidth: 1080, maxHeight: 1080);
 
         if (pickedFile != null) {
           setModalState(() {
@@ -210,7 +203,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memilih foto: $e')),
+            SnackBar(
+              content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            ),
           );
         }
       }
@@ -221,22 +216,17 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
+            return SafeArea(
+              top: true,
               child: Form(
                 key: formKey,
                 child: SingleChildScrollView(
+                  padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,18 +234,12 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            isEdit ? 'Edit Paket Dekorasi' : 'Tambah Paket Baru',
-                            style: AppTypography.titleLarge,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                          Expanded(child: Text(isEdit ? 'Edit Paket Dekorasi' : 'Tambah Paket Baru', style: AppTypography.titleLarge)),
+                          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Label Upload Foto
                       Text('Foto Paket Dekorasi', style: AppTypography.labelLarge),
                       const SizedBox(height: 8),
@@ -296,26 +280,21 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     ],
                                   )
                                 : existingImageUrl.isNotEmpty
-                                    ? Image.network(
-                                        existingImageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Center(
-                                          child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight),
-                                        ),
-                                      )
-                                    : Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Ketuk untuk memilih foto paket',
-                                              style: AppTypography.caption.copyWith(color: AppColors.textLight),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                ? Image.network(
+                                    existingImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight)),
+                                  )
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
+                                        const SizedBox(height: 8),
+                                        Text('Ketuk untuk memilih foto paket', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                                      ],
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -328,7 +307,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.gallery, setModalState),
                               icon: const Icon(Icons.photo_library, size: 18),
-                              label: const Text('Galeri'),
+                              label: Text('Galeri', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -340,7 +319,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.camera, setModalState),
                               icon: const Icon(Icons.camera_alt, size: 18),
-                              label: const Text('Kamera'),
+                              label: Text('Kamera', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -363,12 +342,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                         label: 'Harga Dasar',
                         hint: 'Contoh: 4.000.000',
                         prefixText: 'Rp ',
-                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          ThousandsSeparatorInputFormatter(),
-                        ],
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
                           final clean = v.replaceAll(RegExp(r'\D'), '');
@@ -389,19 +365,19 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
                       // ── Bagian Model Dekorasi dalam Paket ──────
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Pilihan model & biaya tambahan (surcharge)',
-                                style: AppTypography.caption.copyWith(color: AppColors.textLight),
-                              ),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
+                                const SizedBox(height: 2),
+                                Text('Pilihan model & biaya tambahan (surcharge)', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           TextButton.icon(
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.primaryGold,
@@ -410,7 +386,10 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                             icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Pilih Model', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            label: Text(
+                              'Pilih Model',
+                              style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryGold),
+                            ),
                             onPressed: () {
                               _showModelSelectorDialog(
                                 currentSelected: selectedModels,
@@ -463,13 +442,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.02),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,22 +497,27 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Biaya Tambahan: ',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                                        style: AppTypography.labelMedium.copyWith(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textDark,
+                                        ),
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: TextField(
                                           controller: item.controller,
                                           keyboardType: TextInputType.number,
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter.digitsOnly,
-                                            ThousandsSeparatorInputFormatter(),
-                                          ],
+                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
                                           decoration: InputDecoration(
                                             prefixText: '+ Rp ',
-                                            prefixStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
+                                            prefixStyle: AppTypography.labelMedium.copyWith(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primaryGold,
+                                            ),
                                             hintText: '0',
                                             isDense: true,
                                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -568,7 +546,10 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     spacing: 6,
                                     children: [
                                       ChoiceChip(
-                                        label: const Text('Rp 0 (Termasuk)', style: TextStyle(fontSize: 10)),
+                                        label: Text(
+                                          'Rp 0 (Termasuk)',
+                                          style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark),
+                                        ),
                                         selected: item.additionalPrice == 0,
                                         selectedColor: AppColors.goldLight,
                                         onSelected: (_) {
@@ -579,7 +560,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                         },
                                       ),
                                       ChoiceChip(
-                                        label: const Text('+ 200.000', style: TextStyle(fontSize: 10)),
+                                        label: Text('+ 200.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
                                         selected: item.additionalPrice == 200000,
                                         selectedColor: AppColors.goldLight,
                                         onSelected: (_) {
@@ -590,7 +571,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                         },
                                       ),
                                       ChoiceChip(
-                                        label: const Text('+ 500.000', style: TextStyle(fontSize: 10)),
+                                        label: Text('+ 500.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
                                         selected: item.additionalPrice == 500000,
                                         selectedColor: AppColors.goldLight,
                                         onSelected: (_) {
@@ -615,9 +596,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGold,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: isSubmitting
                               ? null
@@ -638,10 +617,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     final packageModelsPayload = selectedModels.map((item) {
                                       final clean = item.controller.text.replaceAll(RegExp(r'\D'), '');
                                       final addPrice = double.tryParse(clean) ?? 0.0;
-                                      return {
-                                        'model_id': item.model.id,
-                                        'additional_price': addPrice,
-                                      };
+                                      return {'model_id': item.model.id, 'additional_price': addPrice};
                                     }).toList();
 
                                     if (isEdit) {
@@ -668,21 +644,16 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     setModalState(() => isSubmitting = false);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Gagal menyimpan paket: $e')),
+                                        SnackBar(
+                                          content: Text('Gagal menyimpan paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                        ),
                                       );
                                     }
                                   }
                                 },
                           child: isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : Text(
-                                  isEdit ? 'Simpan Perubahan' : 'Tambah Paket',
-                                  style: AppTypography.button,
-                                ),
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(isEdit ? 'Simpan Perubahan' : 'Tambah Paket', style: AppTypography.button),
                         ),
                       ),
                     ],
@@ -701,10 +672,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Hapus Paket', style: AppTypography.titleMedium),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus paket "${package.name}"?',
-          style: AppTypography.bodyMedium,
-        ),
+        content: Text('Apakah Anda yakin ingin menghapus paket "${package.name}"?', style: AppTypography.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -719,7 +687,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menghapus paket: $e')),
+                    SnackBar(
+                      content: Text('Gagal menghapus paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                    ),
                   );
                 }
               }
@@ -760,9 +730,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
       body: packagesAsync.when(
         data: (packages) {
           if (packages.isEmpty) {
-            return Center(
-              child: Text('Belum ada paket dekorasi.', style: AppTypography.bodyMedium),
-            );
+            return Center(child: Text('Belum ada paket dekorasi.', style: AppTypography.bodyMedium));
           }
 
           if (_localPackages == null || _localPackages!.length != packages.length) {
@@ -793,10 +761,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                       Expanded(
                         child: Text(
                           'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textDark,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -814,8 +779,8 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                   await ref.read(masterServiceProvider).reorderPackages(ids);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Urutan paket berhasil disimpan'),
+                      SnackBar(
+                        content: Text('Urutan paket berhasil disimpan', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                         duration: Duration(milliseconds: 1200),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -824,7 +789,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Gagal menyimpan urutan paket: $e')),
+                      SnackBar(
+                        content: Text('Gagal menyimpan urutan paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                      ),
                     );
                   }
                   ref.invalidate(packagesProvider);
@@ -841,13 +808,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.borderLight),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
@@ -899,12 +860,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     ),
                                     if (pkg.description.isNotEmpty) ...[
                                       const SizedBox(height: 4),
-                                      Text(
-                                        pkg.description,
-                                        style: AppTypography.caption,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                      Text(pkg.description, style: AppTypography.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
                                     ],
                                   ],
                                 ),
@@ -954,10 +910,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.goldLight,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
+                                  decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(6)),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -976,9 +929,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                 ),
                                 ...pkg.packageModels.take(3).map((pm) {
                                   final name = pm.decorationModel?.name ?? 'Model';
-                                  final extraText = pm.additionalPrice > 0
-                                      ? '+${currencyFormatter.format(pm.additionalPrice)}'
-                                      : 'Termasuk';
+                                  final extraText = pm.additionalPrice > 0 ? '+${currencyFormatter.format(pm.additionalPrice)}' : 'Termasuk';
                                   return Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                     decoration: BoxDecoration(
@@ -988,7 +939,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     ),
                                     child: Text(
                                       '$name ($extraText)',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                                      style: AppTypography.caption.copyWith(fontSize: 10, color: Colors.grey.shade700),
                                     ),
                                   );
                                 }),
@@ -997,7 +948,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                     child: Text(
                                       '+${pkg.packageModels.length - 3} lainnya',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                                      style: AppTypography.caption.copyWith(fontSize: 10, color: Colors.grey.shade500),
                                     ),
                                   ),
                               ],

@@ -32,9 +32,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
     final nameController = TextEditingController(text: model?.name ?? '');
     final widthController = TextEditingController(text: model?.width ?? '');
     final priceController = TextEditingController(
-      text: model != null && model.price > 0
-          ? thousandFormatter.format(model.price.toInt()).replaceAll(',', '.')
-          : '',
+      text: model != null && model.price > 0 ? thousandFormatter.format(model.price.toInt()).replaceAll(',', '.') : '',
     );
     final descController = TextEditingController(text: model?.description ?? '');
     final formKey = GlobalKey<FormState>();
@@ -61,7 +59,9 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memilih foto: $e')),
+            SnackBar(
+              content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            ),
           );
         }
       }
@@ -70,39 +70,39 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isEdit ? 'Edit Model Dekorasi' : 'Tambah Model Baru',
-                            style: AppTypography.titleLarge,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
+            return SafeArea(
+              top: true,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                isEdit ? 'Edit Model Dekorasi' : 'Tambah Model Baru',
+                                style: AppTypography.titleLarge,
+                              ),
+                            ),
+                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                          ],
+                        ),
                       const SizedBox(height: 16),
 
                       // Label Upload Foto
@@ -138,33 +138,36 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                           ),
                                           child: Text(
                                             '✓ Terkompresi',
-                                            style: AppTypography.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                                            style: AppTypography.caption.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ],
                                   )
                                 : existingImageUrl.isNotEmpty
-                                    ? Image.network(
-                                        existingImageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => const Center(
-                                          child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight),
+                                ? Image.network(
+                                    existingImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(
+                                      child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Ketuk untuk memilih foto model dekorasi',
+                                          style: AppTypography.caption.copyWith(color: AppColors.textLight),
                                         ),
-                                      )
-                                    : Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Ketuk untuk memilih foto model dekorasi',
-                                              style: AppTypography.caption.copyWith(color: AppColors.textLight),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                      ],
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -177,7 +180,10 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.gallery, setModalState),
                               icon: const Icon(Icons.photo_library, size: 18),
-                              label: const Text('Galeri'),
+                              label: Text(
+                                'Galeri',
+                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -189,7 +195,10 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                             child: OutlinedButton.icon(
                               onPressed: () => pickImage(ImageSource.camera, setModalState),
                               icon: const Icon(Icons.camera_alt, size: 18),
-                              label: const Text('Kamera'),
+                              label: Text(
+                                'Kamera',
+                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.primaryGold,
                                 side: const BorderSide(color: AppColors.primaryGold),
@@ -222,12 +231,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                         label: 'Harga Dasar / Acuan Model',
                         hint: 'Contoh: 2.000.000',
                         prefixText: 'Rp ',
-                        prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        prefixStyle: AppTypography.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          ThousandsSeparatorInputFormatter(),
-                        ],
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Harga acuan wajib diisi';
                           final clean = v.replaceAll(RegExp(r'\D'), '');
@@ -253,9 +262,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGold,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: isSubmitting
                               ? null
@@ -297,7 +304,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                     setModalState(() => isSubmitting = false);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Gagal menyimpan model dekorasi: $e')),
+                                        SnackBar(
+                                          content: Text(
+                                            'Gagal menyimpan model dekorasi: $e',
+                                            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                          ),
+                                        ),
                                       );
                                     }
                                   }
@@ -318,11 +330,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    },
+  );
   }
 
   void _confirmDelete(DecorationModel model) {
@@ -330,12 +343,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Model Dekorasi'),
-        content: Text('Apakah Anda yakin ingin menghapus model "${model.name}"?'),
+        title: Text('Hapus Model Dekorasi', style: AppTypography.h3),
+        content: Text('Apakah Anda yakin ingin menghapus model "${model.name}"?', style: AppTypography.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
@@ -346,18 +359,28 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                 ref.invalidate(decorationModelsProvider);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Model dekorasi berhasil dihapus')),
+                    SnackBar(
+                      content: Text(
+                        'Model dekorasi berhasil dihapus',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
+                    ),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menghapus model dekorasi: $e')),
+                    SnackBar(
+                      content: Text(
+                        'Gagal menghapus model dekorasi: $e',
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      ),
+                    ),
                   );
                 }
               }
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
           ),
         ],
       ),
@@ -397,12 +420,16 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
               children: [
                 const Icon(Icons.error_outline, size: 48, color: AppColors.errorRed),
                 const SizedBox(height: 12),
-                Text('Gagal memuat model dekorasi:\n$err', textAlign: TextAlign.center, style: AppTypography.bodyMedium),
+                Text(
+                  'Gagal memuat model dekorasi:\n$err',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
                   onPressed: () => ref.invalidate(decorationModelsProvider),
-                  child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                  child: Text('Coba Lagi', style: AppTypography.button),
                 ),
               ],
             ),
@@ -418,8 +445,11 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                   const SizedBox(height: 12),
                   Text('Belum ada master model dekorasi.', style: AppTypography.bodyMedium),
                   const SizedBox(height: 8),
-                  Text('Tambahkan model dekorasi untuk dipilih dalam paket dan agenda.',
-                      style: AppTypography.caption, textAlign: TextAlign.center),
+                  Text(
+                    'Tambahkan model dekorasi untuk dipilih dalam paket dan agenda.',
+                    style: AppTypography.caption,
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             );
@@ -461,10 +491,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                       Expanded(
                         child: Text(
                           'Model dekorasi ini bisa dipilih dan ditautkan ke Paket Dekorasi dengan penyesuaian biaya tambahan.',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textDark,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -548,10 +575,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  model.name,
-                                  style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
-                                ),
+                                Text(model.name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [

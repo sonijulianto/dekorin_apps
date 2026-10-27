@@ -29,9 +29,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => GuestManagerSheet(invitation: invitation),
     );
   }
@@ -41,10 +39,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Hapus Undangan', style: AppTypography.titleMedium),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus undangan "${invitation.title}"?',
-          style: AppTypography.bodyMedium,
-        ),
+        content: Text('Apakah Anda yakin ingin menghapus undangan "${invitation.title}"?', style: AppTypography.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -59,7 +54,9 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menghapus: $e')),
+                    SnackBar(
+                      content: Text('Gagal menghapus: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                    ),
                   );
                 }
               }
@@ -85,10 +82,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final res = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(builder: (_) => const InvitationFormView()),
-          );
+          final res = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const InvitationFormView()));
           if (res == true) {
             ref.invalidate(invitationsProvider);
           }
@@ -122,16 +116,13 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () async {
-                        final res = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(builder: (_) => const InvitationFormView()),
-                        );
+                        final res = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const InvitationFormView()));
                         if (res == true) {
                           ref.invalidate(invitationsProvider);
                         }
                       },
                       icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text('Buat Undangan Sekarang', style: TextStyle(color: Colors.white)),
+                      label: Text('Buat Undangan Sekarang', style: AppTypography.button),
                     ),
                   ],
                 ),
@@ -154,13 +145,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.borderLight),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(14),
@@ -188,9 +173,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    inv.title.isNotEmpty
-                                        ? inv.title
-                                        : '${inv.groomNickname} & ${inv.brideNickname}',
+                                    inv.title.isNotEmpty ? inv.title : '${inv.groomNickname} & ${inv.brideNickname}',
                                     style: AppTypography.titleSmall,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -220,11 +203,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                             ),
                                             child: Text(
                                               tmpl['name'] as String,
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: tmplColor,
-                                              ),
+                                              style: AppTypography.caption.copyWith(fontSize: 10, fontWeight: FontWeight.bold, color: tmplColor),
                                             ),
                                           );
                                         },
@@ -237,7 +216,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                         ),
                                         child: Text(
                                           '/${inv.slug}',
-                                          style: TextStyle(
+                                          style: AppTypography.caption.copyWith(
                                             fontFamily: 'monospace',
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
@@ -296,49 +275,51 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                         Row(
                           children: [
                             Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primaryGold,
-                                  side: const BorderSide(color: AppColors.primaryGold),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                              flex: 2,
+                              child: SizedBox(
+                                height: 40,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primaryGold,
+                                    side: const BorderSide(color: AppColors.primaryGold),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                  ),
+                                  onPressed: () async {
+                                    final uri = Uri.parse(webUrl);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.open_in_browser, size: 15),
+                                  label: Text('Buka Web', style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.primaryGold)),
                                 ),
-                                onPressed: () async {
-                                  final uri = Uri.parse(webUrl);
-                                  if (await canLaunchUrl(uri)) {
-                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                  }
-                                },
-                                icon: const Icon(Icons.open_in_browser, size: 15),
-                                label: const Text('Buka Web', style: TextStyle(fontSize: 11)),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              flex: 2,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF25D366), // WA Green
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => InvitationGeneratorView(invitation: inv),
-                                    ),
-                                  );
-                                },
-                                icon: SvgPicture.asset(
-                                  'assets/icons/wa.svg',
-                                  width: 15,
-                                  height: 15,
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                ),
-                                label: const Text(
-                                  'Generator Undangan',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                              flex: 3,
+                              child: SizedBox(
+                                height: 40,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF25D366), // WA Green
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => InvitationGeneratorView(invitation: inv)));
+                                  },
+                                  icon: SvgPicture.asset(
+                                    'assets/icons/wa.svg',
+                                    width: 15,
+                                    height: 15,
+                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                  ),
+                                  label: Text(
+                                    'Generator Undangan',
+                                    style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
                                 ),
                               ),
                             ),
@@ -365,7 +346,7 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
         },
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGold)),
         error: (e, _) => Center(
-          child: Text('Gagal memuat undangan: $e', style: const TextStyle(color: AppColors.errorRed)),
+          child: Text('Gagal memuat undangan: $e', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
         ),
       ),
     );

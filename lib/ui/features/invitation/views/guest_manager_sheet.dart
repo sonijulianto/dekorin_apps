@@ -106,7 +106,12 @@ Salam hangat kami,
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+          SnackBar(
+            content: Text(
+              'Tidak dapat membuka WhatsApp',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+          ),
         );
       }
     }
@@ -132,16 +137,10 @@ Salam hangat kami,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Kelola Undangan & Tamu', style: AppTypography.titleMedium),
-                    Text(
-                      widget.invitation.title,
-                      style: AppTypography.caption.copyWith(color: AppColors.primaryGold),
-                    ),
+                    Text(widget.invitation.title, style: AppTypography.caption.copyWith(color: AppColors.primaryGold)),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
           ),
@@ -159,13 +158,7 @@ Salam hangat kami,
           ),
 
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildShareTab(),
-                _buildWishesTab(),
-              ],
-            ),
+            child: TabBarView(controller: _tabController, children: [_buildShareTab(), _buildWishesTab()]),
           ),
         ],
       ),
@@ -213,10 +206,7 @@ Salam hangat kami,
                 Expanded(
                   child: Text(
                     _getGeneratedUrl(),
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textDark,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w600),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -227,8 +217,11 @@ Salam hangat kami,
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _getGeneratedUrl()));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tautan undangan berhasil disalin!'),
+                      SnackBar(
+                        content: Text(
+                          'Tautan undangan berhasil disalin!',
+                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                        ),
                         duration: Duration(milliseconds: 1500),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -256,9 +249,9 @@ Salam hangat kami,
                 height: 20,
                 colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
-              label: const Text(
+              label: Text(
                 'Kirim Undangan via WhatsApp',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
           ),
@@ -275,15 +268,13 @@ Salam hangat kami,
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => InvitationGeneratorView(invitation: widget.invitation),
-                  ),
+                  MaterialPageRoute(builder: (_) => InvitationGeneratorView(invitation: widget.invitation)),
                 );
               },
               icon: const Icon(Icons.bolt, color: Colors.white, size: 20),
-              label: const Text(
+              label: Text(
                 'Buka Generator Undangan Lengkap',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
           ),
@@ -304,7 +295,10 @@ Salam hangat kami,
                 }
               },
               icon: const Icon(Icons.open_in_browser, size: 18),
-              label: const Text('Buka Website di Browser'),
+              label: Text(
+                'Buka Website di Browser',
+                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+              ),
             ),
           ),
         ],
@@ -326,9 +320,7 @@ Salam hangat kami,
             const SizedBox(height: 40),
             Icon(Icons.mark_email_read_outlined, size: 60, color: AppColors.textLight.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            Center(
-              child: Text('Belum ada ucapan & doa yang masuk dari tamu.', style: AppTypography.bodyMedium),
-            ),
+            Center(child: Text('Belum ada ucapan & doa yang masuk dari tamu.', style: AppTypography.bodyMedium)),
           ],
         ),
       );
@@ -403,7 +395,10 @@ Salam hangat kami,
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color)),
+        Text(
+          value,
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 16, color: color),
+        ),
         Text(label, style: AppTypography.caption),
       ],
     );
@@ -433,11 +428,11 @@ Salam hangat kami,
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        label,
+        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: text),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: text)),
     );
   }
 }

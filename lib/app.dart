@@ -16,8 +16,7 @@ class DekorinApp extends ConsumerStatefulWidget {
 }
 
 class _DekorinAppState extends ConsumerState<DekorinApp> {
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -26,8 +25,11 @@ class _DekorinAppState extends ConsumerState<DekorinApp> {
     ApiClient.onUnauthorized = () {
       ref.read(globalAuthProvider.notifier).forceLogout();
       _scaffoldMessengerKey.currentState?.showSnackBar(
-        const SnackBar(
-          content: Text('Sesi Anda telah berakhir. Silakan masuk kembali.'),
+        SnackBar(
+          content: Text(
+            'Sesi Anda telah berakhir. Silakan masuk kembali.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.errorRed,
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 4),
@@ -45,6 +47,13 @@ class _DekorinAppState extends ConsumerState<DekorinApp> {
       scaffoldMessengerKey: _scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      // Tutup keyboard secara global ketika user tap di area kosong mana pun
+      // (berlaku untuk semua screen, dialog, dan bottom sheet).
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: child,
+      ),
       home: authState.when(
         data: (user) {
           // Jika ada user (berhasil login/auto-login), ke MainView.
@@ -54,9 +63,7 @@ class _DekorinAppState extends ConsumerState<DekorinApp> {
           }
           return const LoginView();
         },
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
         error: (err, stack) => const LoginView(), // fallback ke login jika ada error
       ),
     );
