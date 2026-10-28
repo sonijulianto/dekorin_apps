@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,13 +10,16 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class AgendaDetailView extends ConsumerStatefulWidget {
   const AgendaDetailView({super.key, required this.item});
@@ -58,10 +62,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Gagal memperbarui status pembayaran: $e',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
+            content: Text('Gagal memperbarui status pembayaran: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -92,10 +93,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Gagal memperbarui status acara: $e',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
+            content: Text('Gagal memperbarui status acara: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -112,10 +110,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'Tautan tidak dapat dibuka: $urlString',
-                style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-              ),
+              content: Text('Tautan tidak dapat dibuka: $urlString', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             ),
           );
         }
@@ -171,10 +166,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Pesan & Link disalin ke Clipboard!',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
+            content: Text('Pesan & Link disalin ke Clipboard!', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: AppColors.primaryGold,
           ),
         );
@@ -183,6 +175,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditDpDialog(BuildContext context) {
+    if (_item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Acara telah selesai atau dibatalkan, nominal DP tidak dapat diubah.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final initialText = _item.dpAmount > 0 ? thousandFormatter.format(_item.dpAmount.toInt()).replaceAll(',', '.') : '';
 
@@ -205,10 +207,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     child: const Icon(Icons.payments_outlined, color: AppColors.primaryGold, size: 22),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Input Pembayaran DP',
-                    style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  Text('Input Pembayaran DP', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               content: Column(
@@ -227,10 +226,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     autofocus: true,
                     decoration: InputDecoration(
                       prefixText: 'Rp ',
-                      prefixStyle: AppTypography.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
+                      prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
                       hintText: '1.000.000',
                       filled: true,
                       fillColor: AppColors.backgroundLight,
@@ -278,10 +274,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'Pembayaran DP berhasil disimpan! 🎉',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
+                                  content: Text('Pembayaran DP berhasil disimpan! 🎉', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                                   backgroundColor: AppColors.successGreen,
                                 ),
                               );
@@ -291,10 +284,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'Gagal menyimpan DP: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
+                                  content: Text('Gagal menyimpan DP: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                                   backgroundColor: AppColors.errorRed,
                                 ),
                               );
@@ -308,11 +298,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Text(
                           'Simpan DP',
                           style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
@@ -341,9 +327,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     }
 
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
-    final initialText = _item.transportFee > 0
-        ? thousandFormatter.format(_item.transportFee.toInt()).replaceAll(',', '.')
-        : '';
+    final initialText = _item.transportFee > 0 ? thousandFormatter.format(_item.transportFee.toInt()).replaceAll(',', '.') : '';
 
     final transportController = TextEditingController(text: initialText);
     bool isSaving = false;
@@ -361,13 +345,15 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.local_shipping_outlined, color: AppColors.primaryGold, size: 22),
+                    child: SvgPicture.asset(
+                      'assets/icons/shipping-fast.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Input Uang Transport',
-                    style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  Text('Input Uang Transport', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               content: Column(
@@ -386,10 +372,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     autofocus: true,
                     decoration: InputDecoration(
                       prefixText: 'Rp ',
-                      prefixStyle: AppTypography.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
+                      prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
                       hintText: '150.000',
                       filled: true,
                       fillColor: AppColors.backgroundLight,
@@ -419,9 +402,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                           setDialogState(() => isSaving = true);
                           try {
-                            final updated = await ref
-                                .read(agendaServiceProvider)
-                                .updateAgendaTransport(_item.id, newTransport);
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaTransport(_item.id, newTransport);
 
                             ref.read(agendaViewModelProvider.notifier).refresh();
                             ref.invalidate(dashboardViewModelProvider);
@@ -450,10 +431,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'Gagal menyimpan uang transport: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
+                                  content: Text('Gagal menyimpan uang transport: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                                   backgroundColor: AppColors.errorRed,
                                 ),
                               );
@@ -467,11 +445,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Text(
                           'Simpan Transport',
                           style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
@@ -514,19 +488,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
     String selectedPackageId = _item.packageId;
     final nameController = TextEditingController(
-      text: !isUnselected
-          ? (_item.packageName.isNotEmpty ? _item.packageName : (_item.clientForm?.packageName ?? ''))
-          : '',
+      text: !isUnselected ? (_item.packageName.isNotEmpty ? _item.packageName : (_item.clientForm?.packageName ?? '')) : '',
     );
-    final priceController = TextEditingController(
-      text: currentPrice > 0 ? thousandFormatter.format(currentPrice.toInt()).replaceAll(',', '.') : '',
-    );
+    final priceController = TextEditingController(text: currentPrice > 0 ? thousandFormatter.format(currentPrice.toInt()).replaceAll(',', '.') : '');
     bool isSaving = false;
 
-    // Ambil master paket dekorasi untuk opsi quick pick
+    // Ambil master paket dekorasi untuk opsi quick pick (sesuai brand agenda ini)
     List<DecorationPackage> masterPackages = [];
     try {
-      masterPackages = await ref.read(masterServiceProvider).getPackages();
+      final allPkgs = await ref.read(masterServiceProvider).getPackages();
+      masterPackages = allPkgs.where((p) => p.brandId == _item.brandId).toList();
     } catch (_) {}
 
     if (!context.mounted) return;
@@ -548,10 +519,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      'Ubah Paket Dekorasi',
-                      style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text('Ubah Paket Dekorasi', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -563,11 +531,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     if (masterPackages.isNotEmpty) ...[
                       Text(
                         'Pilihan Master Paket:',
-                        style: AppTypography.labelMedium.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
+                        style: AppTypography.labelMedium.copyWith(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
                       ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -593,21 +557,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                 setDialogState(() {
                                   selectedPackageId = pkg.id;
                                   nameController.text = pkg.name;
-                                  priceController.text = thousandFormatter
-                                      .format(pkg.basePrice.toInt())
-                                      .replaceAll(',', '.');
+                                  priceController.text = thousandFormatter.format(pkg.basePrice.toInt()).replaceAll(',', '.');
                                 });
                               },
                             );
                           }),
                           ChoiceChip(
-                            label: Text(
-                              'Belum Dipilih (Rp 0)',
-                              style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight),
-                            ),
-                            selected:
-                                selectedPackageId.isEmpty &&
-                                (nameController.text == 'Belum Dipilih' || nameController.text.isEmpty),
+                            label: Text('Belum Dipilih (Rp 0)', style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight)),
+                            selected: selectedPackageId.isEmpty && (nameController.text == 'Belum Dipilih' || nameController.text.isEmpty),
                             backgroundColor: Colors.grey.shade100,
                             selectedColor: Colors.grey.shade200,
                             onSelected: (_) {
@@ -626,11 +583,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     ],
                     Text(
                       'Detail Paket & Harga (Bisa Diedit Manual):',
-                      style: AppTypography.labelMedium.copyWith(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
+                      style: AppTypography.labelMedium.copyWith(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
                     ),
                     const SizedBox(height: 10),
                     TextField(
@@ -655,10 +608,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       decoration: InputDecoration(
                         labelText: 'Harga Paket',
                         prefixText: 'Rp ',
-                        prefixStyle: AppTypography.labelLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
+                        prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
                         hintText: '1.100.000',
                         filled: true,
                         fillColor: AppColors.backgroundLight,
@@ -683,9 +633,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       : () async {
                           final cleanDigits = priceController.text.replaceAll(RegExp(r'\D'), '');
                           final newPrice = double.tryParse(cleanDigits) ?? 0.0;
-                          final pkgName = nameController.text.trim().isNotEmpty
-                              ? nameController.text.trim()
-                              : 'Belum Dipilih';
+                          final pkgName = nameController.text.trim().isNotEmpty ? nameController.text.trim() : 'Belum Dipilih';
 
                           setDialogState(() => isSaving = true);
                           try {
@@ -732,10 +680,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'Gagal menyimpan paket: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
+                                  content: Text('Gagal menyimpan paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                                   backgroundColor: AppColors.errorRed,
                                 ),
                               );
@@ -749,11 +694,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Text(
                           'Simpan Paket',
                           style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
@@ -797,6 +738,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           package: currentPackage,
           selectedModelId: _item.modelId.isNotEmpty ? _item.modelId : null,
           canClearModel: _item.modelName.isNotEmpty,
+          brandId: _item.brandId,
+          brandName: _item.brandName,
         ),
       ),
     );
@@ -844,9 +787,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result.isCleared
-                  ? 'Model dekorasi berhasil dihapus.'
-                  : 'Model dekorasi berhasil diperbarui: ${result.model?.name} 🎉',
+              result.isCleared ? 'Model dekorasi berhasil dihapus.' : 'Model dekorasi berhasil diperbarui: ${result.model?.name} 🎉',
               style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
             backgroundColor: AppColors.successGreen,
@@ -858,10 +799,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Gagal menyimpan model dekorasi: $e',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
+            content: Text('Gagal menyimpan model dekorasi: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: AppColors.errorRed,
           ),
         );
@@ -949,49 +887,22 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        hasModel ? Icons.edit_outlined : Icons.add_circle_outline,
-                        size: 13,
-                        color: AppColors.primaryGold,
-                      ),
+                      if (hasModel)
+                        SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 13,
+                          height: 13,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        )
+                      else
+                        const Icon(Icons.add_circle_outline, size: 13, color: AppColors.primaryGold),
                       const SizedBox(width: 4),
                       Text(
                         hasModel ? 'Ubah Model' : 'Pilih Model',
-                        style: AppTypography.caption.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGold,
-                        ),
+                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
                       ),
                     ],
                   ),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _item.isEventCompleted ? Colors.green.shade50 : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _item.isEventCompleted ? Icons.check_circle_outline : Icons.cancel_outlined,
-                      size: 12,
-                      color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _item.isEventCompleted ? 'Selesai (Terkunci)' : 'Dibatalkan',
-                      style: AppTypography.caption.copyWith(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
-                      ),
-                    ),
-                  ],
                 ),
               ),
           ],
@@ -1012,9 +923,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   GestureDetector(
-                    onTap: _item.modelImageUrl.isNotEmpty
-                        ? () => _showModelPhotoPreview(context, _item.modelName, _item.modelImageUrl)
-                        : null,
+                    onTap: _item.modelImageUrl.isNotEmpty ? () => _showModelPhotoPreview(context, _item.modelName, _item.modelImageUrl) : null,
                     child: Stack(
                       children: [
                         ClipRRect(
@@ -1045,10 +954,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             right: 2,
                             child: Container(
                               padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
+                              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(4)),
                               child: const Icon(Icons.fullscreen, color: Colors.white, size: 12),
                             ),
                           ),
@@ -1062,10 +968,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       children: [
                         Text(
                           _item.modelName,
-                          style: AppTypography.titleSmall.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                          ),
+                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1075,10 +978,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             children: [
                               const Icon(Icons.straighten, size: 13, color: AppColors.textLight),
                               const SizedBox(width: 4),
-                              Text(
-                                'Lebar: ${_item.modelWidth}',
-                                style: AppTypography.caption.copyWith(color: AppColors.textDark),
-                              ),
+                              Text('Lebar: ${_item.modelWidth}', style: AppTypography.caption.copyWith(color: AppColors.textDark)),
                             ],
                           ),
                           const SizedBox(height: 3),
@@ -1086,34 +986,21 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         if (_item.modelAdditionalPrice > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.goldLight,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                            decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(6)),
                             child: Text(
                               '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
-                              style: AppTypography.caption.copyWith(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGold,
-                              ),
+                              style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
                             ),
                           )
                         else
                           Text(
                             'Termasuk dalam paket',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.successGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: AppTypography.caption.copyWith(color: AppColors.successGreen, fontWeight: FontWeight.w600),
                           ),
                       ],
                     ),
                   ),
-                  if (canEdit) ...[
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
-                  ],
+                  if (canEdit) ...[const SizedBox(width: 8), const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20)],
                 ],
               ),
             ),
@@ -1143,10 +1030,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       children: [
                         Text(
                           'Belum Memilih Model',
-                          style: AppTypography.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
-                          ),
+                          style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                         ),
                         Text(
                           canEdit ? 'Ketuk untuk memilih katalog model backdrop' : 'Tidak ada model dipilih',
@@ -1216,14 +1100,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.edit_note_rounded, color: AppColors.primaryGold, size: 24),
+                    child: SvgPicture.asset(
+                      'assets/icons/edit.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      'Catatan / Request Tambahan',
-                      style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text('Catatan / Request Tambahan', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -1288,9 +1174,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           }
 
                           try {
-                            final updated = await ref
-                                .read(agendaServiceProvider)
-                                .updateAgendaNotes(_item.id, finalNotes, formToken: _item.formToken);
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaNotes(_item.id, finalNotes, formToken: _item.formToken);
 
                             ref.read(agendaViewModelProvider.notifier).refresh();
                             ref.invalidate(dashboardViewModelProvider);
@@ -1321,10 +1205,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'Gagal menyimpan catatan: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
+                                  content: Text('Gagal menyimpan catatan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                                   backgroundColor: AppColors.errorRed,
                                 ),
                               );
@@ -1337,11 +1218,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Text(
                           'Simpan Catatan',
                           style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
@@ -1372,11 +1249,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   const Icon(Icons.notes_rounded, size: 20, color: AppColors.primaryGold),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      'Catatan / Request Tambahan',
-                      style: AppTypography.caption,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: Text('Catatan / Request Tambahan', style: AppTypography.caption, overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ),
@@ -1396,49 +1269,22 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        hasNotes ? Icons.edit_outlined : Icons.add_circle_outline,
-                        size: 13,
-                        color: AppColors.primaryGold,
-                      ),
+                      if (hasNotes)
+                        SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 13,
+                          height: 13,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        )
+                      else
+                        const Icon(Icons.add_circle_outline, size: 13, color: AppColors.primaryGold),
                       const SizedBox(width: 4),
                       Text(
                         hasNotes ? 'Ubah Catatan' : 'Tambah Catatan',
-                        style: AppTypography.caption.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGold,
-                        ),
+                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
                       ),
                     ],
                   ),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _item.isEventCompleted ? Colors.green.shade50 : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _item.isEventCompleted ? Icons.check_circle_outline : Icons.cancel_outlined,
-                      size: 12,
-                      color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _item.isEventCompleted ? 'Selesai (Terkunci)' : 'Dibatalkan',
-                      style: AppTypography.caption.copyWith(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _item.isEventCompleted ? AppColors.successGreen : AppColors.errorRed,
-                      ),
-                    ),
-                  ],
                 ),
               ),
           ],
@@ -1460,14 +1306,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          displayNotes,
-                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textDark, height: 1.4),
-                        ),
+                        child: Text(displayNotes, style: AppTypography.bodyMedium.copyWith(color: AppColors.textDark, height: 1.4)),
                       ),
                       if (canEdit) ...[
                         const SizedBox(width: 8),
-                        const Icon(Icons.edit_outlined, size: 16, color: AppColors.textLight),
+                        SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 16,
+                          height: 16,
+                          colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                        ),
                       ],
                     ],
                   )
@@ -1476,7 +1324,12 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(8)),
-                        child: const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.primaryGold),
+                        child: SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1485,10 +1338,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           children: [
                             Text(
                               'Belum ada catatan atau request tambahan',
-                              style: AppTypography.bodySmall.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textDark,
-                              ),
+                              style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                             ),
                             Text(
                               canEdit ? 'Ketuk untuk menambahkan catatan / permintaan khusus' : 'Tidak ada catatan',
@@ -1512,6 +1362,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final timeFormat = DateFormat('HH:mm', 'id_ID');
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final form = _item.clientForm;
+    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
 
     final isUnselected =
         _item.packageName.toLowerCase().contains('belum dipilih') ||
@@ -1567,6 +1418,11 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final double transportFee = _item.transportFee;
     final double totalBiaya = subtotal + transportFee;
     final double sisaPelunasan = (totalBiaya - _item.dpAmount) > 0 ? (totalBiaya - _item.dpAmount) : 0.0;
+    final brands = ref.watch(companyBrandsProvider).value ?? const <CompanyBrand>[];
+    final mainCompanyName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final currentBrandLabel = _item.brandName.isNotEmpty
+        ? _item.brandName
+        : (mainCompanyName.isNotEmpty ? '$mainCompanyName (Utama)' : 'Brand Utama');
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -1581,10 +1437,21 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.print_outlined, color: AppColors.primaryGold),
+            icon: SvgPicture.asset(
+              'assets/icons/print.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+            ),
             tooltip: 'Cetak Invoice',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => InvoicePreviewView(agenda: _item)));
+            onPressed: () async {
+              final res = await Navigator.push<AgendaItem>(
+                context,
+                MaterialPageRoute(builder: (_) => InvoicePreviewView(agenda: _item)),
+              );
+              if (res != null && mounted) {
+                setState(() => _item = res);
+              }
             },
           ),
         ],
@@ -1615,19 +1482,46 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             _buildEventStatusBadge(),
+                            if (brands.isNotEmpty || _item.brandName.isNotEmpty)
+                              InkWell(
+                                onTap: canEdit && brands.isNotEmpty
+                                    ? () => _showChangeBrandDialog(context, brands, mainCompanyName)
+                                    : null,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGold.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.45)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.layers_outlined, size: 12, color: AppColors.secondaryGold),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        currentBrandLabel,
+                                        style: AppTypography.caption.copyWith(
+                                          color: AppColors.secondaryGold,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (canEdit && brands.isNotEmpty) ...[
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: AppColors.secondaryGold),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
                             if (_item.packageName.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.goldLight,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(12)),
                                 child: Text(
                                   _item.packageName,
-                                  style: AppTypography.caption.copyWith(
-                                    color: AppColors.primaryGold,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             if (_item.modelName.isNotEmpty)
@@ -1645,10 +1539,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     const SizedBox(width: 4),
                                     Text(
                                       '${_item.modelName}${_item.modelWidth.isNotEmpty ? ' (${_item.modelWidth})' : ''}',
-                                      style: AppTypography.caption.copyWith(
-                                        color: AppColors.primaryDark,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: AppTypography.caption.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -1660,10 +1551,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         Text(_item.clientName, style: AppTypography.h2),
                         if (_item.backdropTitle.isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Text(
-                            _item.backdropTitle,
-                            style: AppTypography.titleMedium.copyWith(color: AppColors.primaryGold),
-                          ),
+                          Text(_item.backdropTitle, style: AppTypography.titleMedium.copyWith(color: AppColors.primaryGold)),
                         ],
                         const SizedBox(height: 12),
                         const Divider(height: 1),
@@ -1672,12 +1560,15 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         // Action Contacts
                         Row(
                           children: [
-                            const Icon(Icons.phone_android, size: 18, color: AppColors.textLight),
-                            const SizedBox(width: 8),
-                            Text(
-                              _item.clientPhone.isNotEmpty ? _item.clientPhone : 'Belum ada nomor HP',
-                              style: AppTypography.bodyMedium,
+                            // const Icon(Icons.phone_android, size: 18, color: AppColors.textLight),
+                            SvgPicture.asset(
+                              'assets/icons/mobile-notch.svg',
+                              width: 22,
+                              height: 22,
+                              colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
                             ),
+                            const SizedBox(width: 8),
+                            Text(_item.clientPhone.isNotEmpty ? _item.clientPhone : 'Belum ada nomor HP', style: AppTypography.bodyMedium),
                             const Spacer(),
                             if (_item.clientPhone.isNotEmpty) ...[
                               IconButton(
@@ -1715,9 +1606,15 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                         // Tanggal & Jam
                         _buildInfoRow(
-                          Icons.calendar_month_outlined,
+                          null,
                           'Jadwal Acara',
                           '${dateFormat.format(_item.eventDateTime)} • ${timeFormat.format(_item.eventDateTime)} WIB',
+                          iconWidget: SvgPicture.asset(
+                            'assets/icons/calendar.svg',
+                            width: 20,
+                            height: 20,
+                            colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                          ),
                         ),
                         const SizedBox(height: 12),
 
@@ -1744,10 +1641,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                       onTap: () => _launchUrl(context, _item.mapsUrl),
                                       child: Text(
                                         _item.mapsUrl,
-                                        style: AppTypography.bodyMedium.copyWith(
-                                          color: Colors.blue,
-                                          decoration: TextDecoration.underline,
-                                        ),
+                                        style: AppTypography.bodyMedium.copyWith(color: Colors.blue, decoration: TextDecoration.underline),
                                       ),
                                     ),
                                   ],
@@ -1800,16 +1694,10 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          'Foto Inspirasi Dekorasi',
-                                          style: AppTypography.caption.copyWith(color: Colors.blue.shade900),
-                                        ),
+                                        Text('Foto Inspirasi Dekorasi', style: AppTypography.caption.copyWith(color: Colors.blue.shade900)),
                                         Text(
                                           form.referencePhotoUrl,
-                                          style: AppTypography.bodySmall.copyWith(
-                                            color: Colors.blue,
-                                            decoration: TextDecoration.underline,
-                                          ),
+                                          style: AppTypography.bodySmall.copyWith(color: Colors.blue, decoration: TextDecoration.underline),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -1844,46 +1732,49 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.receipt_long_outlined, color: AppColors.primaryGold, size: 22),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Pembayaran & DP',
-                                  style: AppTypography.titleMedium.copyWith(color: AppColors.primaryDark),
+                                SvgPicture.asset(
+                                  'assets/icons/file-invoice-dollar.svg',
+                                  width: 22,
+                                  height: 22,
+                                  colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
                                 ),
+                                const SizedBox(width: 8),
+                                Text('Pembayaran & DP', style: AppTypography.titleMedium.copyWith(color: AppColors.primaryDark)),
                               ],
                             ),
-                            // Tombol Edit / Input DP
-                            InkWell(
-                              onTap: () => _showEditDpDialog(context),
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _item.dpAmount > 0 ? Icons.edit_outlined : Icons.add_circle_outline,
-                                      size: 14,
-                                      color: AppColors.primaryGold,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _item.dpAmount > 0 ? 'Ubah DP' : 'Input DP',
-                                      style: AppTypography.caption.copyWith(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryGold,
+                            // Tombol Edit / Input DP (hanya jika acara belum selesai)
+                            if (canEdit)
+                              InkWell(
+                                onTap: () => _showEditDpDialog(context),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_item.dpAmount > 0)
+                                        SvgPicture.asset(
+                                          'assets/icons/edit.svg',
+                                          width: 14,
+                                          height: 14,
+                                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                        )
+                                      else
+                                        const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primaryGold),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _item.dpAmount > 0 ? 'Ubah DP' : 'Input DP',
+                                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -1910,18 +1801,13 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                         children: [
                                           Text(
                                             'Paket: ${_item.packageName.isNotEmpty ? _item.packageName : (form?.packageName.isNotEmpty == true ? form!.packageName : "Belum Dipilih")}',
-                                            style: AppTypography.bodySmall.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textDark,
-                                            ),
+                                            style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            packagePrice > 0
-                                                ? currencyFormatter.format(packagePrice)
-                                                : 'Rp 0 (Belum diatur)',
+                                            packagePrice > 0 ? currencyFormatter.format(packagePrice) : 'Rp 0 (Belum diatur)',
                                             style: AppTypography.labelMedium.copyWith(
                                               fontSize: 12,
                                               fontWeight: FontWeight.bold,
@@ -1934,38 +1820,44 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => _showEditPackageDialog(context),
-                                borderRadius: BorderRadius.circular(6),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.goldLight.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        packagePrice > 0 ? Icons.edit_outlined : Icons.add_circle_outline,
-                                        size: 12,
-                                        color: AppColors.primaryGold,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        packagePrice > 0 ? 'Ubah' : 'Pilih',
-                                        style: AppTypography.caption.copyWith(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primaryGold,
+                              if (canEdit) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () => _showEditPackageDialog(context),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.goldLight.withValues(alpha: 0.5),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (packagePrice > 0)
+                                          SvgPicture.asset(
+                                            'assets/icons/edit.svg',
+                                            width: 12,
+                                            height: 12,
+                                            colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                          )
+                                        else
+                                          const Icon(Icons.add_circle_outline, size: 12, color: AppColors.primaryGold),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          packagePrice > 0 ? 'Ubah' : 'Pilih',
+                                          style: AppTypography.caption.copyWith(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGold,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -1992,22 +1884,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                             width: 32,
                                             height: 32,
                                             color: AppColors.goldLight,
-                                            child: const Icon(
-                                              Icons.view_carousel,
-                                              size: 16,
-                                              color: AppColors.primaryGold,
-                                            ),
+                                            child: const Icon(Icons.view_carousel, size: 16, color: AppColors.primaryGold),
                                           ),
                                         )
                                       : Container(
                                           width: 32,
                                           height: 32,
                                           color: AppColors.goldLight,
-                                          child: const Icon(
-                                            Icons.view_carousel,
-                                            size: 16,
-                                            color: AppColors.primaryGold,
-                                          ),
+                                          child: const Icon(Icons.view_carousel, size: 16, color: AppColors.primaryGold),
                                         ),
                                 ),
                                 const SizedBox(width: 8),
@@ -2028,10 +1912,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                           if (_item.modelWidth.isNotEmpty) ...[
                                             Text(
                                               'Lebar: ${_item.modelWidth}',
-                                              style: AppTypography.caption.copyWith(
-                                                fontSize: 11,
-                                                color: AppColors.textLight,
-                                              ),
+                                              style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight),
                                             ),
                                             const SizedBox(width: 8),
                                           ],
@@ -2084,9 +1965,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  form != null && form.selectedAddons.isNotEmpty
-                                      ? 'Addon: ${form.selectedAddons}'
-                                      : 'Addon (Item Tambahan)',
+                                  form != null && form.selectedAddons.isNotEmpty ? 'Addon: ${form.selectedAddons}' : 'Addon (Item Tambahan)',
                                   style: AppTypography.bodyMedium,
                                 ),
                               ),
@@ -2110,12 +1989,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.primaryGold),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Uang Transport:',
-                                    style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500),
+                                  SvgPicture.asset(
+                                    'assets/icons/shipping-fast.svg',
+                                    width: 16,
+                                    height: 16,
+                                    colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
                                   ),
+                                  const SizedBox(width: 6),
+                                  Text('Uang Transport:', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
                                   const SizedBox(width: 6),
                                   Text(
                                     transportFee > 0 ? currencyFormatter.format(transportFee) : 'Rp 0',
@@ -2123,37 +2004,42 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                   ),
                                 ],
                               ),
-                              InkWell(
-                                onTap: () => _showEditTransportDialog(context),
-                                borderRadius: BorderRadius.circular(6),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.goldLight,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        transportFee > 0 ? Icons.edit_outlined : Icons.add_circle_outline,
-                                        size: 12,
-                                        color: AppColors.primaryGold,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        transportFee > 0 ? 'Ubah' : 'Input Transport',
-                                        style: AppTypography.caption.copyWith(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primaryGold,
+                              if (canEdit)
+                                InkWell(
+                                  onTap: () => _showEditTransportDialog(context),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.goldLight,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (transportFee > 0)
+                                          SvgPicture.asset(
+                                            'assets/icons/edit.svg',
+                                            width: 12,
+                                            height: 12,
+                                            colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                          )
+                                        else
+                                          const Icon(Icons.add_circle_outline, size: 12, color: AppColors.primaryGold),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          transportFee > 0 ? 'Ubah' : 'Input Transport',
+                                          style: AppTypography.caption.copyWith(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGold,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -2163,16 +2049,10 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'TOTAL BIAYA',
-                                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
-                              ),
+                              Text('TOTAL BIAYA', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
                               Text(
                                 currencyFormatter.format(totalBiaya),
-                                style: AppTypography.h2.copyWith(
-                                  color: AppColors.primaryDark,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTypography.h2.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -2207,10 +2087,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                       ),
                                       Text(
                                         'Pendapatan agenda ini tercatat penuh di Dashboard.',
-                                        style: AppTypography.caption.copyWith(
-                                          fontSize: 11,
-                                          color: Colors.green.shade700,
-                                        ),
+                                        style: AppTypography.caption.copyWith(fontSize: 11, color: Colors.green.shade700),
                                       ),
                                     ],
                                   ),
@@ -2240,9 +2117,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             decoration: BoxDecoration(
                               color: _item.dpAmount > 0 ? Colors.amber.shade50 : Colors.red.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _item.dpAmount > 0 ? Colors.amber.shade300 : Colors.red.shade200,
-                              ),
+                              border: Border.all(color: _item.dpAmount > 0 ? Colors.amber.shade300 : Colors.red.shade200),
                             ),
                             child: Row(
                               children: [
@@ -2285,20 +2160,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(dialogCtx),
-                                        child: Text(
-                                          'Batal',
-                                          style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
-                                        ),
+                                        child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
                                           Navigator.pop(dialogCtx);
                                           _updatePaymentStatus('paid');
                                         },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                        ),
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                                         child: Text('Ya, Sudah Lunas', style: AppTypography.button),
                                       ),
                                     ],
@@ -2308,11 +2177,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                               icon: const Icon(Icons.check_circle_outline, size: 18),
                               label: Text(
                                 'Tandai Pembayaran Lunas',
-                                style: AppTypography.labelLarge.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Colors.white,
-                                ),
+                                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green.shade600,
@@ -2327,7 +2192,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                         // Baris Informasi Pembayaran DP
                         InkWell(
-                          onTap: () => _showEditDpDialog(context),
+                          onTap: canEdit ? () => _showEditDpDialog(context) : null,
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             margin: const EdgeInsets.only(top: 6),
@@ -2335,9 +2200,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _item.dpAmount > 0 ? Colors.green.shade300 : Colors.amber.shade300,
-                              ),
+                              border: Border.all(color: _item.dpAmount > 0 ? Colors.green.shade300 : Colors.amber.shade300),
                             ),
                             child: Column(
                               children: [
@@ -2365,17 +2228,22 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     Row(
                                       children: [
                                         Text(
-                                          _item.dpAmount > 0
-                                              ? currencyFormatter.format(_item.dpAmount)
-                                              : 'Belum Ada DP',
+                                          _item.dpAmount > 0 ? currencyFormatter.format(_item.dpAmount) : 'Belum Ada DP',
                                           style: AppTypography.labelLarge.copyWith(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
                                             color: _item.dpAmount > 0 ? Colors.green.shade800 : Colors.amber.shade900,
                                           ),
                                         ),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryGold),
+                                        if (canEdit) ...[
+                                          const SizedBox(width: 4),
+                                          SvgPicture.asset(
+                                            'assets/icons/edit.svg',
+                                            width: 13,
+                                            height: 13,
+                                            colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ],
@@ -2412,32 +2280,33 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                         // Tombol Cetak / Lihat Invoice
                         InkWell(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            final res = await Navigator.push<AgendaItem>(
                               context,
                               MaterialPageRoute(builder: (_) => InvoicePreviewView(agenda: _item)),
                             );
+                            if (res != null && mounted) {
+                              setState(() => _item = res);
+                            }
                           },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 11),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGold,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            decoration: BoxDecoration(color: AppColors.primaryGold, borderRadius: BorderRadius.circular(12)),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.receipt_outlined, color: Colors.white, size: 18),
-                                SizedBox(width: 8),
+                                SvgPicture.asset(
+                                  'assets/icons/print.svg',
+                                  width: 18,
+                                  height: 18,
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                ),
+                                const SizedBox(width: 8),
                                 Text(
                                   'Cetak / Lihat Invoice Resmi',
-                                  style: AppTypography.labelLarge.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: AppTypography.labelLarge.copyWith(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -2457,9 +2326,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -3)),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -3))],
             ),
             child: SafeArea(
               child: Row(
@@ -2471,15 +2338,17 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         Clipboard.setData(ClipboardData(text: formUrl));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'Link detail pesanan disalin: $formUrl',
-                              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                            ),
+                            content: Text('Link detail pesanan disalin: $formUrl', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
                             backgroundColor: AppColors.primaryGold,
                           ),
                         );
                       },
-                      icon: const Icon(Icons.copy, size: 18),
+                      icon: SvgPicture.asset(
+                        'assets/icons/copy-alt.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                      ),
                       label: Text('Salin Link', style: AppTypography.labelLarge.copyWith(color: AppColors.textDark)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textDark,
@@ -2495,10 +2364,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     child: ElevatedButton.icon(
                       onPressed: () => _sendWhatsAppMessage(context),
                       icon: const Icon(Icons.send, size: 16),
-                      label: Text(
-                        'Bagikan ke WA',
-                        style: AppTypography.button,
-                      ),
+                      label: Text('Bagikan ke WA', style: AppTypography.button),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF25D366), // WhatsApp Green
                         foregroundColor: Colors.white,
@@ -2517,11 +2383,11 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData? icon, String label, String value, {Widget? iconWidget}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AppColors.primaryGold),
+        iconWidget ?? Icon(icon!, size: 20, color: AppColors.primaryGold),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -2574,11 +2440,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(6)),
                         child: Text(
                           '${addonLines.length} Item',
-                          style: AppTypography.caption.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGold,
-                          ),
+                          style: AppTypography.caption.copyWith(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
                         ),
                       ),
                     ],
@@ -2633,10 +2495,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                 children: [
                                   Text(
                                     itemName,
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textDark,
-                                    ),
+                                    style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                                   ),
                                   if (pricePart.isNotEmpty) ...[
                                     const SizedBox(height: 3),
@@ -2669,12 +2528,140 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     return widgets;
   }
 
+  void _showChangeBrandDialog(
+    BuildContext context,
+    List<CompanyBrand> brands,
+    String mainCompanyName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ubah Brand Usaha Agenda',
+                  style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Mengubah nama & logo di Invoice PDF, Link Form Klien, serta pilihan katalog Paket & Model.',
+                  style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 14),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(
+                      color: _item.brandId.isEmpty ? AppColors.primaryGold : AppColors.borderLight,
+                      width: _item.brandId.isEmpty ? 1.5 : 1,
+                    ),
+                  ),
+                  tileColor: _item.brandId.isEmpty ? AppColors.goldLight.withValues(alpha: 0.4) : Colors.white,
+                  title: Text(
+                    mainCompanyName.isNotEmpty ? '$mainCompanyName (Brand Utama)' : 'Brand Utama',
+                    style: AppTypography.titleSmall,
+                  ),
+                  trailing: _item.brandId.isEmpty
+                      ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGold)
+                      : const Icon(Icons.radio_button_unchecked, color: AppColors.textLight),
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    try {
+                      final updated = await ref.read(agendaServiceProvider).updateAgendaBrand(_item.id, '');
+                      ref.read(agendaViewModelProvider.notifier).refresh();
+                      if (mounted) {
+                        setState(() => _item = updated);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Gagal mengubah brand: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                            backgroundColor: AppColors.errorRed,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                ...brands.map((b) {
+                  final isSelected = _item.brandId == b.id;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      tileColor: isSelected ? AppColors.goldLight.withValues(alpha: 0.4) : Colors.white,
+                      title: Text(b.name, style: AppTypography.titleSmall),
+                      subtitle: b.description.isNotEmpty
+                          ? Text(b.description, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis)
+                          : null,
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGold)
+                          : const Icon(Icons.radio_button_unchecked, color: AppColors.textLight),
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        try {
+                          final updated = await ref.read(agendaServiceProvider).updateAgendaBrand(_item.id, b.id);
+                          ref.read(agendaViewModelProvider.notifier).refresh();
+                          if (mounted) {
+                            setState(() => _item = updated);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Gagal mengubah brand: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                backgroundColor: AppColors.errorRed,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildEventStatusBadge() {
     Color bg;
     Color border;
     Color textCol;
     String label;
-    IconData icon;
+    IconData? icon;
+    Widget? iconWidget;
 
     if (_item.isEventCompleted) {
       bg = Colors.green.shade50;
@@ -2693,7 +2680,12 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       border = Colors.blue.shade300;
       textCol = Colors.blue.shade800;
       label = 'Akan Datang';
-      icon = Icons.event_note;
+      iconWidget = SvgPicture.asset(
+        'assets/icons/calendar.svg',
+        width: 14,
+        height: 14,
+        colorFilter: ColorFilter.mode(textCol, BlendMode.srcIn),
+      );
     }
 
     return PopupMenuButton<String>(
@@ -2723,7 +2715,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: textCol),
+            iconWidget ?? Icon(icon!, size: 14, color: textCol),
             const SizedBox(width: 4),
             Text(
               label,

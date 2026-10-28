@@ -9,9 +9,16 @@ import 'package:dekorin_apps/domain/models/decoration_package.dart';
 /// Screen untuk memilih paket dekorasi dengan tampilan card bergambar.
 /// Mengembalikan [DecorationPackage] yang dipilih ke caller via [Navigator.pop].
 class PackagePickerScreen extends ConsumerWidget {
-  const PackagePickerScreen({super.key, this.selectedPackageId});
+  const PackagePickerScreen({
+    super.key,
+    this.selectedPackageId,
+    this.brandId,
+    this.brandName,
+  });
 
   final String? selectedPackageId;
+  final String? brandId;
+  final String? brandName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,9 +34,19 @@ class PackagePickerScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textDark),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Pilih Paket Dekorasi',
-          style: AppTypography.titleLarge.copyWith(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 18),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pilih Paket Dekorasi',
+              style: AppTypography.titleLarge.copyWith(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            if (brandName != null && brandName!.isNotEmpty)
+              Text(
+                'Brand: $brandName',
+                style: AppTypography.caption.copyWith(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+              ),
+          ],
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -61,7 +78,10 @@ class PackagePickerScreen extends ConsumerWidget {
             ),
           ),
         ),
-        data: (packages) {
+        data: (allPackages) {
+          final packages = brandId == null
+              ? allPackages
+              : allPackages.where((p) => p.brandId == brandId).toList();
           if (packages.isEmpty) {
             return RefreshIndicator(
               onRefresh: () async => ref.refresh(packagesProvider),
@@ -70,25 +90,32 @@ class PackagePickerScreen extends ConsumerWidget {
                 children: [
                   SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                   Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Belum ada paket dekorasi',
-                          style: AppTypography.titleMedium.copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textDark,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          Text(
+                            brandName != null && brandName!.isNotEmpty
+                                ? 'Belum ada paket untuk brand "$brandName"'
+                                : 'Belum ada paket dekorasi',
+                            style: AppTypography.titleMedium.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textDark,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Tambahkan paket di menu Profile > Kelola Paket',
-                          style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tambahkan paket untuk brand ini di menu Profil > Kelola Paket Dekorasi',
+                            style: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textLight),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

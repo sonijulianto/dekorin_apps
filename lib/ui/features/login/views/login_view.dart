@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
@@ -71,7 +72,15 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     controller: _phoneController,
                     label: 'Nomor WhatsApp / HP',
                     hint: '081234567890',
-                    prefixIcon: Icons.phone_android_outlined,
+                    prefixWidget: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: SvgPicture.asset(
+                        'assets/icons/mobile-notch.svg',
+                        width: 22,
+                        height: 22,
+                        colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                      ),
+                    ),
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
                   ),
@@ -82,7 +91,15 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     controller: _passwordController,
                     label: 'Password',
                     hint: 'Masukkan password',
-                    prefixIcon: Icons.lock_outline,
+                    prefixWidget: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: SvgPicture.asset(
+                        'assets/icons/lock.svg',
+                        width: 22,
+                        height: 22,
+                        colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                      ),
+                    ),
                     obscureText: !state.isPasswordVisible,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _onLogin(),

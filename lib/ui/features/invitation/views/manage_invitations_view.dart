@@ -249,7 +249,12 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                   value: 'edit',
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.edit, size: 18),
+                                      SvgPicture.asset(
+                                        'assets/icons/edit.svg',
+                                        width: 18,
+                                        height: 18,
+                                        colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                                      ),
                                       const SizedBox(width: 8),
                                       Text('Edit Undangan', style: AppTypography.bodyMedium),
                                     ],

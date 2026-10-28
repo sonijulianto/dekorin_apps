@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/invoice_template.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
 
 class InvoiceItemData {
@@ -34,17 +36,39 @@ class InvoicePdfHelper {
     'pkg_04': 18000000.0,
   };
 
+  /// Generate PDF Invoice berdasarkan template pilihan (atau preferensi tersimpan)
   static Future<Uint8List> generateInvoicePdf(
+    AgendaItem agenda, {
+    User? companyUser,
+    InvoiceTemplate? template,
+  }) async {
+    final activeTemplate = template ??
+        InvoiceTemplate.fromId(DataPreferences.getInvoiceTemplate());
+
+    if (activeTemplate == InvoiceTemplate.minimalistGrey) {
+      return _generateMinimalistGreyPdf(agenda, companyUser: companyUser);
+    }
+
+    return _generateNavyGoldPdf(agenda, companyUser: companyUser);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TEMPLATE 1: Modern Navy & Gold (Desain Elegan Mewah)
+  // ─────────────────────────────────────────────────────────────────────────────
+  static Future<Uint8List> _generateNavyGoldPdf(
     AgendaItem agenda, {
     User? companyUser,
   }) async {
     final pdf = pw.Document();
 
-    // Unduh gambar logo vendor jika URL logo valid
+    // Unduh gambar logo vendor (prioritaskan logo Sub-Brand jika agenda memakai Sub-Brand)
+    final effectiveLogoUrl = agenda.brandLogo.isNotEmpty
+        ? agenda.brandLogo
+        : (companyUser?.companyLogo ?? '');
     pw.MemoryImage? companyLogoImage;
-    if (companyUser != null && companyUser.companyLogo.isNotEmpty) {
+    if (effectiveLogoUrl.isNotEmpty) {
       try {
-        final res = await http.get(Uri.parse(companyUser.companyLogo)).timeout(const Duration(seconds: 4));
+        final res = await http.get(Uri.parse(effectiveLogoUrl)).timeout(const Duration(seconds: 4));
         if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
           companyLogoImage = pw.MemoryImage(res.bodyBytes);
         }
@@ -53,18 +77,29 @@ class InvoicePdfHelper {
       }
     }
 
-    final companyName = (companyUser?.companyName.isNotEmpty ?? false)
-        ? companyUser!.companyName
-        : 'Dekorin';
-    final companyDescription = (companyUser?.companyDescription.isNotEmpty ?? false)
-        ? companyUser!.companyDescription
-        : 'Wedding & Event Decoration';
-    final companyPhone = (companyUser?.companyPhone.isNotEmpty ?? false)
-        ? companyUser!.companyPhone
-        : '+62 812-3456-7890';
-    final companyEmail = (companyUser?.companyEmail.isNotEmpty ?? false)
-        ? companyUser!.companyEmail
-        : 'hello@dekorin.id';
+    final companyName = agenda.brandName.isNotEmpty
+        ? agenda.brandName
+        : ((companyUser?.companyName.isNotEmpty ?? false)
+            ? companyUser!.companyName
+            : 'Dekorin');
+    final companyDescription = agenda.brandDescription.isNotEmpty
+        ? agenda.brandDescription
+        : ((companyUser?.companyDescription.isNotEmpty ?? false)
+            ? companyUser!.companyDescription
+            : 'Wedding & Event Decoration');
+    final companyPhone = agenda.brandPhone.isNotEmpty
+        ? agenda.brandPhone
+        : ((companyUser?.companyPhone.isNotEmpty ?? false)
+            ? companyUser!.companyPhone
+            : '+62 812-3456-7890');
+    final companyInstagram = agenda.brandInstagram.isNotEmpty
+        ? agenda.brandInstagram
+        : (companyUser?.companyInstagram ?? '');
+    final companyEmail = companyInstagram.isNotEmpty
+        ? 'IG: $companyInstagram'
+        : ((companyUser?.companyEmail.isNotEmpty ?? false)
+            ? companyUser!.companyEmail
+            : 'hello@dekorin.id');
     final companyAddress = (companyUser?.companyAddress.isNotEmpty ?? false)
         ? companyUser!.companyAddress
         : 'Jakarta, Indonesia';
@@ -85,35 +120,10 @@ class InvoicePdfHelper {
     );
     final form = agenda.clientForm;
 
-    // ── 1. Penentuan Harga Paket ──
-    double packagePrice = 0.0;
-    final isUnselected = agenda.packageName.toLowerCase().contains('belum dipilih') ||
-        (form != null && form.packageName.toLowerCase().contains('belum dipilih'));
+    // 1. Penentuan Harga Paket
+    final double packagePrice = _calculatePackagePrice(agenda);
 
-    if (isUnselected) {
-      packagePrice = 0.0;
-    } else if (form != null && form.packagePrice > 0) {
-      packagePrice = form.packagePrice;
-    } else if (agenda.packagePrice > 0) {
-      packagePrice = agenda.packagePrice;
-    } else if (_fallbackPackagePrices.containsKey(agenda.packageId)) {
-      packagePrice = _fallbackPackagePrices[agenda.packageId]!;
-    } else {
-      final nameLower = agenda.packageName.toLowerCase();
-      if (nameLower.contains('akad') || nameLower.contains('minimalis')) {
-        packagePrice = 2500000.0;
-      } else if (nameLower.contains('lamaran') || nameLower.contains('rustic')) {
-        packagePrice = 4000000.0;
-      } else if (nameLower.contains('pernikahan') || nameLower.contains('elegan')) {
-        packagePrice = 9500000.0;
-      } else if (nameLower.contains('ballroom') || nameLower.contains('luxury')) {
-        packagePrice = 18000000.0;
-      } else {
-        packagePrice = 0.0;
-      }
-    }
-
-    // ── 2. Ekstraksi Item Addon & Kalkulasi ──
+    // 2. Ekstraksi Item Addon & Kalkulasi
     final List<InvoiceItemData> items = [];
     
     // Item 1: Paket Dekorasi
@@ -124,7 +134,7 @@ class InvoicePdfHelper {
         subtitle: [
           if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
           if (agenda.modelName.isNotEmpty) 'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
-        ].join(' • '),
+        ].join(' | '),
         quantity: 1,
         unitPrice: packagePrice,
         totalPrice: packagePrice,
@@ -170,18 +180,15 @@ class InvoicePdfHelper {
     final invoiceDateStr = DateFormat('dd/MM/yy').format(DateTime.now());
     final dueDateStr = DateFormat('dd/MM/yy').format(agenda.eventDateTime);
 
-    // Font Standar Helvetica (100% offline, stabil)
     final baseFont = pw.Font.helvetica();
     final boldFont = pw.Font.helveticaBold();
 
-    // Warna Identik Desain Referensi
     final navyColor = PdfColor.fromHex('#1C3B57');
     final goldColor = PdfColor.fromHex('#E5B824');
     final textDark = PdfColor.fromHex('#212D38');
     final textGrey = PdfColor.fromHex('#64748B');
     final dividerColor = PdfColor.fromHex('#E2E8F0');
 
-    // SVGs untuk Ornamen Poligon & Hexagon
     const topBannerSvg = '''
 <svg viewBox="0 0 210 145" width="210" height="145" xmlns="http://www.w3.org/2000/svg">
   <polygon points="0,0 210,0 210,95 105,145 0,95" fill="#1C3B57"/>
@@ -227,7 +234,6 @@ class InvoicePdfHelper {
 </svg>
 ''';
 
-    // Alamat Klien
     String clientAddress = 'Jl. Lokasi Acara';
     if (form != null && form.eventAddress.isNotEmpty) {
       clientAddress = form.eventAddress;
@@ -242,7 +248,7 @@ class InvoicePdfHelper {
         build: (pw.Context context) {
           return pw.Stack(
             children: [
-              // ── 1. Top-Left Navy Banner Ornamen ──
+              // Top-Left Navy Banner Ornamen
               pw.Positioned(
                 top: 0,
                 left: 0,
@@ -253,7 +259,7 @@ class InvoicePdfHelper {
                 ),
               ),
 
-              // Logo & Brand Name di dalam Banner
+              // Logo & Brand Name
               pw.Positioned(
                 top: 28,
                 left: 28,
@@ -316,7 +322,7 @@ class InvoicePdfHelper {
                 ),
               ),
 
-              // ── 2. Top-Right Hexagon Accent ──
+              // Top-Right Hexagon Accent
               pw.Positioned(
                 top: 0,
                 right: 0,
@@ -327,7 +333,7 @@ class InvoicePdfHelper {
                 ),
               ),
 
-              // ── 3. Bottom Accent Bar (Yellow/Gold) ──
+              // Bottom Accent Bar (Gold)
               pw.Positioned(
                 bottom: 0,
                 left: 0,
@@ -356,7 +362,7 @@ class InvoicePdfHelper {
                 ),
               ),
 
-              // ── 4. Bottom-Left Hexagon Accent ──
+              // Bottom-Left Hexagon Accent
               pw.Positioned(
                 bottom: 0,
                 left: 0,
@@ -367,13 +373,12 @@ class InvoicePdfHelper {
                 ),
               ),
 
-              // ── 5. Konten Utama Invoice ──
+              // Konten Utama Invoice
               pw.Padding(
                 padding: const pw.EdgeInsets.fromLTRB(42, 40, 42, 36),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    // Header Row: Kanan INVOICE & Nomor
                     pw.Align(
                       alignment: pw.Alignment.topRight,
                       child: pw.Column(
@@ -474,11 +479,10 @@ class InvoicePdfHelper {
 
                     pw.SizedBox(height: 24),
 
-                    // ── Tabel Header ──
+                    // Tabel Header
                     pw.Row(
                       crossAxisAlignment: pw.CrossAxisAlignment.center,
                       children: [
-                        // Hexagon NO
                         pw.Container(
                           width: 44,
                           height: 38,
@@ -501,7 +505,6 @@ class InvoicePdfHelper {
                         ),
                         pw.SizedBox(width: 4),
 
-                        // Bar Kuning: ITEMS | QTY | PRICE | TOTAL
                         pw.Expanded(
                           child: pw.Container(
                             height: 38,
@@ -568,7 +571,7 @@ class InvoicePdfHelper {
 
                     pw.SizedBox(height: 6),
 
-                    // ── Baris Item Tabel ──
+                    // Baris Item Tabel
                     ...items.map((item) {
                       return pw.Column(
                         children: [
@@ -577,7 +580,6 @@ class InvoicePdfHelper {
                             child: pw.Row(
                               crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
-                                // NO
                                 pw.Container(
                                   width: 44,
                                   alignment: pw.Alignment.center,
@@ -592,7 +594,6 @@ class InvoicePdfHelper {
                                 ),
                                 pw.SizedBox(width: 4),
 
-                                // ITEMS
                                 pw.Expanded(
                                   child: pw.Padding(
                                     padding: const pw.EdgeInsets.only(left: 14),
@@ -623,7 +624,6 @@ class InvoicePdfHelper {
                                   ),
                                 ),
 
-                                // QTY
                                 pw.Container(
                                   width: 40,
                                   alignment: pw.Alignment.center,
@@ -637,7 +637,6 @@ class InvoicePdfHelper {
                                   ),
                                 ),
 
-                                // PRICE
                                 pw.Container(
                                   width: 85,
                                   alignment: pw.Alignment.centerRight,
@@ -651,7 +650,6 @@ class InvoicePdfHelper {
                                   ),
                                 ),
 
-                                // TOTAL
                                 pw.Container(
                                   width: 90,
                                   alignment: pw.Alignment.centerRight,
@@ -675,12 +673,11 @@ class InvoicePdfHelper {
 
                     pw.SizedBox(height: 16),
 
-                    // ── Area Bawah Tabel: Tanda Tangan (Kiri) & Rincian Total (Kanan) ──
+                    // Area Bawah Tabel: Tanda Tangan & Rincian Total
                     pw.Row(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
-                        // Kiri: Tanda Tangan & Administrator
                         pw.Padding(
                           padding: const pw.EdgeInsets.only(left: 48, top: 8),
                           child: pw.Column(
@@ -709,13 +706,11 @@ class InvoicePdfHelper {
                           ),
                         ),
 
-                        // Kanan: Sub Total, DP, Discount, GRAND TOTAL
                         pw.Container(
                           width: 240,
                           padding: const pw.EdgeInsets.only(right: 14),
                           child: pw.Column(
                             children: [
-                              // Sub Total
                               pw.Row(
                                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                 children: [
@@ -731,7 +726,6 @@ class InvoicePdfHelper {
                               ),
                               pw.SizedBox(height: 8),
 
-                              // Uang Transport (Muncul di atas DP)
                               pw.Row(
                                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                 children: [
@@ -751,7 +745,6 @@ class InvoicePdfHelper {
                               ),
                               pw.SizedBox(height: 8),
 
-                              // DP (Pengganti Tax sesuai instruksi user)
                               pw.Row(
                                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                 children: [
@@ -771,7 +764,6 @@ class InvoicePdfHelper {
                               ),
                               pw.SizedBox(height: 8),
 
-                              // Discount
                               pw.Row(
                                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                 children: [
@@ -787,7 +779,6 @@ class InvoicePdfHelper {
                               ),
                               pw.SizedBox(height: 12),
 
-                              // GRAND TOTAL Box Navy
                               pw.Container(
                                 padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: pw.BoxDecoration(
@@ -825,13 +816,11 @@ class InvoicePdfHelper {
 
                     pw.Spacer(),
 
-                    // ── Footer: Term & Conditions (Kiri) dan Payment Method (Kanan) ──
                     pw.Padding(
                       padding: const pw.EdgeInsets.only(bottom: 12),
                       child: pw.Row(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          // Kiri: Term and Conditions :
                           pw.Expanded(
                             child: pw.Column(
                               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -859,7 +848,6 @@ class InvoicePdfHelper {
                           ),
                           pw.SizedBox(width: 36),
 
-                          // Kanan: Payment Method
                           pw.Expanded(
                             child: pw.Column(
                               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -898,6 +886,592 @@ class InvoicePdfHelper {
     );
 
     return pdf.save();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TEMPLATE 2: Minimalist Modern Grey (Desain Bersih Monokrom Chevron)
+  // ─────────────────────────────────────────────────────────────────────────────
+  static Future<Uint8List> _generateMinimalistGreyPdf(
+    AgendaItem agenda, {
+    User? companyUser,
+  }) async {
+    final pdf = pw.Document();
+
+    final effectiveLogoUrl = agenda.brandLogo.isNotEmpty
+        ? agenda.brandLogo
+        : (companyUser?.companyLogo ?? '');
+    pw.MemoryImage? companyLogoImage;
+    if (effectiveLogoUrl.isNotEmpty) {
+      try {
+        final res = await http.get(Uri.parse(effectiveLogoUrl)).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          companyLogoImage = pw.MemoryImage(res.bodyBytes);
+        }
+      } catch (_) {
+        companyLogoImage = null;
+      }
+    }
+
+    final companyName = agenda.brandName.isNotEmpty
+        ? agenda.brandName
+        : ((companyUser?.companyName.isNotEmpty ?? false)
+            ? companyUser!.companyName
+            : 'FAMILY BACKDROP');
+    final companyPhone = agenda.brandPhone.isNotEmpty
+        ? agenda.brandPhone
+        : ((companyUser?.companyPhone.isNotEmpty ?? false)
+            ? companyUser!.companyPhone
+            : '0895 1678 9565');
+    final companyInstagram = agenda.brandInstagram.isNotEmpty
+        ? agenda.brandInstagram
+        : (companyUser?.companyInstagram ?? '');
+    final companyEmail = companyInstagram.isNotEmpty
+        ? 'IG: $companyInstagram'
+        : ((companyUser?.companyEmail.isNotEmpty ?? false)
+            ? companyUser!.companyEmail
+            : 'sonijulianto@gmail.com');
+    final companyAddress = (companyUser?.companyAddress.isNotEmpty ?? false)
+        ? companyUser!.companyAddress
+        : 'Jl. Mayor oking jaya atmaja\nCiriung - Cibinong, Kab Bogor';
+    final companyBankInfo = (companyUser?.companyBankInfo.isNotEmpty ?? false)
+        ? companyUser!.companyBankInfo
+        : 'Nama : Soni Julianto\nNo Rek (BCA) : 5720732931\nNo Rek (BRI) : 144801005406501';
+
+    final form = agenda.clientForm;
+    final double packagePrice = _calculatePackagePrice(agenda);
+
+    // Ekstraksi item tabel
+    final List<InvoiceItemData> items = [];
+
+    // 1. Paket Utama
+    items.add(
+      InvoiceItemData(
+        no: 1,
+        name: agenda.packageName.isNotEmpty ? agenda.packageName.toUpperCase() : 'PAKET DEKORASI',
+        subtitle: [
+          if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
+          if (agenda.modelName.isNotEmpty) 'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
+        ].join(' | '),
+        quantity: 1,
+        unitPrice: packagePrice,
+        totalPrice: packagePrice,
+      ),
+    );
+
+    // 2. Upgrade Model (jika ada harga tambahan)
+    if (agenda.modelAdditionalPrice > 0) {
+      items.add(
+        InvoiceItemData(
+          no: items.length + 1,
+          name: 'UPGRADE MODEL: ${agenda.modelName.toUpperCase()}',
+          subtitle: agenda.modelWidth.isNotEmpty ? 'Lebar: ${agenda.modelWidth}' : '',
+          quantity: 1,
+          unitPrice: agenda.modelAdditionalPrice,
+          totalPrice: agenda.modelAdditionalPrice,
+        ),
+      );
+    }
+
+    // 3. Addon Items
+    final addonList = _extractAddonItems(form?.selectedAddons ?? '', agenda.notes, startNo: items.length + 1);
+    for (final a in addonList) {
+      items.add(
+        InvoiceItemData(
+          no: a.no,
+          name: a.name.toUpperCase(),
+          subtitle: a.subtitle,
+          quantity: a.quantity,
+          unitPrice: a.unitPrice,
+          totalPrice: a.totalPrice,
+        ),
+      );
+    }
+
+    // 4. Uang Transport (dimasukkan sebagai baris item sesuai referensi template 2)
+    if (agenda.transportFee > 0) {
+      items.add(
+        InvoiceItemData(
+          no: items.length + 1,
+          name: 'TRANSPORT',
+          subtitle: '',
+          quantity: 1,
+          unitPrice: agenda.transportFee,
+          totalPrice: agenda.transportFee,
+        ),
+      );
+    }
+
+    // Kalkulasi
+    double subtotal = 0.0;
+    for (final it in items) {
+      subtotal += it.totalPrice;
+    }
+    final double dpAmount = agenda.dpAmount;
+    final double grandTotal = (subtotal - dpAmount) > 0 ? (subtotal - dpAmount) : 0.0;
+
+    // Nomor Invoice: FB-001-21102026 format sesuai referensi user
+    String initials = companyName
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase())
+        .take(3)
+        .join();
+    if (initials.isEmpty) initials = 'FB';
+    final cleanId = agenda.id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toUpperCase();
+    final shortId = cleanId.length >= 3 ? cleanId.substring(cleanId.length - 3) : cleanId.padLeft(3, '0');
+    final dateCode = DateFormat('ddMMyyyy').format(agenda.eventDateTime);
+    final invoiceNumber = '$initials-$shortId-$dateCode';
+
+    // Tanggal format Indonesia: "Rabu, 21 Oktober 2026"
+    final formattedDate = DateFormat('EEEE, d MMMM y', 'id_ID').format(agenda.eventDateTime);
+
+    final baseFont = pw.Font.helvetica();
+    final boldFont = pw.Font.helveticaBold();
+
+    // SVG Header Chevron Abu-abu Monokrom (A4 Width: 595.28, Header Height: 128)
+    const headerBannerSvg = '''
+<svg viewBox="0 0 595.28 128" width="595.28" height="128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Blok Utama Kiri berujung panah panah/chevron -->
+  <polygon points="0,0 320,0 365,64 320,128 0,128" fill="#DFE2E6"/>
+  <!-- Strip Chevron Tengah -->
+  <polygon points="340,0 380,0 425,64 380,128 340,128 385,64" fill="#DFE2E6"/>
+  <!-- Aksen Sudut Kanan Atas -->
+  <polygon points="535,0 595.28,0 595.28,128 580,128" fill="#DFE2E6"/>
+</svg>
+''';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        build: (pw.Context context) {
+          return pw.Stack(
+            children: [
+              // Header Banner Abu-Abu Chevron di puncak halaman
+              pw.Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: pw.SvgImage(
+                  svg: headerBannerSvg,
+                  width: 595.28,
+                  height: 128,
+                ),
+              ),
+
+              // Teks Judul INVOICE & Nama Usaha di dalam Banner
+              pw.Positioned(
+                top: 32,
+                left: 45,
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    if (companyLogoImage != null) ...[
+                      pw.Container(
+                        width: 46,
+                        height: 46,
+                        decoration: const pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+                        ),
+                        child: pw.ClipRRect(
+                          horizontalRadius: 8,
+                          verticalRadius: 8,
+                          child: pw.Image(
+                            companyLogoImage,
+                            width: 46,
+                            height: 46,
+                            fit: pw.BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      pw.SizedBox(width: 12),
+                    ],
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'INVOICE',
+                          style: pw.TextStyle(
+                            font: boldFont,
+                            fontSize: 32,
+                            color: PdfColors.black,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        pw.SizedBox(height: 3),
+                        pw.Text(
+                          companyName.toUpperCase(),
+                          style: pw.TextStyle(
+                            font: boldFont,
+                            fontSize: 15,
+                            color: PdfColors.black,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Seluruh Konten Faktur
+              pw.Padding(
+                padding: const pw.EdgeInsets.fromLTRB(45, 148, 45, 36),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    // Nomor Invoice
+                    pw.Text(
+                      'INVOICE # $invoiceNumber',
+                      style: pw.TextStyle(
+                        font: boldFont,
+                        fontSize: 10.5,
+                        color: PdfColors.black,
+                      ),
+                    ),
+
+                    pw.SizedBox(height: 14),
+
+                    // Baris Informasi: KEPADA & TANGGAL
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        // KEPADA
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'KEPADA :',
+                              style: pw.TextStyle(
+                                font: boldFont,
+                                fontSize: 10.5,
+                                color: PdfColors.black,
+                              ),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              agenda.clientName,
+                              style: pw.TextStyle(
+                                font: baseFont,
+                                fontSize: 10.5,
+                                color: PdfColors.black,
+                              ),
+                            ),
+                            if (agenda.clientPhone.isNotEmpty) ...[
+                              pw.SizedBox(height: 2),
+                              pw.Text(
+                                agenda.clientPhone,
+                                style: pw.TextStyle(
+                                  font: baseFont,
+                                  fontSize: 9,
+                                  color: PdfColor.fromHex('#444444'),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+
+                        // TANGGAL
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text(
+                              'TANGGAL :',
+                              style: pw.TextStyle(
+                                font: boldFont,
+                                fontSize: 10.5,
+                                color: PdfColors.black,
+                              ),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              formattedDate,
+                              style: pw.TextStyle(
+                                font: baseFont,
+                                fontSize: 10.5,
+                                color: PdfColors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    pw.SizedBox(height: 18),
+
+                    // Header Tabel: KETERANGAN | HARGA | JML | TOTAL
+                    pw.Row(
+                      children: [
+                        pw.Expanded(
+                          child: pw.Text(
+                            'KETERANGAN',
+                            style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                          ),
+                        ),
+                        pw.Container(
+                          width: 105,
+                          alignment: pw.Alignment.centerRight,
+                          child: pw.Text(
+                            'HARGA',
+                            style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                          ),
+                        ),
+                        pw.Container(
+                          width: 50,
+                          alignment: pw.Alignment.center,
+                          child: pw.Text(
+                            'JML',
+                            style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                          ),
+                        ),
+                        pw.Container(
+                          width: 110,
+                          alignment: pw.Alignment.centerRight,
+                          child: pw.Text(
+                            'TOTAL',
+                            style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    pw.SizedBox(height: 6),
+                    // Garis hitam tebal di bawah header
+                    pw.Container(height: 2.2, color: PdfColors.black),
+                    pw.SizedBox(height: 4),
+
+                    // Baris-baris item tabel
+                    ...items.map((item) {
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 6),
+                        child: pw.Row(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Expanded(
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text(
+                                    item.name,
+                                    style: pw.TextStyle(
+                                      font: baseFont,
+                                      fontSize: 10,
+                                      color: PdfColors.black,
+                                    ),
+                                  ),
+                                  if (item.subtitle.isNotEmpty) ...[
+                                    pw.SizedBox(height: 1.5),
+                                    pw.Text(
+                                      item.subtitle,
+                                      style: pw.TextStyle(
+                                        font: baseFont,
+                                        fontSize: 8.5,
+                                        color: PdfColor.fromHex('#555555'),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            pw.Container(
+                              width: 105,
+                              alignment: pw.Alignment.centerRight,
+                              child: pw.Text(
+                                item.unitPrice > 0 ? _formatRupiahCaps(item.unitPrice) : '-',
+                                style: pw.TextStyle(font: baseFont, fontSize: 10, color: PdfColors.black),
+                              ),
+                            ),
+                            pw.Container(
+                              width: 50,
+                              alignment: pw.Alignment.center,
+                              child: pw.Text(
+                                '${item.quantity}',
+                                style: pw.TextStyle(font: baseFont, fontSize: 10, color: PdfColors.black),
+                              ),
+                            ),
+                            pw.Container(
+                              width: 110,
+                              alignment: pw.Alignment.centerRight,
+                              child: pw.Text(
+                                item.totalPrice > 0 ? _formatRupiahCaps(item.totalPrice) : '-',
+                                style: pw.TextStyle(font: baseFont, fontSize: 10, color: PdfColors.black),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
+                    pw.SizedBox(height: 14),
+                    // Garis hitam pembatas tebal di bawah daftar item
+                    pw.Container(height: 2.5, color: PdfColors.black),
+                    pw.SizedBox(height: 12),
+
+                    // Ringkasan Total (Rata Kanan)
+                    pw.Align(
+                      alignment: pw.Alignment.centerRight,
+                      child: pw.Container(
+                        width: 250,
+                        child: pw.Column(
+                          children: [
+                            // SUB TOTAL :
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text(
+                                  'SUB TOTAL :',
+                                  style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                ),
+                                pw.Text(
+                                  _formatRupiahCaps(subtotal),
+                                  style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 6),
+
+                            // DP :
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text(
+                                  'DP :',
+                                  style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                ),
+                                pw.Text(
+                                  dpAmount > 0 ? _formatRupiahCaps(dpAmount) : 'RP 0',
+                                  style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                ),
+                              ],
+                            ),
+                            pw.SizedBox(height: 6),
+
+                            // TOTAL :
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text(
+                                  'TOTAL :',
+                                  style: pw.TextStyle(font: boldFont, fontSize: 12, color: PdfColors.black),
+                                ),
+                                pw.Text(
+                                  _formatRupiahCaps(grandTotal),
+                                  style: pw.TextStyle(font: boldFont, fontSize: 12, color: PdfColors.black),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    pw.Spacer(),
+
+                    // Footer Bagian Bawah: PEMBAYARAN (kiri) & INFO KONTAK/ALAMAT (kanan)
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        // Kiri: Rekening Pembayaran
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'PEMBAYARAN :',
+                              style: pw.TextStyle(font: boldFont, fontSize: 9.5, color: PdfColors.black),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              companyBankInfo,
+                              style: pw.TextStyle(font: baseFont, fontSize: 9, color: PdfColors.black, lineSpacing: 1.3),
+                            ),
+                          ],
+                        ),
+
+                        // Kanan: Alamat, Telepon, Email (Rata Kanan)
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            if (companyAddress.isNotEmpty) ...[
+                              pw.Text(
+                                companyAddress,
+                                style: pw.TextStyle(font: baseFont, fontSize: 9, color: PdfColors.black, lineSpacing: 1.3),
+                                textAlign: pw.TextAlign.right,
+                              ),
+                              pw.SizedBox(height: 4),
+                            ],
+                            if (companyPhone.isNotEmpty) ...[
+                              pw.Text(
+                                companyPhone,
+                                style: pw.TextStyle(font: baseFont, fontSize: 9, color: PdfColors.black),
+                                textAlign: pw.TextAlign.right,
+                              ),
+                              pw.SizedBox(height: 3),
+                            ],
+                            if (companyEmail.isNotEmpty) ...[
+                              pw.Text(
+                                companyEmail,
+                                style: pw.TextStyle(font: baseFont, fontSize: 9, color: PdfColors.black),
+                                textAlign: pw.TextAlign.right,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Helper Metrik & Parsing
+  // ─────────────────────────────────────────────────────────────────────────────
+  static double _calculatePackagePrice(AgendaItem agenda) {
+    final form = agenda.clientForm;
+    final isUnselected = agenda.packageName.toLowerCase().contains('belum dipilih') ||
+        (form != null && form.packageName.toLowerCase().contains('belum dipilih'));
+
+    if (isUnselected) {
+      return 0.0;
+    } else if (form != null && form.packagePrice > 0) {
+      return form.packagePrice;
+    } else if (agenda.packagePrice > 0) {
+      return agenda.packagePrice;
+    } else if (_fallbackPackagePrices.containsKey(agenda.packageId)) {
+      return _fallbackPackagePrices[agenda.packageId]!;
+    } else {
+      final nameLower = agenda.packageName.toLowerCase();
+      if (nameLower.contains('akad') || nameLower.contains('minimalis')) {
+        return 2500000.0;
+      } else if (nameLower.contains('lamaran') || nameLower.contains('rustic')) {
+        return 4000000.0;
+      } else if (nameLower.contains('pernikahan') || nameLower.contains('elegan')) {
+        return 9500000.0;
+      } else if (nameLower.contains('ballroom') || nameLower.contains('luxury')) {
+        return 18000000.0;
+      } else {
+        return 0.0;
+      }
+    }
+  }
+
+  static String _formatRupiahCaps(double amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'RP ',
+      decimalDigits: 0,
+    );
+    return formatter.format(amount);
   }
 
   static List<InvoiceItemData> _extractAddonItems(String selectedAddonsStr, String rawNotes, {required int startNo}) {

@@ -86,6 +86,12 @@ class ClientFormModel {
 class AgendaItem {
   const AgendaItem({
     required this.id,
+    this.brandId = '',
+    this.brandName = '',
+    this.brandLogo = '',
+    this.brandPhone = '',
+    this.brandInstagram = '',
+    this.brandDescription = '',
     required this.clientName,
     this.clientPhone = '',
     required this.backdropTitle,
@@ -110,6 +116,12 @@ class AgendaItem {
   });
 
   final String id;
+  final String brandId;
+  final String brandName;
+  final String brandLogo;
+  final String brandPhone;
+  final String brandInstagram;
+  final String brandDescription;
   final String clientName;
   final String clientPhone;
   final String backdropTitle;
@@ -148,6 +160,12 @@ class AgendaItem {
 
   AgendaItem copyWith({
     String? id,
+    String? brandId,
+    String? brandName,
+    String? brandLogo,
+    String? brandPhone,
+    String? brandInstagram,
+    String? brandDescription,
     String? clientName,
     String? clientPhone,
     String? backdropTitle,
@@ -172,6 +190,12 @@ class AgendaItem {
   }) {
     return AgendaItem(
       id: id ?? this.id,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
+      brandLogo: brandLogo ?? this.brandLogo,
+      brandPhone: brandPhone ?? this.brandPhone,
+      brandInstagram: brandInstagram ?? this.brandInstagram,
+      brandDescription: brandDescription ?? this.brandDescription,
       clientName: clientName ?? this.clientName,
       clientPhone: clientPhone ?? this.clientPhone,
       backdropTitle: backdropTitle ?? this.backdropTitle,
@@ -218,6 +242,12 @@ class AgendaItem {
 
     return AgendaItem(
       id: json['id'] as String? ?? '',
+      brandId: json['brand_id'] as String? ?? '',
+      brandName: json['brand_name'] as String? ?? '',
+      brandLogo: json['brand_logo'] as String? ?? '',
+      brandPhone: json['brand_phone'] as String? ?? '',
+      brandInstagram: json['brand_instagram'] as String? ?? '',
+      brandDescription: json['brand_description'] as String? ?? '',
       clientName: json['client_name'] as String? ?? '',
       clientPhone: json['client_phone'] as String? ?? '',
       backdropTitle: json['backdrop_title'] as String? ?? '',
@@ -245,6 +275,12 @@ class AgendaItem {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'brand_id': brandId,
+      'brand_name': brandName,
+      'brand_logo': brandLogo,
+      'brand_phone': brandPhone,
+      'brand_instagram': brandInstagram,
+      'brand_description': brandDescription,
       'client_name': clientName,
       'client_phone': clientPhone,
       'backdrop_title': backdropTitle,

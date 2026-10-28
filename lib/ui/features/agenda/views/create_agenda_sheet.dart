@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
   const CreateAgendaSheet({super.key});
@@ -30,11 +34,20 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  String _selectedBrandId = '';
   DecorationPackage? _selectedPackage;
   DecorationModel? _selectedModel;
   double _selectedModelAdditionalPrice = 0.0;
   List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
+
+  String _resolveBrandLabel(List<CompanyBrand> brands, String mainCompanyName) {
+    if (_selectedBrandId.isEmpty) {
+      return mainCompanyName.isNotEmpty ? mainCompanyName : 'Brand Utama';
+    }
+    final found = brands.where((b) => b.id == _selectedBrandId);
+    return found.isNotEmpty ? found.first.name : 'Brand Utama';
+  }
 
   Future<void> _searchGoogleMaps() async {
     String query = _mapsUrlController.text.trim();
@@ -127,9 +140,15 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     }
   }
 
-  Future<void> _openPackagePicker() async {
+  Future<void> _openPackagePicker(String brandLabel) async {
     final result = await Navigator.of(context).push<DecorationPackage>(
-      MaterialPageRoute(builder: (_) => PackagePickerScreen(selectedPackageId: _selectedPackage?.id)),
+      MaterialPageRoute(
+        builder: (_) => PackagePickerScreen(
+          selectedPackageId: _selectedPackage?.id,
+          brandId: _selectedBrandId,
+          brandName: brandLabel,
+        ),
+      ),
     );
     if (result != null) {
       setState(() {
@@ -147,13 +166,15 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     }
   }
 
-  Future<void> _openModelPicker() async {
+  Future<void> _openModelPicker(String brandLabel) async {
     final result = await Navigator.of(context).push<SelectedModelResult>(
       MaterialPageRoute(
         builder: (_) => ModelPickerScreen(
           package: _selectedPackage,
           selectedModelId: _selectedModel?.id,
           canClearModel: _selectedModel != null,
+          brandId: _selectedBrandId,
+          brandName: brandLabel,
         ),
       ),
     );
@@ -329,6 +350,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       }
 
       await agendaService.createAgenda(
+        brandId: _selectedBrandId,
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
@@ -379,6 +401,11 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final brandsAsync = ref.watch(companyBrandsProvider);
+    final brands = brandsAsync.value ?? const <CompanyBrand>[];
+    final mainCompanyName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final selectedBrandLabel = _resolveBrandLabel(brands, mainCompanyName);
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -411,7 +438,12 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                       color: AppTheme.primaryGold.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.event_note, color: AppTheme.primaryGold, size: 24),
+                    child: SvgPicture.asset(
+                      'assets/icons/calendar.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -434,6 +466,82 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 ],
               ),
               const SizedBox(height: 20),
+
+              // 0. Pilihan Brand Usaha (Muncul jika punya Sub-Brand)
+              if (brands.isNotEmpty) ...[
+                Text(
+                  'Pilih Brand Usaha *',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Menentukan nama & logo invoice serta daftar Paket & Model yang tampil.',
+                  style: AppTypography.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(
+                        mainCompanyName.isNotEmpty ? '$mainCompanyName (Utama)' : 'Brand Utama',
+                        style: AppTypography.caption.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: _selectedBrandId.isEmpty ? Colors.white : AppTheme.textDark,
+                        ),
+                      ),
+                      selected: _selectedBrandId.isEmpty,
+                      selectedColor: AppTheme.primaryGold,
+                      backgroundColor: AppColors.goldLight,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedBrandId = '';
+                          if (_selectedPackage != null && _selectedPackage!.brandId.isNotEmpty) {
+                            _selectedPackage = null;
+                          }
+                          if (_selectedModel != null && _selectedModel!.brandId.isNotEmpty) {
+                            _selectedModel = null;
+                            _selectedModelAdditionalPrice = 0.0;
+                          }
+                        });
+                      },
+                    ),
+                    ...brands.map((b) {
+                      final isSelected = _selectedBrandId == b.id;
+                      return ChoiceChip(
+                        label: Text(
+                          b.name,
+                          style: AppTypography.caption.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : AppTheme.textDark,
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedColor: AppTheme.primaryGold,
+                        backgroundColor: AppColors.goldLight,
+                        onSelected: (_) {
+                          setState(() {
+                            _selectedBrandId = b.id;
+                            if (_selectedPackage != null && _selectedPackage!.brandId != b.id) {
+                              _selectedPackage = null;
+                            }
+                            if (_selectedModel != null && _selectedModel!.brandId != b.id) {
+                              _selectedModel = null;
+                              _selectedModelAdditionalPrice = 0.0;
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // 1. Nama Client
               Text(
@@ -536,7 +644,12 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today, size: 18, color: AppTheme.primaryGold),
+                            SvgPicture.asset(
+                              'assets/icons/calendar.svg',
+                              width: 18,
+                              height: 18,
+                              colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -665,7 +778,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 6),
               InkWell(
-                onTap: _openPackagePicker,
+                onTap: () => _openPackagePicker(selectedBrandLabel),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -739,7 +852,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 6),
               InkWell(
-                onTap: _openModelPicker,
+                onTap: () => _openModelPicker(selectedBrandLabel),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -957,7 +1070,15 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 maxLines: 2,
                 decoration: InputDecoration(
                   hintText: 'Misal: Tema warna sage green, loading barang H-1...',
-                  prefixIcon: const Icon(Icons.edit_note),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SvgPicture.asset(
+                      'assets/icons/edit.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+                    ),
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
@@ -53,32 +54,72 @@ class _MainViewState extends ConsumerState<MainView> {
 
     // Menentukan daftar icon navigasi bawah
     final List<BottomNavigationBarItem> navItems = isOwner
-        ? const [
-            BottomNavigationBarItem(
+        ? [
+            const BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_outlined),
               activeIcon: Icon(Icons.dashboard),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
+              icon: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              ),
+              activeIcon: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
               label: 'Agenda',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: SvgPicture.asset(
+                'assets/icons/user.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              ),
+              activeIcon: SvgPicture.asset(
+                'assets/icons/user.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
               label: 'Profile',
             ),
           ]
-        : const [
+        : [
             BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
+              icon: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              ),
+              activeIcon: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
               label: 'Agenda',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: SvgPicture.asset(
+                'assets/icons/user.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              ),
+              activeIcon: SvgPicture.asset(
+                'assets/icons/user.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
               label: 'Profile',
             ),
           ];

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/app_update_service.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/invoice_template_setting_view.dart';
 import 'package:dekorin_apps/ui/features/company/views/edit_company_view.dart';
+import 'package:dekorin_apps/ui/features/company/views/manage_brands_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/manage_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
@@ -236,6 +240,47 @@ class ProfileView extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const EditCompanyView()));
+                      },
+                    ),
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.layers_outlined, color: AppColors.primaryGold, size: 22),
+                      ),
+                      title: Text('Kelola Multi-Brand / Sub-Brand', style: AppTypography.titleSmall),
+                      subtitle: Text('Atur nama & logo brand berbeda untuk market dekorasi lain', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageBrandsView()));
+                      },
+                    ),
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                        child: SvgPicture.asset(
+                          'assets/icons/file-invoice-dollar.svg',
+                          width: 22,
+                          height: 22,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        ),
+                      ),
+                      title: Text('Template Desain Invoice', style: AppTypography.titleSmall),
+                      subtitle: Consumer(
+                        builder: (context, ref, _) {
+                          final current = ref.watch(invoiceTemplateProvider);
+                          return Text(
+                            '${current.name} (Aktif)',
+                            style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
+                          );
+                        },
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const InvoiceTemplateSettingView()));
                       },
                     ),
                   ],

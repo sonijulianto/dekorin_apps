@@ -1,6 +1,8 @@
 class DecorationModel {
   const DecorationModel({
     required this.id,
+    this.brandId = '',
+    this.brandName = '',
     required this.name,
     required this.width,
     required this.price,
@@ -10,6 +12,8 @@ class DecorationModel {
   });
 
   final String id;
+  final String brandId;
+  final String brandName;
   final String name;
   final String width;
   final double price;
@@ -26,6 +30,8 @@ class DecorationModel {
 
     return DecorationModel(
       id: json['id'] as String? ?? '',
+      brandId: json['brand_id'] as String? ?? '',
+      brandName: json['brand_name'] as String? ?? '',
       name: json['name'] as String? ?? '',
       width: json['width'] as String? ?? '',
       price: parseDouble(json['price']),
@@ -38,6 +44,8 @@ class DecorationModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'brand_id': brandId,
+      'brand_name': brandName,
       'name': name,
       'width': width,
       'price': price,
@@ -49,6 +57,8 @@ class DecorationModel {
 
   DecorationModel copyWith({
     String? id,
+    String? brandId,
+    String? brandName,
     String? name,
     String? width,
     double? price,
@@ -58,6 +68,8 @@ class DecorationModel {
   }) {
     return DecorationModel(
       id: id ?? this.id,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
       name: name ?? this.name,
       width: width ?? this.width,
       price: price ?? this.price,

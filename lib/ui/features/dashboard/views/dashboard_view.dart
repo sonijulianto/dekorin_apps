@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
@@ -158,7 +159,7 @@ class DashboardView extends ConsumerWidget {
           children: [
             Expanded(
               child: _SummaryCard(
-                title: 'Pendapatan (Lunas)',
+                title: 'Pendapatan',
                 subtitle: 'Hanya agenda lunas',
                 value: currencyFormatter.format(summary.totalRevenue),
                 icon: Icons.account_balance_wallet,
@@ -168,10 +169,15 @@ class DashboardView extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _SummaryCard(
-                title: 'Total Pengeluaran',
+                title: 'Pengeluaran',
                 subtitle: 'Biaya operasional',
                 value: currencyFormatter.format(summary.totalExpense),
-                icon: Icons.shopping_bag_outlined,
+                iconWidget: SvgPicture.asset(
+                  'assets/icons/expense.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: ColorFilter.mode(Colors.orange.shade700, BlendMode.srcIn),
+                ),
                 color: Colors.orange.shade700,
               ),
             ),
@@ -184,20 +190,30 @@ class DashboardView extends ConsumerWidget {
           children: [
             Expanded(
               child: _SummaryCard(
-                title: 'Keuntungan Bersih',
+                title: 'Keuntungan',
                 subtitle: 'Pendapatan - Beban',
                 value: currencyFormatter.format(summary.totalProfit),
-                icon: Icons.trending_up,
+                iconWidget: SvgPicture.asset(
+                  'assets/icons/chat-arrow-grow.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: ColorFilter.mode(Colors.blue.shade700, BlendMode.srcIn),
+                ),
                 color: Colors.blue.shade700,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _SummaryCard(
-                title: 'Booking Mendatang',
+                title: 'Agenda',
                 subtitle: 'Jadwal \u2265 Hari Ini',
                 value: '${summary.upcomingBookingsCount} Event',
-                icon: Icons.event_available,
+                iconWidget: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                ),
                 color: AppTheme.primaryGold,
               ),
             ),
@@ -236,7 +252,8 @@ class DashboardView extends ConsumerWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final exp = expenses[index];
-        IconData categoryIcon = Icons.payments_outlined;
+        IconData? categoryIcon = Icons.payments_outlined;
+        Widget? categoryIconWidget;
         Color categoryColor = Colors.orange;
 
         final catLower = exp.category.toLowerCase();
@@ -247,8 +264,13 @@ class DashboardView extends ConsumerWidget {
           categoryIcon = Icons.weekend;
           categoryColor = Colors.purple;
         } else if (catLower.contains('transport') || catLower.contains('operasional')) {
-          categoryIcon = Icons.local_shipping;
           categoryColor = Colors.blue;
+          categoryIconWidget = SvgPicture.asset(
+            'assets/icons/shipping-fast.svg',
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(categoryColor, BlendMode.srcIn),
+          );
         } else if (catLower.contains('crew') || catLower.contains('upah')) {
           categoryIcon = Icons.group;
           categoryColor = Colors.teal;
@@ -269,7 +291,7 @@ class DashboardView extends ConsumerWidget {
                   color: categoryColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(categoryIcon, color: categoryColor, size: 20),
+                child: categoryIconWidget ?? Icon(categoryIcon, color: categoryColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -450,7 +472,12 @@ class DashboardView extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 14, color: AppTheme.textLight),
+                    SvgPicture.asset(
+                      'assets/icons/calendar.svg',
+                      width: 14,
+                      height: 14,
+                      colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       dateFormatter.format(agenda.eventDateTime),
@@ -556,14 +583,16 @@ class _SummaryCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.value,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.color,
   });
 
   final String title;
   final String? subtitle;
   final String value;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final Color color;
 
   @override
@@ -584,7 +613,7 @@ class _SummaryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 18),
+                child: iconWidget ?? Icon(icon!, color: color, size: 18),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -852,7 +881,12 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(dateFormatter.format(_selectedDate), style: AppTypography.bodyMedium.copyWith(fontSize: 13)),
-                    const Icon(Icons.calendar_month, color: AppTheme.primaryGold, size: 20),
+                    SvgPicture.asset(
+                      'assets/icons/calendar.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                    ),
                   ],
                 ),
               ),

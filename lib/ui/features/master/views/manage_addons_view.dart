@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -550,7 +551,12 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                 value: 'edit',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.edit, size: 18),
+                                    SvgPicture.asset(
+                                      'assets/icons/edit.svg',
+                                      width: 18,
+                                      height: 18,
+                                      colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                                    ),
                                     const SizedBox(width: 8),
                                     Text('Edit', style: AppTypography.bodyMedium),
                                   ],

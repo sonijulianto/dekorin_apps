@@ -83,6 +83,7 @@ class AgendaService {
 
   /// Membuat agenda baru ke backend
   Future<AgendaItem> createAgenda({
+    String brandId = '',
     required String clientName,
     String clientPhone = '',
     String backdropTitle = '',
@@ -102,6 +103,7 @@ class AgendaService {
         : '';
 
     final payload = {
+      'brand_id': brandId,
       'client_name': clientName,
       'client_phone': clientPhone,
       if (backdropTitle.isNotEmpty) 'backdrop_title': backdropTitle,
@@ -119,6 +121,13 @@ class AgendaService {
 
     final responseData = await ApiClient.post(ApiEndpoint.agendas, body: payload);
 
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate Brand / Sub-Brand untuk agenda tertentu
+  Future<AgendaItem> updateAgendaBrand(String agendaId, String brandId) async {
+    final payload = {'brand_id': brandId};
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/brand', body: payload);
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
   }
 

@@ -3,16 +3,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class ManageDecorationModelsView extends ConsumerStatefulWidget {
   const ManageDecorationModelsView({super.key});
@@ -25,8 +29,9 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   List<DecorationModel>? _localModels;
   String _searchQuery = '';
+  String? _selectedFilterBrandId; // null = Semua, '' = Brand Utama, 'brd_...' = Sub-Brand
 
-  void _showModelFormSheet([DecorationModel? model]) {
+  void _showModelFormSheet([DecorationModel? model]) async {
     final isEdit = model != null;
     final thousandFormatter = NumberFormat('#,###', 'id_ID');
     final nameController = TextEditingController(text: model?.name ?? '');
@@ -39,7 +44,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
 
     File? selectedImageFile;
     String existingImageUrl = model?.imageUrl ?? '';
+    String selectedBrandId = model?.brandId ?? (_selectedFilterBrandId ?? '');
     bool isSubmitting = false;
+
+    final brands = await ref.read(companyServiceProvider).getCompanyBrands();
+    final mainBrandName = ref.read(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    if (!mounted) return;
 
     Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
       try {
@@ -217,6 +227,46 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                       ),
                       const SizedBox(height: 12),
 
+                      // Pilihan Brand Model
+                      Text('Brand Usaha untuk Model Ini', style: AppTypography.labelLarge),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(
+                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
+                              ),
+                            ),
+                            selected: selectedBrandId.isEmpty,
+                            selectedColor: AppColors.primaryGold,
+                            backgroundColor: AppColors.goldLight,
+                            onSelected: (_) => setModalState(() => selectedBrandId = ''),
+                          ),
+                          ...brands.map((b) {
+                            final isSelected = selectedBrandId == b.id;
+                            return ChoiceChip(
+                              label: Text(
+                                b.name,
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight,
+                              onSelected: (_) => setModalState(() => selectedBrandId = b.id),
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
                       DekorinTextField(
                         controller: widthController,
                         label: 'Lebar Model Dekorasi',
@@ -283,6 +333,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                     if (isEdit) {
                                       await service.updateDecorationModel(
                                         model.id,
+                                        brandId: selectedBrandId,
                                         name: nameController.text.trim(),
                                         width: widthController.text.trim(),
                                         price: price,
@@ -291,6 +342,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                       );
                                     } else {
                                       await service.createDecorationModel(
+                                        brandId: selectedBrandId,
                                         name: nameController.text.trim(),
                                         width: widthController.text.trim(),
                                         price: price,
@@ -390,6 +442,9 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
   @override
   Widget build(BuildContext context) {
     final modelsAsync = ref.watch(decorationModelsProvider);
+    final brandsAsync = ref.watch(companyBrandsProvider);
+    final brands = brandsAsync.value ?? const <CompanyBrand>[];
+    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -460,9 +515,13 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
           }
           final displayList = _localModels!;
 
-          final filteredList = _searchQuery.isEmpty
+          final brandFiltered = _selectedFilterBrandId == null
               ? displayList
-              : displayList.where((m) {
+              : displayList.where((m) => m.brandId == _selectedFilterBrandId).toList();
+
+          final filteredList = _searchQuery.isEmpty
+              ? brandFiltered
+              : brandFiltered.where((m) {
                   final q = _searchQuery.toLowerCase();
                   return m.name.toLowerCase().contains(q) ||
                       m.width.toLowerCase().contains(q) ||
@@ -470,11 +529,70 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                 }).toList();
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(decorationModelsProvider),
+            onRefresh: () async {
+              ref.invalidate(decorationModelsProvider);
+              ref.invalidate(companyBrandsProvider);
+            },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
               children: [
+                if (brands.isNotEmpty) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: Text(
+                            'Semua Brand (${displayList.length})',
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: _selectedFilterBrandId == null ? Colors.white : AppColors.textDark,
+                            ),
+                          ),
+                          selected: _selectedFilterBrandId == null,
+                          selectedColor: AppColors.primaryGold,
+                          backgroundColor: Colors.white,
+                          onSelected: (_) => setState(() => _selectedFilterBrandId = null),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text(
+                            mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: _selectedFilterBrandId == '' ? Colors.white : AppColors.textDark,
+                            ),
+                          ),
+                          selected: _selectedFilterBrandId == '',
+                          selectedColor: AppColors.primaryGold,
+                          backgroundColor: Colors.white,
+                          onSelected: (_) => setState(() => _selectedFilterBrandId = ''),
+                        ),
+                        ...brands.map((b) {
+                          final isSelected = _selectedFilterBrandId == b.id;
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                b.name,
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: Colors.white,
+                              onSelected: (_) => setState(() => _selectedFilterBrandId = b.id),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
                 // Info Banner
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -575,6 +693,33 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                if (brands.isNotEmpty || model.brandName.isNotEmpty) ...[
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: model.brandId.isNotEmpty
+                                          ? AppColors.primaryGold.withValues(alpha: 0.14)
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: model.brandId.isNotEmpty
+                                            ? AppColors.primaryGold.withValues(alpha: 0.4)
+                                            : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      model.brandName.isNotEmpty
+                                          ? model.brandName
+                                          : (mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama'),
+                                      style: AppTypography.caption.copyWith(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: model.brandId.isNotEmpty ? AppColors.secondaryGold : AppColors.textLight,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 Text(model.name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Row(
@@ -637,7 +782,12 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                 value: 'edit',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.edit_outlined, size: 18, color: AppColors.textDark),
+                                    SvgPicture.asset(
+                                      'assets/icons/edit.svg',
+                                      width: 18,
+                                      height: 18,
+                                      colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                                    ),
                                     const SizedBox(width: 8),
                                     Text('Edit', style: AppTypography.bodyMedium),
                                   ],

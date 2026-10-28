@@ -3,17 +3,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class _PackageModelItemEntry {
   final DecorationModel model;
@@ -33,19 +37,23 @@ class ManagePackagesView extends ConsumerStatefulWidget {
 class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   List<DecorationPackage>? _localPackages;
+  String? _selectedFilterBrandId; // null = Semua, '' = Brand Utama, 'brd_...' = Sub-Brand
 
   Future<void> _showModelSelectorDialog({
+    required String brandId,
+    required String brandLabel,
     required List<_PackageModelItemEntry> currentSelected,
     required Function(List<_PackageModelItemEntry>) onUpdated,
   }) async {
-    final masterModels = await ref.read(masterServiceProvider).getDecorationModels();
+    final allModels = await ref.read(masterServiceProvider).getDecorationModels();
+    final masterModels = allModels.where((m) => m.brandId == brandId).toList();
     if (!mounted) return;
 
     if (masterModels.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Belum ada master data model dekorasi. Silakan buat di menu Kelola Model Dekorasi terlebih dahulu.',
+            'Belum ada master model dekorasi untuk brand "$brandLabel". Silakan buat model untuk brand tersebut terlebih dahulu.',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppColors.primaryGold,
@@ -188,7 +196,16 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
     File? selectedImageFile;
     String existingImageUrl = package?.imageUrl ?? '';
+    String selectedBrandId = package?.brandId ?? (_selectedFilterBrandId ?? '');
     bool isSubmitting = false;
+
+    final brands = await ref.read(companyServiceProvider).getCompanyBrands();
+    final mainBrandName = ref.read(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    String resolveBrandLabel(String bId) {
+      if (bId.isEmpty) return mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama';
+      final found = brands.where((b) => b.id == bId);
+      return found.isNotEmpty ? found.first.name : 'Brand Utama';
+    }
 
     Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
       try {
@@ -337,6 +354,56 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama paket wajib diisi' : null,
                       ),
                       const SizedBox(height: 12),
+
+                      // Pilihan Brand Paket
+                      Text('Brand Usaha untuk Paket Ini', style: AppTypography.labelLarge),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(
+                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
+                              ),
+                            ),
+                            selected: selectedBrandId.isEmpty,
+                            selectedColor: AppColors.primaryGold,
+                            backgroundColor: AppColors.goldLight,
+                            onSelected: (_) {
+                              setModalState(() {
+                                selectedBrandId = '';
+                                selectedModels.removeWhere((item) => item.model.brandId.isNotEmpty);
+                              });
+                            },
+                          ),
+                          ...brands.map((b) {
+                            final isSelected = selectedBrandId == b.id;
+                            return ChoiceChip(
+                              label: Text(
+                                b.name,
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight,
+                              onSelected: (_) {
+                                setModalState(() {
+                                  selectedBrandId = b.id;
+                                  selectedModels.removeWhere((item) => item.model.brandId != b.id);
+                                });
+                              },
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       DekorinTextField(
                         controller: priceController,
                         label: 'Harga Dasar',
@@ -392,6 +459,8 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                             ),
                             onPressed: () {
                               _showModelSelectorDialog(
+                                brandId: selectedBrandId,
+                                brandLabel: resolveBrandLabel(selectedBrandId),
                                 currentSelected: selectedModels,
                                 onUpdated: (newSelected) {
                                   setModalState(() {
@@ -623,6 +692,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     if (isEdit) {
                                       await service.updatePackage(
                                         package.id,
+                                        brandId: selectedBrandId,
                                         name: nameController.text.trim(),
                                         description: descController.text.trim(),
                                         basePrice: price,
@@ -631,6 +701,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                       );
                                     } else {
                                       await service.createPackage(
+                                        brandId: selectedBrandId,
                                         name: nameController.text.trim(),
                                         description: descController.text.trim(),
                                         basePrice: price,
@@ -712,6 +783,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     });
 
     final packagesAsync = ref.watch(packagesProvider);
+    final brandsAsync = ref.watch(companyBrandsProvider);
+    final brands = brandsAsync.value ?? const <CompanyBrand>[];
+    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -729,44 +803,117 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
       ),
       body: packagesAsync.when(
         data: (packages) {
-          if (packages.isEmpty) {
-            return Center(child: Text('Belum ada paket dekorasi.', style: AppTypography.bodyMedium));
-          }
-
           if (_localPackages == null || _localPackages!.length != packages.length) {
             _localPackages = List.from(packages);
           }
-          final displayList = _localPackages!;
+          final fullList = _localPackages!;
+          final displayList = _selectedFilterBrandId == null
+              ? fullList
+              : fullList.where((p) => p.brandId == _selectedFilterBrandId).toList();
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(packagesProvider),
+            onRefresh: () async {
+              ref.invalidate(packagesProvider);
+              ref.invalidate(companyBrandsProvider);
+            },
             child: ReorderableListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
               itemCount: displayList.length,
-              header: Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldLight.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+              header: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (brands.isNotEmpty) ...[
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            label: Text(
+                              'Semua Brand (${fullList.length})',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _selectedFilterBrandId == null ? Colors.white : AppColors.textDark,
+                              ),
+                            ),
+                            selected: _selectedFilterBrandId == null,
+                            selectedColor: AppColors.primaryGold,
+                            backgroundColor: Colors.white,
+                            onSelected: (_) => setState(() => _selectedFilterBrandId = null),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: Text(
+                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _selectedFilterBrandId == '' ? Colors.white : AppColors.textDark,
+                              ),
+                            ),
+                            selected: _selectedFilterBrandId == '',
+                            selectedColor: AppColors.primaryGold,
+                            backgroundColor: Colors.white,
+                            onSelected: (_) => setState(() => _selectedFilterBrandId = ''),
+                          ),
+                          ...brands.map((b) {
+                            final isSelected = _selectedFilterBrandId == b.id;
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: ChoiceChip(
+                                label: Text(
+                                  b.name,
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white : AppColors.textDark,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                selectedColor: AppColors.primaryGold,
+                                backgroundColor: Colors.white,
+                                onSelected: (_) => setState(() => _selectedFilterBrandId = b.id),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.goldLight.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.swap_vert_rounded, size: 18, color: AppColors.primaryGold),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
+                              style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.swap_vert_rounded, size: 18, color: AppColors.primaryGold),
-                      const SizedBox(width: 8),
-                      Expanded(
+                  if (displayList.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
                         child: Text(
-                          'Tekan & tahan kartu atau geser ikon untuk ubah urutan',
-                          style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w500),
+                          'Belum ada paket dekorasi untuk filter brand ini.',
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               ),
               onReorderItem: (int oldIndex, int newIndex) async {
                 setState(() {
@@ -852,6 +999,33 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    if (brands.isNotEmpty || pkg.brandName.isNotEmpty) ...[
+                                      Container(
+                                        margin: const EdgeInsets.only(bottom: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: pkg.brandId.isNotEmpty
+                                              ? AppColors.primaryGold.withValues(alpha: 0.14)
+                                              : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: pkg.brandId.isNotEmpty
+                                                ? AppColors.primaryGold.withValues(alpha: 0.4)
+                                                : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          pkg.brandName.isNotEmpty
+                                              ? pkg.brandName
+                                              : (mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama'),
+                                          style: AppTypography.caption.copyWith(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: pkg.brandId.isNotEmpty ? AppColors.secondaryGold : AppColors.textLight,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                     Text(pkg.name, style: AppTypography.titleSmall),
                                     const SizedBox(height: 2),
                                     Text(
@@ -879,7 +1053,12 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                                     value: 'edit',
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.edit, size: 18),
+                                        SvgPicture.asset(
+                                          'assets/icons/edit.svg',
+                                          width: 18,
+                                          height: 18,
+                                          colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                                        ),
                                         const SizedBox(width: 8),
                                         Text('Edit', style: AppTypography.bodyMedium),
                                       ],

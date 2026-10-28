@@ -34,6 +34,7 @@ class MasterService {
   }
 
   Future<DecorationPackage> createPackage({
+    String brandId = '',
     required String name,
     required String description,
     required double basePrice,
@@ -41,6 +42,7 @@ class MasterService {
     List<Map<String, dynamic>>? packageModels,
   }) async {
     final payload = <String, dynamic>{
+      'brand_id': brandId,
       'name': name,
       'description': description,
       'base_price': basePrice,
@@ -55,6 +57,7 @@ class MasterService {
 
   Future<DecorationPackage> updatePackage(
     String id, {
+    String brandId = '',
     required String name,
     required String description,
     required double basePrice,
@@ -62,6 +65,7 @@ class MasterService {
     List<Map<String, dynamic>>? packageModels,
   }) async {
     final payload = <String, dynamic>{
+      'brand_id': brandId,
       'name': name,
       'description': description,
       'base_price': basePrice,
@@ -94,6 +98,7 @@ class MasterService {
   }
 
   Future<DecorationModel> createDecorationModel({
+    String brandId = '',
     required String name,
     required String width,
     required double price,
@@ -101,6 +106,7 @@ class MasterService {
     String imageUrl = '',
   }) async {
     final payload = {
+      'brand_id': brandId,
       'name': name,
       'width': width,
       'price': price,
@@ -113,6 +119,7 @@ class MasterService {
 
   Future<DecorationModel> updateDecorationModel(
     String id, {
+    String brandId = '',
     required String name,
     required String width,
     required double price,
@@ -120,6 +127,7 @@ class MasterService {
     String imageUrl = '',
   }) async {
     final payload = {
+      'brand_id': brandId,
       'name': name,
       'width': width,
       'price': price,

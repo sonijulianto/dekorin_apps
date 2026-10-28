@@ -72,6 +72,8 @@ class PackageModelItem {
 class DecorationPackage {
   const DecorationPackage({
     required this.id,
+    this.brandId = '',
+    this.brandName = '',
     required this.name,
     required this.description,
     required this.basePrice,
@@ -81,6 +83,8 @@ class DecorationPackage {
   });
 
   final String id;
+  final String brandId;
+  final String brandName;
   final String name;
   final String description;
   final double basePrice;
@@ -104,6 +108,8 @@ class DecorationPackage {
 
     return DecorationPackage(
       id: json['id'] as String? ?? '',
+      brandId: json['brand_id'] as String? ?? '',
+      brandName: json['brand_name'] as String? ?? '',
       name: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
@@ -116,6 +122,8 @@ class DecorationPackage {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'brand_id': brandId,
+      'brand_name': brandName,
       'name': name,
       'description': description,
       'image_url': imageUrl,
@@ -127,6 +135,8 @@ class DecorationPackage {
 
   DecorationPackage copyWith({
     String? id,
+    String? brandId,
+    String? brandName,
     String? name,
     String? description,
     double? basePrice,
@@ -136,6 +146,8 @@ class DecorationPackage {
   }) {
     return DecorationPackage(
       id: id ?? this.id,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
       name: name ?? this.name,
       description: description ?? this.description,
       basePrice: basePrice ?? this.basePrice,

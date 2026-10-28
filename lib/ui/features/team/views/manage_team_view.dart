@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
@@ -369,8 +370,13 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                     value: 'edit',
                     child: Row(
                       children: [
-                        Icon(Icons.edit_outlined, size: 18),
-                        SizedBox(width: 8),
+                        SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: const ColorFilter.mode(AppColors.textDark, BlendMode.srcIn),
+                        ),
+                        const SizedBox(width: 8),
                         Text('Edit Anggota', style: AppTypography.labelLarge),
                       ],
                     ),

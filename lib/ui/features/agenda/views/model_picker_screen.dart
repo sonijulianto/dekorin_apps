@@ -20,11 +20,20 @@ class SelectedModelResult {
 
 /// Screen untuk memilih model dekorasi yang terhubung dengan paket dekorasi
 class ModelPickerScreen extends ConsumerStatefulWidget {
-  const ModelPickerScreen({super.key, this.package, this.selectedModelId, this.canClearModel = false});
+  const ModelPickerScreen({
+    super.key,
+    this.package,
+    this.selectedModelId,
+    this.canClearModel = false,
+    this.brandId,
+    this.brandName,
+  });
 
   final DecorationPackage? package;
   final String? selectedModelId;
   final bool canClearModel;
+  final String? brandId;
+  final String? brandName;
 
   @override
   ConsumerState<ModelPickerScreen> createState() => _ModelPickerScreenState();
@@ -82,6 +91,15 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
             if (widget.package != null)
               Text(
                 'Paket: ${widget.package!.name}',
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.primaryGold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
+            else if (widget.brandName != null && widget.brandName!.isNotEmpty)
+              Text(
+                'Brand: ${widget.brandName}',
                 style: AppTypography.labelMedium.copyWith(
                   color: AppColors.primaryGold,
                   fontSize: 12,
@@ -152,25 +170,36 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
             ),
           ),
         ),
-        data: (allModels) {
+        data: (rawModels) {
+          final effectiveBrandId = widget.brandId ?? widget.package?.brandId;
+          final allModels = effectiveBrandId == null
+              ? rawModels
+              : rawModels.where((m) => m.brandId == effectiveBrandId).toList();
+
           if (allModels.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.view_carousel_outlined, size: 64, color: Colors.grey.shade400),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Belum ada master data model dekorasi',
-                    style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Silakan buat model dekorasi di menu Profil > Kelola Model Dekorasi',
-                    style: AppTypography.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.view_carousel_outlined, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.brandName != null && widget.brandName!.isNotEmpty
+                          ? 'Belum ada model untuk brand "${widget.brandName}"'
+                          : 'Belum ada master data model dekorasi',
+                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Silakan buat model dekorasi untuk brand ini di menu Profil > Kelola Model Dekorasi',
+                      style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             );
           }

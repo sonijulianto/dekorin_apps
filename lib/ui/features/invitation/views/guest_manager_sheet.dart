@@ -33,6 +33,9 @@ class _GuestManagerSheetState extends ConsumerState<GuestManagerSheet> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _fetchWishes();
   }
 
@@ -151,9 +154,20 @@ Salam hangat kami,
             labelColor: AppColors.primaryGold,
             unselectedLabelColor: AppColors.textLight,
             indicatorColor: AppColors.primaryGold,
-            tabs: const [
-              Tab(icon: Icon(Icons.share, size: 20), text: 'Bagikan Undangan'),
-              Tab(icon: Icon(Icons.menu_book, size: 20), text: 'Buku Tamu / RSVP'),
+            tabs: [
+              Tab(
+                icon: SvgPicture.asset(
+                  'assets/icons/share.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: ColorFilter.mode(
+                    _tabController.index == 0 ? AppColors.primaryGold : AppColors.textLight,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                text: 'Bagikan Undangan',
+              ),
+              const Tab(icon: Icon(Icons.menu_book, size: 20), text: 'Buku Tamu / RSVP'),
             ],
           ),
 
@@ -212,7 +226,12 @@ Salam hangat kami,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.copy, color: AppColors.primaryGold, size: 20),
+                  icon: SvgPicture.asset(
+                    'assets/icons/copy-alt.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                  ),
                   tooltip: 'Salin Link',
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _getGeneratedUrl()));

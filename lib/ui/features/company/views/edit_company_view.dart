@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +11,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/features/company/views/manage_brands_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class EditCompanyView extends ConsumerStatefulWidget {
@@ -343,7 +345,14 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                           const SizedBox(height: 10),
                           TextButton.icon(
                             onPressed: _showImageSourceDialog,
-                            icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                            icon: (_selectedImageFile != null || _currentLogoUrl.isNotEmpty)
+                                ? SvgPicture.asset(
+                                    'assets/icons/edit.svg',
+                                    width: 18,
+                                    height: 18,
+                                    colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                  )
+                                : const Icon(Icons.cloud_upload_outlined, size: 18),
                             label: Text(
                               _selectedImageFile != null || _currentLogoUrl.isNotEmpty
                                   ? 'Ubah Logo Usaha'
@@ -498,6 +507,54 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                             prefixIcon: Icons.camera_alt_outlined,
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Multi-Brand Shortcut Card
+                    _buildSectionHeader('MULTI-BRAND / SUB-BRAND USAHA'),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageBrandsView()));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldLight,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.45)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGold.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.layers_outlined, color: AppColors.primaryGold, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Kelola Sub-Brand Usaha',
+                                    style: AppTypography.titleSmall.copyWith(color: AppColors.textDark),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Punya lini brand dekorasi berbeda (mis. Wedding vs Engagement)? Atur nama, logo, WA & IG tiap brand di sini.',
+                                    style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, color: AppColors.primaryGold),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
-import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
@@ -180,7 +178,15 @@ class AgendaView extends ConsumerWidget {
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Bulan Ini',
-              icon: Icons.calendar_month,
+              iconWidget: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(
+                  filterState.filterType == AgendaDateFilterType.thisMonth ? Colors.white : AppTheme.textDark,
+                  BlendMode.srcIn,
+                ),
+              ),
               isSelected: filterState.filterType == AgendaDateFilterType.thisMonth,
               onTap: () {
                 ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.thisMonth);
@@ -189,7 +195,15 @@ class AgendaView extends ConsumerWidget {
             const SizedBox(width: 8),
             _FilterChip(
               label: filterState.filterType == AgendaDateFilterType.customRange ? 'Kustom Tanggal ✓' : 'Pilih Tanggal',
-              icon: Icons.date_range,
+              iconWidget: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 16,
+                height: 16,
+                colorFilter: ColorFilter.mode(
+                  filterState.filterType == AgendaDateFilterType.customRange ? Colors.white : AppTheme.textDark,
+                  BlendMode.srcIn,
+                ),
+              ),
               isSelected: filterState.filterType == AgendaDateFilterType.customRange,
               onTap: () => _pickCustomDateRange(context, ref),
             ),
@@ -260,7 +274,12 @@ class AgendaView extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: AppTheme.primaryGold.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: const Icon(Icons.event_busy, size: 64, color: AppTheme.primaryGold),
+              child: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 64,
+                height: 64,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -285,10 +304,17 @@ class AgendaView extends ConsumerWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.icon, required this.isSelected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    this.icon,
+    this.iconWidget,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -319,7 +345,7 @@ class _FilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.textDark),
+              iconWidget ?? Icon(icon!, size: 16, color: isSelected ? Colors.white : AppTheme.textDark),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -342,62 +368,9 @@ class _AgendaCard extends StatelessWidget {
 
   final AgendaItem item;
 
-  Future<void> _sendWhatsAppMessage(BuildContext context, AgendaItem item) async {
-    final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
-
-    // Format nomor HP agar sesuai format WhatsApp internasional (62xxx)
-    String phone = item.clientPhone.replaceAll(RegExp(r'\D'), '');
-    if (phone.startsWith('0')) {
-      phone = '62${phone.substring(1)}';
-    } else if (!phone.startsWith('62') && phone.isNotEmpty) {
-      phone = '62$phone';
-    }
-
-    final message =
-        'Halo Kak ${item.clientName}, terima kasih telah mempercayakan dekorasi acara Anda kepada kami! ✨\n\n'
-        'Berikut adalah rincian detail pesanan / booking acara Anda:\n'
-        '$formUrl\n\n'
-        'Silakan dicek kembali ya Kak. Jika ada hal yang ingin ditanyakan, hubungi kami. Terima kasih! 🙏';
-
-    final waUrl = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
-
-    try {
-      if (await canLaunchUrl(waUrl)) {
-        await launchUrl(waUrl, mode: LaunchMode.externalApplication);
-      } else {
-        await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!',
-                style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-              ),
-              backgroundColor: AppTheme.primaryGold,
-            ),
-          );
-        }
-      }
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Pesan & Link disalin ke Clipboard!',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
-            backgroundColor: AppTheme.primaryGold,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
-    final timeFormat = DateFormat('HH:mm', 'id_ID');
+    final dateFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
 
     return InkWell(
       onTap: () {
@@ -409,7 +382,11 @@ class _AgendaCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         child: ClipRRect(
@@ -418,210 +395,87 @@ class _AgendaCard extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(left: BorderSide(color: AppTheme.primaryGold, width: 4)),
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
               children: [
-                // Header: Client Name & Package Badge
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(item.clientName, style: AppTypography.titleMedium),
-                              if (item.clientPhone.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Text('• ${item.clientPhone}', style: AppTypography.bodySmall),
-                              ],
-                            ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (item.brandName.isNotEmpty) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGold.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.backdropTitle,
-                            style: AppTypography.titleSmall.copyWith(color: AppTheme.primaryGold),
+                          child: Text(
+                            item.brandName,
+                            style: AppTypography.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.secondaryGold,
+                            ),
+                          ),
+                        ),
+                      ],
+                      // Nama yang booking & Nomor HP di sampingnya
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              item.clientName,
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textDark,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.clientPhone.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '• ${item.clientPhone}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppTheme.textLight,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Tanggal
+                      Row(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/icons/calendar.svg',
+                            width: 14,
+                            height: 14,
+                            colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              dateFormat.format(item.eventDateTime),
+                              style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryGold.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item.packageName.isNotEmpty ? item.packageName : 'Paket Custom',
-                        style: AppTypography.caption.copyWith(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20),
-
-                // Date & Time
-                Row(
-                  children: [
-                    const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textLight),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${dateFormat.format(item.eventDateTime)} • ${timeFormat.format(item.eventDateTime)} WIB',
-                      style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark),
-                    ),
-                  ],
-                ),
-
-                // Maps URL
-                if (item.mapsUrl.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Image.asset('assets/icons/google-maps-icon.webp', width: 16, height: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item.mapsUrl,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                     ],
                   ),
-                ],
-
-                // Notes if any
-                if (item.notes.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.notes, size: 16, color: AppTheme.textLight),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item.notes,
-                          style: AppTypography.bodySmall.copyWith(fontStyle: FontStyle.italic),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-
-                // Client Web Form Status & Share via WhatsApp Action
-                Row(
-                  children: [
-                    if (item.isEventCompleted)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.green.shade300),
-                        ),
-                        child: Text(
-                          'Selesai',
-                          style: AppTypography.caption.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800,
-                          ),
-                        ),
-                      ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: item.isPaidOff
-                            ? Colors.green.shade50
-                            : item.dpAmount > 0
-                            ? Colors.amber.shade50
-                            : Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: item.isPaidOff
-                              ? Colors.green.shade400
-                              : item.dpAmount > 0
-                              ? Colors.amber.shade400
-                              : Colors.red.shade300,
-                        ),
-                      ),
-                      child: Text(
-                        item.isPaidOff
-                            ? 'Lunas'
-                            : item.dpAmount > 0
-                            ? 'DP Terbayar'
-                            : 'Belum Bayar',
-                        style: AppTypography.caption.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: item.isPaidOff
-                              ? Colors.green.shade800
-                              : item.dpAmount > 0
-                              ? Colors.amber.shade900
-                              : Colors.red.shade700,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-
-                    // Copy link icon
-                    if (item.formToken.isNotEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18, color: AppTheme.textLight),
-                        tooltip: 'Salin Link Detail Booking',
-                        onPressed: () {
-                          final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${item.formToken}';
-                          Clipboard.setData(ClipboardData(text: formUrl));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Link detail pesanan disalin: $formUrl',
-                                style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                              ),
-                              backgroundColor: AppTheme.primaryGold,
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      ),
-
-                    // Share to WhatsApp Button
-                    if (item.formToken.isNotEmpty)
-                      ElevatedButton.icon(
-                        onPressed: () => _sendWhatsAppMessage(context, item),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        icon: const Icon(Icons.send_rounded, size: 14),
-                        label: Text(
-                          'Bagikan ke WA',
-                          style: AppTypography.labelMedium.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
+                ),
+                const SizedBox(width: 12),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textLight,
+                  size: 22,
                 ),
               ],
             ),

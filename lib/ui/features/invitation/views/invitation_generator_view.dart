@@ -412,7 +412,14 @@ Hormat kami sekeluarga,
                       ),
                     ),
                     IconButton(
-                      icon: Icon(_isCopiedLink ? Icons.check : Icons.copy, color: AppColors.primaryGold, size: 20),
+                      icon: _isCopiedLink
+                          ? const Icon(Icons.check, color: AppColors.primaryGold, size: 20)
+                          : SvgPicture.asset(
+                              'assets/icons/copy-alt.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                            ),
                       tooltip: 'Salin Tautan',
                       onPressed: _copyLinkOnly,
                     ),
@@ -503,7 +510,12 @@ Hormat kami sekeluarga,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: _copyMessage,
-                      icon: const Icon(Icons.copy, size: 18),
+                      icon: SvgPicture.asset(
+                        'assets/icons/copy-alt.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                      ),
                       label: Text(
                         _copiedStatus,
                         style: AppTypography.labelLarge.copyWith(
