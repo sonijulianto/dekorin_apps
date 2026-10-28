@@ -12,8 +12,10 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
+import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
+import 'package:dekorin_apps/domain/models/property.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
@@ -48,7 +50,9 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
     bool isSubmitting = false;
 
     final brands = await ref.read(companyServiceProvider).getCompanyBrands();
+    final allProperties = await ref.read(propertyServiceProvider).getProperties();
     final mainBrandName = ref.read(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    List<DecorationModelProperty> selectedProps = List.from(model?.modelProperties ?? []);
     if (!mounted) return;
 
     Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
@@ -304,6 +308,143 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                         hint: 'Contoh: Rangkaian arch kayu jati belanda, pampas kering, kursi pelaminan...',
                         maxLines: 3,
                       ),
+                      const SizedBox(height: 16),
+
+                      // Section Template Properti & Alat Bawaan
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.playlist_add_check_circle, size: 20, color: AppColors.primaryGold),
+                                    const SizedBox(width: 8),
+                                    Text('Barang & Alat Bawaan (Pick List)', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (pickerCtx) {
+                                        Property? chosenProp;
+                                        final qtyCtrl = TextEditingController(text: '1');
+                                        return AlertDialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                          title: Text('Pilih Barang Gudang', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              DropdownButtonFormField<Property>(
+                                                isExpanded: true,
+                                                hint: Text('Pilih dari master inventaris', style: AppTypography.bodySmall),
+                                                items: allProperties.map((p) {
+                                                  return DropdownMenuItem<Property>(
+                                                    value: p,
+                                                    child: Text('${p.isTool ? "🛠️" : "📦"} ${p.name}', style: AppTypography.bodySmall, overflow: TextOverflow.ellipsis),
+                                                  );
+                                                }).toList(),
+                                                onChanged: (val) => chosenProp = val,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              TextField(
+                                                controller: qtyCtrl,
+                                                keyboardType: TextInputType.number,
+                                                decoration: const InputDecoration(labelText: 'Jumlah Bawaan (Default Qty)'),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(pickerCtx), child: Text('Batal', style: AppTypography.caption)),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                if (chosenProp != null) {
+                                                  final q = int.tryParse(qtyCtrl.text.trim()) ?? 1;
+                                                  setModalState(() {
+                                                    selectedProps.removeWhere((p) => p.propertyId == chosenProp!.id);
+                                                    selectedProps.add(
+                                                      DecorationModelProperty(
+                                                        id: '',
+                                                        decorationModelId: model?.id ?? '',
+                                                        propertyId: chosenProp!.id,
+                                                        defaultQty: q,
+                                                        property: chosenProp,
+                                                      ),
+                                                    );
+                                                  });
+                                                }
+                                                Navigator.pop(pickerCtx);
+                                              },
+                                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.white),
+                                              child: Text('Tambahkan', style: AppTypography.button),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: Text('Tambah', style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Barang di bawah akan otomatis terisi saat model ini dipilih pada agenda.',
+                              style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight),
+                            ),
+                            const SizedBox(height: 10),
+                            if (selectedProps.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                alignment: Alignment.center,
+                                child: Text('Belum ada barang bawaan yang diatur', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                              )
+                            else
+                              ...selectedProps.map((sp) {
+                                final propName = sp.property?.name ?? allProperties.firstWhere((p) => p.id == sp.propertyId, orElse: () => Property(id: sp.propertyId, name: 'Barang #${sp.propertyId}')).name;
+                                final isTool = sp.property?.isTool ?? allProperties.firstWhere((p) => p.id == sp.propertyId, orElse: () => const Property(id: '', name: '')).isTool;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.borderLight)),
+                                  child: Row(
+                                    children: [
+                                      Text(isTool ? '🛠️' : '📦', style: const TextStyle(fontSize: 14)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(propName, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(4)),
+                                        child: Text('${sp.defaultQty}x', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGold)),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                                        onPressed: () {
+                                          setModalState(() {
+                                            selectedProps.removeWhere((p) => p.propertyId == sp.propertyId);
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 20),
 
                       SizedBox(
@@ -330,6 +471,14 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                       finalImageUrl = await ApiClient.uploadImage(selectedImageFile!);
                                     }
 
+                                    final modelPropsPayload = selectedProps.map((sp) {
+                                      return {
+                                        'property_id': sp.propertyId,
+                                        'default_qty': sp.defaultQty,
+                                        'notes': sp.notes,
+                                      };
+                                    }).toList();
+
                                     if (isEdit) {
                                       await service.updateDecorationModel(
                                         model.id,
@@ -339,6 +488,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                         price: price,
                                         description: descController.text.trim(),
                                         imageUrl: finalImageUrl,
+                                        modelProperties: modelPropsPayload,
                                       );
                                     } else {
                                       await service.createDecorationModel(
@@ -348,6 +498,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                         price: price,
                                         description: descController.text.trim(),
                                         imageUrl: finalImageUrl,
+                                        modelProperties: modelPropsPayload,
                                       );
                                     }
                                     ref.invalidate(decorationModelsProvider);

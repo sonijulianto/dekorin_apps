@@ -39,6 +39,8 @@ class ApiEndpoint {
   static const String reorderDecorationModels = '/decoration-models/reorder';
   static const String addons = '/addons';
   static const String reorderAddons = '/addons/reorder';
+  static const String properties = '/properties';
+  static const String propertiesAvailability = '/properties/availability';
   static const String invitations = '/invitations';
 
   // ── App Version / In-App Update ───────────────────────────

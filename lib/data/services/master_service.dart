@@ -104,8 +104,9 @@ class MasterService {
     required double price,
     String description = '',
     String imageUrl = '',
+    List<Map<String, dynamic>>? modelProperties,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'brand_id': brandId,
       'name': name,
       'width': width,
@@ -113,6 +114,9 @@ class MasterService {
       'description': description,
       'image_url': imageUrl,
     };
+    if (modelProperties != null) {
+      payload['model_properties'] = modelProperties;
+    }
     final responseData = await ApiClient.post(ApiEndpoint.decorationModels, body: payload);
     return DecorationModel.fromJson(responseData['data'] as Map<String, dynamic>);
   }
@@ -125,8 +129,9 @@ class MasterService {
     required double price,
     String description = '',
     String imageUrl = '',
+    List<Map<String, dynamic>>? modelProperties,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'brand_id': brandId,
       'name': name,
       'width': width,
@@ -134,6 +139,9 @@ class MasterService {
       'description': description,
       'image_url': imageUrl,
     };
+    if (modelProperties != null) {
+      payload['model_properties'] = modelProperties;
+    }
     final responseData = await ApiClient.put('${ApiEndpoint.decorationModels}/$id', body: payload);
     return DecorationModel.fromJson(responseData['data'] as Map<String, dynamic>);
   }

@@ -177,6 +177,30 @@ class ApiClient {
     }
   }
 
+  // ── PATCH ──────────────────────────────────────────────────
+  static Future<dynamic> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool withToken = true,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
+        headers: _headers(withToken: withToken),
+        body: body != null ? jsonEncode(body) : null,
+      ).timeout(_timeout);
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Terjadi kesalahan: $e');
+    }
+  }
+
   // ── DELETE ────────────────────────────────────────────────
   static Future<dynamic> delete(String endpoint, {bool withToken = true}) async {
     try {

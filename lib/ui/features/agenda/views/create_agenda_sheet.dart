@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
@@ -166,6 +167,84 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     }
   }
 
+  List<String> _modelStockWarnings = [];
+
+  Future<void> _checkStockAvailabilityForModel(DecorationModel model, DateTime eventDate) async {
+    try {
+      final availabilities = await ref.read(propertyServiceProvider).getPropertiesAvailability(eventDate);
+      final availMap = {for (var a in availabilities) a.property.id: a};
+
+      final warnings = <String>[];
+      for (final mp in model.modelProperties) {
+        final avail = availMap[mp.propertyId];
+        if (avail != null && avail.property.trackStock) {
+          if (mp.defaultQty > avail.availableQty) {
+            warnings.add(
+              '${avail.property.name} (Tersisa: ${avail.availableQty}, Dibutuhkan: ${mp.defaultQty})',
+            );
+          }
+        }
+      }
+
+      setState(() {
+        _modelStockWarnings = warnings;
+      });
+
+      if (warnings.isNotEmpty && mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                const SizedBox(width: 8),
+                Text('Peringatan Stok Properti', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Untuk tanggal ${DateFormat("d MMMM yyyy", "id_ID").format(eventDate)}, beberapa properti bawaan model ini sedang terpakai di agenda lain:',
+                  style: AppTypography.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                ...warnings.map((w) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(color: Colors.red)),
+                          Expanded(
+                            child: Text(w, style: AppTypography.caption.copyWith(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    )),
+                const SizedBox(height: 10),
+                Text(
+                  'Model tetap dapat dipilih, barang akan tetap dimasukkan ke Pick List namun pastikan menyediakan solusi sewa/cadangan.',
+                  style: AppTypography.caption.copyWith(color: AppTheme.textLight),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGold, foregroundColor: Colors.white),
+                child: Text('Mengerti', style: AppTypography.button),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (_) {
+      // Abaikan jika network error saat background availability check
+    }
+  }
+
   Future<void> _openModelPicker(String brandLabel) async {
     final result = await Navigator.of(context).push<SelectedModelResult>(
       MaterialPageRoute(
@@ -183,11 +262,17 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         if (result.isCleared) {
           _selectedModel = null;
           _selectedModelAdditionalPrice = 0.0;
+          _modelStockWarnings = [];
         } else {
           _selectedModel = result.model;
           _selectedModelAdditionalPrice = result.additionalPrice;
+          _modelStockWarnings = [];
         }
       });
+
+      if (_selectedModel != null && _selectedDate != null) {
+        _checkStockAvailabilityForModel(_selectedModel!, _selectedDate!);
+      }
     }
   }
 
@@ -235,6 +320,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       setState(() {
         _selectedDate = pickedDate;
       });
+      if (_selectedModel != null) {
+        _checkStockAvailabilityForModel(_selectedModel!, pickedDate);
+      }
     }
   }
 
@@ -839,6 +927,41 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   ),
                 ),
               ),
+              if (_selectedModel != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
+                        size: 16,
+                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _modelStockWarnings.isNotEmpty
+                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
+                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // 6. Model Dekorasi yang dipilih (Master Model Dekorasi)
@@ -972,6 +1095,41 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   ),
                 ),
               ),
+              if (_selectedModel != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
+                        size: 16,
+                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _modelStockWarnings.isNotEmpty
+                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
+                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // 7. Item Tambahan (Addon)
@@ -1053,6 +1211,41 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   ),
                 ),
               ),
+              if (_selectedModel != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
+                        size: 16,
+                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _modelStockWarnings.isNotEmpty
+                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
+                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // Catatan tambahan

@@ -15,6 +15,7 @@ import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.
 import 'package:dekorin_apps/ui/features/master/views/manage_addons_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_decoration_models_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_packages_view.dart';
+import 'package:dekorin_apps/ui/features/master/views/manage_properties_view.dart';
 import 'package:dekorin_apps/ui/features/profile/views/change_password_view.dart';
 import 'package:dekorin_apps/ui/features/team/views/manage_team_view.dart';
 
@@ -370,6 +371,20 @@ class ProfileView extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageDecorationModelsView()));
+                      },
+                    ),
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.category_rounded, color: AppColors.primaryGold, size: 22),
+                      ),
+                      title: Text('Kelola Properti & Alat Kerja', style: AppTypography.titleSmall),
+                      subtitle: Text('Inventaris barang dekorasi & toolkit operasional lapangan', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagePropertiesView()));
                       },
                     ),
                     const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),

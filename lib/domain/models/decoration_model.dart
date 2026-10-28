@@ -1,3 +1,5 @@
+import 'package:dekorin_apps/domain/models/property.dart';
+
 class DecorationModel {
   const DecorationModel({
     required this.id,
@@ -9,6 +11,7 @@ class DecorationModel {
     this.description = '',
     this.imageUrl = '',
     this.sortOrder = 0,
+    this.modelProperties = const [],
   });
 
   final String id;
@@ -20,6 +23,7 @@ class DecorationModel {
   final String description;
   final String imageUrl;
   final int sortOrder;
+  final List<DecorationModelProperty> modelProperties;
 
   factory DecorationModel.fromJson(Map<String, dynamic> json) {
     double parseDouble(dynamic value) {
@@ -38,6 +42,10 @@ class DecorationModel {
       description: json['description'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
       sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
+      modelProperties: (json['model_properties'] as List<dynamic>?)
+              ?.map((item) => DecorationModelProperty.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
@@ -52,6 +60,7 @@ class DecorationModel {
       'description': description,
       'image_url': imageUrl,
       'sort_order': sortOrder,
+      'model_properties': modelProperties.map((p) => p.toJson()).toList(),
     };
   }
 
@@ -65,6 +74,7 @@ class DecorationModel {
     String? description,
     String? imageUrl,
     int? sortOrder,
+    List<DecorationModelProperty>? modelProperties,
   }) {
     return DecorationModel(
       id: id ?? this.id,
@@ -76,6 +86,7 @@ class DecorationModel {
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       sortOrder: sortOrder ?? this.sortOrder,
+      modelProperties: modelProperties ?? this.modelProperties,
     );
   }
 

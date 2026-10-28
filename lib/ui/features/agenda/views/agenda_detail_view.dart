@@ -12,10 +12,12 @@ import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
+import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
@@ -2314,6 +2316,144 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // CARD PICK LIST BARANG & ALAT OPERASIONAL (PAPERLESS)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final pickListAsync = ref.watch(agendaPropertiesProvider(_item.id));
+                      final items = pickListAsync.value ?? [];
+                      final packedCount = items.where((it) => it.isPacked).length;
+                      final returnedCount = items.where((it) => it.isReturned).length;
+                      final totalCount = items.length;
+                      final isAllPacked = totalCount > 0 && packedCount == totalCount;
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isAllPacked ? Colors.green.shade300 : AppColors.borderLight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: isAllPacked ? Colors.green.shade50 : AppColors.goldLight,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.checklist_rtl_rounded,
+                                        color: isAllPacked ? Colors.green.shade700 : AppColors.primaryGold,
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Checklist Muat (Pick List)', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                        Text('Paperless muat barang & alat ke mobil', style: AppTypography.caption),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isAllPacked ? Colors.green.shade100 : AppColors.goldLight,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    totalCount > 0 ? '$packedCount/$totalCount Termuat' : 'Belum Ada',
+                                    style: AppTypography.caption.copyWith(
+                                      color: isAllPacked ? Colors.green.shade800 : AppColors.primaryGold,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (totalCount > 0) ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: totalCount > 0 ? (packedCount / totalCount) : 0,
+                                        minHeight: 6,
+                                        backgroundColor: AppColors.backgroundLight,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          isAllPacked ? Colors.green.shade600 : AppColors.primaryGold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${((packedCount / totalCount) * 100).toInt()}%',
+                                    style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '• Berangkat: $packedCount/$totalCount • Pulang: $returnedCount/$totalCount',
+                                    style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AgendaPickListView(agenda: _item)),
+                                  );
+                                },
+                                icon: const Icon(Icons.playlist_add_check_rounded, size: 18),
+                                label: Text(
+                                  totalCount > 0 ? 'Buka & Centang Pick List' : 'Atur Pick List Barang',
+                                  style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isAllPacked ? Colors.green.shade600 : AppColors.primaryGold,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                 ],
