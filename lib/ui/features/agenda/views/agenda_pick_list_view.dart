@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/property.dart';
+import 'package:dekorin_apps/ui/features/master/widgets/multi_select_property_sheet.dart';
 
 class AgendaPickListView extends ConsumerStatefulWidget {
   const AgendaPickListView({
@@ -505,6 +508,227 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
     );
   }
 
+  void _openMultiSelectPicker() async {
+    final propertiesAsync = ref.read(propertiesProvider);
+    final masterProps = propertiesAsync.value ?? <Property>[];
+    if (masterProps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Master properti belum tersedia.', style: AppTypography.bodyMedium.copyWith(color: Colors.white))),
+      );
+      return;
+    }
+
+    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).value ?? [];
+    final currentIds = currentItems.map((it) => it.propertyId).toSet();
+    final currentQtys = {for (var it in currentItems) it.propertyId: it.qty};
+
+    final result = await MultiSelectPropertySheet.show(
+      context,
+      allProperties: masterProps,
+      initiallySelectedPropertyIds: currentIds,
+      initialQuantities: currentQtys,
+    );
+
+    if (result != null && mounted) {
+      final itemsPayload = result.map((item) {
+        return {
+          'property_id': item.property.id,
+          'qty': item.qty,
+        };
+      }).toList();
+
+      try {
+        await ref.read(propertyServiceProvider).batchAddAgendaProperties(
+          widget.agenda.id,
+          itemsPayload,
+          mode: 'replace',
+        );
+        ref.invalidate(agendaPropertiesProvider(widget.agenda.id));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✓ ${result.length} barang berhasil diterapkan ke Pick List!', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+              backgroundColor: AppColors.primaryGold,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menyimpan barang: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  void _showApplyFromAnotherModelDialog() async {
+    final models = await ref.read(masterServiceProvider).getDecorationModels();
+    final validModels = models.where((m) => m.modelProperties.isNotEmpty).toList();
+
+    if (!mounted) return;
+    if (validModels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Belum ada model dekorasi yang memiliki barang bawaan.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.copy_rounded, color: AppColors.primaryGold, size: 20),
+            const SizedBox(width: 8),
+            Text('Terapkan dari Model Lain', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pilih model untuk diterapkan barang bawaannya ke agenda ini:', style: AppTypography.bodySmall),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: validModels.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (ctx, idx) {
+                    final m = validModels[idx];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      leading: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                      ),
+                      title: Text(m.name, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${m.modelProperties.length} Barang & Alat', style: AppTypography.caption),
+                      onTap: () {
+                        Navigator.pop(dialogCtx);
+                        _confirmApplyModel(m);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text('Tutup', style: AppTypography.caption)),
+        ],
+      ),
+    );
+  }
+
+  void _confirmApplyModel(DecorationModel m) {
+    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).value ?? [];
+
+    void executeApply(String mode) async {
+      try {
+        final result = await ref.read(propertyServiceProvider).populateAgendaProperties(
+          widget.agenda.id,
+          modelId: m.id,
+          mode: mode,
+        );
+        ref.invalidate(agendaPropertiesProvider(widget.agenda.id));
+        final warnings = (result['warnings'] as List<dynamic>? ?? []);
+        if (mounted) {
+          if (warnings.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Peringatan: ${warnings.first}', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.orange),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✓ Berhasil menerapkan ${m.modelProperties.length} barang dari "${m.name}"!', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                backgroundColor: AppColors.primaryGold,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menerapkan model: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+
+    if (currentItems.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Metode Terapkan', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+          content: Text('Daftar saat ini berisi ${currentItems.length} barang. Apakah ingin mengganti semua atau menggabungkannya?', style: AppTypography.bodySmall),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                executeApply('merge');
+              },
+              child: Text('Gabungkan', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                executeApply('replace');
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.white),
+              child: Text('Ganti Semua', style: AppTypography.button),
+            ),
+          ],
+        ),
+      );
+    } else {
+      executeApply('replace');
+    }
+  }
+
+  void _clearPickList() {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Kosongkan Pick List?', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menghapus seluruh barang dari pick list agenda ini?', style: AppTypography.bodySmall),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text('Batal', style: AppTypography.caption)),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              try {
+                await ref.read(propertyServiceProvider).clearAgendaProperties(widget.agenda.id);
+                ref.invalidate(agendaPropertiesProvider(widget.agenda.id));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Pick list berhasil dikosongkan', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: AppColors.primaryGold),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal mengosongkan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text('Kosongkan', style: AppTypography.button),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _deleteItem(AgendaProperty item) async {
     try {
       await ref.read(propertyServiceProvider).deleteAgendaProperty(widget.agenda.id, item.id);
@@ -549,9 +773,66 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
         elevation: 0,
         actions: [
           IconButton(
-            tooltip: 'Sinkronkan dari Model',
-            icon: const Icon(Icons.sync_rounded, color: AppColors.primaryGold),
-            onPressed: _showSyncFromModelDialog,
+            tooltip: 'Pilih Banyak Sekaligus',
+            icon: const Icon(Icons.checklist_rounded, color: AppColors.primaryGold),
+            onPressed: _openMultiSelectPicker,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppColors.textLight),
+            onSelected: (val) {
+              if (val == 'apply_model') {
+                _showApplyFromAnotherModelDialog();
+              } else if (val == 'sync_current') {
+                _showSyncFromModelDialog();
+              } else if (val == 'add_custom') {
+                _showAddPropertyDialog();
+              } else if (val == 'clear_all') {
+                _clearPickList();
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'apply_model',
+                child: Row(
+                  children: [
+                    const Icon(Icons.copy_rounded, size: 18, color: AppColors.primaryGold),
+                    const SizedBox(width: 8),
+                    Text('Terapkan dari Model Lain', style: AppTypography.bodySmall),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sync_current',
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_rounded, size: 18, color: AppColors.primaryGold),
+                    const SizedBox(width: 8),
+                    Text('Sinkronkan Model Acara', style: AppTypography.bodySmall),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'add_custom',
+                child: Row(
+                  children: [
+                    const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primaryGold),
+                    const SizedBox(width: 8),
+                    Text('Tambah Barang Bebas/Custom', style: AppTypography.bodySmall),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'clear_all',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_outlined, size: 18, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text('Kosongkan Pick List', style: AppTypography.bodySmall.copyWith(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
         bottom: TabBar(
@@ -597,11 +878,11 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddPropertyDialog,
+        onPressed: _openMultiSelectPicker,
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add, size: 20),
-        label: Text('Tambah Barang / Alat', style: AppTypography.button),
+        icon: const Icon(Icons.checklist_rounded, size: 20),
+        label: Text('Pilih Cepat Sekaligus', style: AppTypography.button),
       ),
     );
   }

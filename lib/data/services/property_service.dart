@@ -179,6 +179,27 @@ class PropertyService {
     return AgendaProperty.fromJson(response['data'] as Map<String, dynamic>);
   }
 
+  /// Tambah banyak barang sekaligus (Multi-Select) ke pick list agenda
+  Future<List<AgendaProperty>> batchAddAgendaProperties(
+    String agendaId,
+    List<Map<String, dynamic>> items, {
+    String mode = 'merge',
+  }) async {
+    final payload = <String, dynamic>{
+      'items': items,
+      'mode': mode,
+    };
+
+    final response = await ApiClient.post('${ApiEndpoint.agendas}/$agendaId/properties/batch', body: payload);
+    final List<dynamic> data = response['data'] as List<dynamic>? ?? [];
+    return data.map((item) => AgendaProperty.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  /// Kosongkan seluruh pick list agenda
+  Future<void> clearAgendaProperties(String agendaId) async {
+    await ApiClient.delete('${ApiEndpoint.agendas}/$agendaId/properties/clear');
+  }
+
   /// Update item pick list (qty / notes / customName)
   Future<AgendaProperty> updateAgendaProperty(
     String agendaId,
