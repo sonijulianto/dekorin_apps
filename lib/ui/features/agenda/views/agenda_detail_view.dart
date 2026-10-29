@@ -20,6 +20,7 @@ import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.da
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/place_search_modal.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -73,6 +74,9 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Future<void> _updateEventStatus(String newStatus) async {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew) return;
+
     try {
       final updated = await ref.read(agendaServiceProvider).updateEventStatus(_item.id, newStatus);
       setState(() {
@@ -177,10 +181,14 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditDpDialog(BuildContext context) {
-    if (_item.isEventCompleted || _item.isCancelled) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Acara telah selesai atau dibatalkan, nominal DP tidak dapat diubah.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          content: Text(
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah nominal DP.' : 'Acara telah selesai atau dibatalkan, nominal DP tidak dapat diubah.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
           backgroundColor: AppColors.errorRed,
         ),
       );
@@ -315,11 +323,12 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditTransportDialog(BuildContext context) {
-    if (_item.isEventCompleted || _item.isCancelled) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Acara telah selesai atau dibatalkan, uang transport tidak dapat diubah.',
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah uang transport.' : 'Acara telah selesai atau dibatalkan, uang transport tidak dapat diubah.',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppColors.errorRed,
@@ -462,11 +471,12 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   void _showEditPackageDialog(BuildContext context) async {
-    if (_item.isEventCompleted || _item.isCancelled) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Acara telah selesai atau dibatalkan, paket tidak dapat diubah.',
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah paket dekorasi.' : 'Acara telah selesai atau dibatalkan, paket tidak dapat diubah.',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppColors.errorRed,
@@ -711,11 +721,12 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Future<void> _changeDecorationModel(BuildContext context) async {
-    if (_item.isEventCompleted || _item.isCancelled) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Acara telah selesai atau dibatalkan, model dekorasi tidak dapat diubah.',
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah model dekorasi.' : 'Acara telah selesai atau dibatalkan, model dekorasi tidak dapat diubah.',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppColors.errorRed,
@@ -853,7 +864,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Widget _buildDecorationModelSection(BuildContext context) {
-    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final bool canEdit = !isCrew && !_item.isEventCompleted && !_item.isCancelled;
     final bool hasModel = _item.modelName.trim().isNotEmpty;
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
@@ -875,38 +887,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
               ),
             ),
             const SizedBox(width: 8),
-            if (canEdit)
-              InkWell(
-                onTap: () => _changeDecorationModel(context),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasModel)
-                        SvgPicture.asset(
-                          'assets/icons/edit.svg',
-                          width: 13,
-                          height: 13,
-                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
-                        )
-                      else
-                        const Icon(Icons.add_circle_outline, size: 13, color: AppColors.primaryGold),
-                      const SizedBox(width: 4),
-                      Text(
-                        hasModel ? 'Ubah Model' : 'Pilih Model',
-                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -985,20 +965,22 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           ),
                           const SizedBox(height: 3),
                         ],
-                        if (_item.modelAdditionalPrice > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(6)),
-                            child: Text(
-                              '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
-                              style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
+                        if (!isCrew) ...[
+                          if (_item.modelAdditionalPrice > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(6)),
+                              child: Text(
+                                '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
+                                style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
+                              ),
+                            )
+                          else
+                            Text(
+                              'Termasuk dalam paket',
+                              style: AppTypography.caption.copyWith(color: AppColors.successGreen, fontWeight: FontWeight.w600),
                             ),
-                          )
-                        else
-                          Text(
-                            'Termasuk dalam paket',
-                            style: AppTypography.caption.copyWith(color: AppColors.successGreen, fontWeight: FontWeight.w600),
-                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1071,12 +1053,502 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     return raw;
   }
 
-  void _showEditNotesDialog(BuildContext context) {
-    if (_item.isEventCompleted || _item.isCancelled) {
+  void _showEditScheduleDialog(BuildContext context) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Acara telah selesai atau dibatalkan, catatan tidak dapat diubah.',
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah jadwal acara.' : 'Acara telah selesai atau dibatalkan, jadwal acara tidak dapat diubah.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    DateTime selectedDate = _item.eventDateTime;
+    TimeOfDay selectedTime = TimeOfDay(hour: _item.eventDateTime.hour, minute: _item.eventDateTime.minute);
+    bool isSaving = false;
+    final dateDisplayFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                    child: SvgPicture.asset(
+                      'assets/icons/calendar.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Ubah Jadwal Acara', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pilih tanggal dan jam pelaksanaan acara baru:',
+                      style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppColors.textLight),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Pilih Tanggal
+                    Text('Tanggal Acara', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: isSaving
+                          ? null
+                          : () async {
+                              final pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: selectedDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: AppColors.primaryGold,
+                                        onPrimary: Colors.white,
+                                        onSurface: AppColors.textDark,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (pickedDate != null) {
+                                setDialogState(() {
+                                  selectedDate = DateTime(
+                                    pickedDate.year,
+                                    pickedDate.month,
+                                    pickedDate.day,
+                                    selectedTime.hour,
+                                    selectedTime.minute,
+                                  );
+                                });
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Row(
+                          children: [
+                            SvgPicture.asset(
+                              'assets/icons/calendar.svg',
+                              width: 18,
+                              height: 18,
+                              colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                dateDisplayFormat.format(selectedDate),
+                                style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down, color: AppColors.textLight),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Pilih Jam
+                    Text('Jam Pelaksanaan', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: isSaving
+                          ? null
+                          : () async {
+                              final pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: selectedTime,
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: AppColors.primaryGold,
+                                        onPrimary: Colors.white,
+                                        onSurface: AppColors.textDark,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (pickedTime != null) {
+                                setDialogState(() {
+                                  selectedTime = pickedTime;
+                                  selectedDate = DateTime(
+                                    selectedDate.year,
+                                    selectedDate.month,
+                                    selectedDate.day,
+                                    pickedTime.hour,
+                                    pickedTime.minute,
+                                  );
+                                });
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 18, color: AppColors.primaryGold),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')} WIB',
+                                style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down, color: AppColors.textLight),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                  child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setDialogState(() => isSaving = true);
+                          final finalDateTime = DateTime(
+                            selectedDate.year,
+                            selectedDate.month,
+                            selectedDate.day,
+                            selectedTime.hour,
+                            selectedTime.minute,
+                          );
+
+                          try {
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaSchedule(_item.id, finalDateTime);
+                            ref.read(agendaViewModelProvider.notifier).refresh();
+                            ref.invalidate(dashboardViewModelProvider);
+
+                            if (mounted) {
+                              setState(() {
+                                _item = updated;
+                              });
+                            }
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Jadwal acara berhasil diperbarui! 🎉', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal memperbarui jadwal acara: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('Simpan Jadwal', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditLocationDialog(BuildContext context) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah alamat acara.' : 'Acara telah selesai atau dibatalkan, alamat acara tidak dapat diubah.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final addressController = TextEditingController(text: _item.displayAddress);
+    final mapsUrlController = TextEditingController(text: _item.mapsUrl);
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                    child: SvgPicture.asset(
+                      'assets/icons/marker.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Ubah Alamat & Lokasi', style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tuliskan alamat lengkap atau nama tempat acara dilaksanakan:',
+                      style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppColors.textLight),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Alamat Textfield
+                    Text('Alamat Acara', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: addressController,
+                      maxLines: 3,
+                      minLines: 2,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: Gedung Serbaguna Puri Begawan, Jl. Pajajaran No. 5, Bogor',
+                        hintStyle: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppColors.textLight),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.search, color: AppColors.primaryGold, size: 20),
+                          tooltip: 'Cari Rekomendasi Tempat',
+                          onPressed: () async {
+                            final place = await PlaceSearchModal.show(
+                              context,
+                              initialQuery: addressController.text.trim().isNotEmpty
+                                  ? addressController.text.trim()
+                                  : mapsUrlController.text.trim(),
+                            );
+                            if (place != null) {
+                              setDialogState(() {
+                                addressController.text = place.fullAddress;
+                                mapsUrlController.text = place.mapsUrl;
+                              });
+                            }
+                          },
+                        ),
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderLight),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Google Maps Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Link Google Maps (Opsional)', style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600)),
+                        InkWell(
+                          onTap: () async {
+                            String query = mapsUrlController.text.trim();
+                            if (query.isEmpty) {
+                              query = addressController.text.trim();
+                            }
+                            final place = await PlaceSearchModal.show(context, initialQuery: query);
+                            if (place != null) {
+                              setDialogState(() {
+                                addressController.text = place.fullAddress;
+                                mapsUrlController.text = place.mapsUrl;
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset('assets/icons/google-maps-icon.webp', width: 14, height: 14),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Cari di Maps',
+                                  style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: mapsUrlController,
+                      decoration: InputDecoration(
+                        hintText: 'https://maps.google.com/...',
+                        hintStyle: AppTypography.bodyMedium.copyWith(fontSize: 13, color: AppColors.textLight),
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderLight),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                  child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final newAddress = addressController.text.trim();
+                          String newMapsUrl = mapsUrlController.text.trim();
+                          if (newMapsUrl.isNotEmpty && !newMapsUrl.startsWith('http://') && !newMapsUrl.startsWith('https://')) {
+                            newMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(newMapsUrl)}';
+                          }
+
+                          setDialogState(() => isSaving = true);
+                          try {
+                            final updated = await ref.read(agendaServiceProvider).updateAgendaLocation(
+                              _item.id,
+                              eventAddress: newAddress,
+                              mapsUrl: newMapsUrl,
+                            );
+                            ref.read(agendaViewModelProvider.notifier).refresh();
+                            ref.invalidate(dashboardViewModelProvider);
+
+                            if (mounted) {
+                              setState(() {
+                                _item = updated;
+                              });
+                            }
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Alamat & lokasi acara berhasil diperbarui! 🎉', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal memperbarui lokasi acara: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                  backgroundColor: AppColors.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('Simpan Alamat', style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditNotesDialog(BuildContext context) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isCrew ? 'Crew lapangan tidak memiliki akses untuk mengubah catatan acara.' : 'Acara telah selesai atau dibatalkan, catatan tidak dapat diubah.',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppColors.errorRed,
@@ -1235,7 +1707,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Widget _buildNotesAndRequestsSection(BuildContext context) {
-    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final bool canEdit = !isCrew && !_item.isEventCompleted && !_item.isCancelled;
     final String displayNotes = _getDisplayNotes();
     final bool hasNotes = displayNotes.isNotEmpty;
 
@@ -1257,38 +1730,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
               ),
             ),
             const SizedBox(width: 8),
-            if (canEdit)
-              InkWell(
-                onTap: () => _showEditNotesDialog(context),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasNotes)
-                        SvgPicture.asset(
-                          'assets/icons/edit.svg',
-                          width: 13,
-                          height: 13,
-                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
-                        )
-                      else
-                        const Icon(Icons.add_circle_outline, size: 13, color: AppColors.primaryGold),
-                      const SizedBox(width: 4),
-                      Text(
-                        hasNotes ? 'Ubah Catatan' : 'Tambah Catatan',
-                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -1358,13 +1799,256 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     );
   }
 
+  Widget _buildScheduleSection(BuildContext context, DateFormat dateFormat, DateFormat timeFormat) {
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final bool canEdit = !isCrew && !_item.isEventCompleted && !_item.isCancelled;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                ),
+                const SizedBox(width: 8),
+                Text('Jadwal Acara', style: AppTypography.caption),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: canEdit ? () => _showEditScheduleDialog(context) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundLight,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: SvgPicture.asset(
+                    'assets/icons/calendar.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dateFormat.format(_item.eventDateTime),
+                        style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 14, color: AppColors.primaryGold),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Pukul ${timeFormat.format(_item.eventDateTime)} WIB',
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.textLight, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (canEdit)
+                  SvgPicture.asset(
+                    'assets/icons/edit.svg',
+                    width: 16,
+                    height: 16,
+                    colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSection(BuildContext context) {
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final bool canEdit = !isCrew && !_item.isEventCompleted && !_item.isCancelled;
+    final address = _item.displayAddress;
+    final hasAddress = address.isNotEmpty;
+    final hasMapsUrl = _item.mapsUrl.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/icons/marker.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                ),
+                const SizedBox(width: 8),
+                Text('Alamat & Lokasi Acara', style: AppTypography.caption),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: canEdit ? () => _showEditLocationDialog(context) : null,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: (hasAddress || hasMapsUrl) ? AppColors.backgroundLight : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: (hasAddress || hasMapsUrl) ? AppColors.borderLight : Colors.grey.shade200),
+            ),
+            child: (hasAddress || hasMapsUrl)
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.goldLight,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/icons/marker.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hasAddress ? address : 'Alamat spesifik belum ditulis',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    fontWeight: hasAddress ? FontWeight.w600 : FontWeight.normal,
+                                    color: hasAddress ? AppColors.textDark : AppColors.textLight,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (canEdit)
+                            SvgPicture.asset(
+                              'assets/icons/edit.svg',
+                              width: 16,
+                              height: 16,
+                              colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                            ),
+                        ],
+                      ),
+                      if (hasMapsUrl) ...[
+                        const SizedBox(height: 10),
+                        const Divider(height: 1),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () => _launchUrl(context, _item.mapsUrl),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Buka di Google Maps',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: Colors.blue.shade700,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.open_in_new, size: 16, color: Colors.blue),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(8)),
+                        child: SvgPicture.asset(
+                          'assets/icons/marker.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Belum ada alamat acara',
+                              style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
+                            ),
+                            Text(
+                              canEdit ? 'Ketuk untuk menambahkan alamat & link Maps' : 'Tidak ada alamat',
+                              style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (canEdit) const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final form = _item.clientForm;
-    final bool canEdit = !_item.isEventCompleted && !_item.isCancelled;
+    final currentUser = ref.watch(globalAuthProvider).value;
+    final bool isCrew = currentUser?.isCrew ?? false;
+    final bool canEdit = !isCrew && !_item.isEventCompleted && !_item.isCancelled;
 
     final isUnselected =
         _item.packageName.toLowerCase().contains('belum dipilih') ||
@@ -1438,24 +2122,25 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: SvgPicture.asset(
-              'assets/icons/print.svg',
-              width: 22,
-              height: 22,
-              colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+          if (!isCrew)
+            IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/print.svg',
+                width: 22,
+                height: 22,
+                colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+              ),
+              tooltip: 'Cetak Invoice',
+              onPressed: () async {
+                final res = await Navigator.push<AgendaItem>(
+                  context,
+                  MaterialPageRoute(builder: (_) => InvoicePreviewView(agenda: _item)),
+                );
+                if (res != null && mounted) {
+                  setState(() => _item = res);
+                }
+              },
             ),
-            tooltip: 'Cetak Invoice',
-            onPressed: () async {
-              final res = await Navigator.push<AgendaItem>(
-                context,
-                MaterialPageRoute(builder: (_) => InvoicePreviewView(agenda: _item)),
-              );
-              if (res != null && mounted) {
-                setState(() => _item = res);
-              }
-            },
-          ),
         ],
       ),
       body: Column(
@@ -1606,53 +2291,13 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         Text('Informasi Acara & Dekorasi', style: AppTypography.titleMedium),
                         const SizedBox(height: 14),
 
-                        // Tanggal & Jam
-                        _buildInfoRow(
-                          null,
-                          'Jadwal Acara',
-                          '${dateFormat.format(_item.eventDateTime)} • ${timeFormat.format(_item.eventDateTime)} WIB',
-                          iconWidget: SvgPicture.asset(
-                            'assets/icons/calendar.svg',
-                            width: 20,
-                            height: 20,
-                            colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        // 1. Jadwal Acara (Bisa diedit selama agenda masih aktif)
+                        _buildScheduleSection(context, dateFormat, timeFormat),
+                        const SizedBox(height: 14),
 
-                        // Alamat Acara (dari form client atau notes)
-                        if (form != null && form.eventAddress.isNotEmpty) ...[
-                          _buildInfoRow(Icons.location_on_outlined, 'Alamat Acara', form.eventAddress),
-                          const SizedBox(height: 12),
-                        ],
-
-                        // Link Google Maps
-                        if (_item.mapsUrl.isNotEmpty) ...[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Link Google Maps', style: AppTypography.caption),
-                                    const SizedBox(height: 2),
-                                    GestureDetector(
-                                      onTap: () => _launchUrl(context, _item.mapsUrl),
-                                      child: Text(
-                                        _item.mapsUrl,
-                                        style: AppTypography.bodyMedium.copyWith(color: Colors.blue, decoration: TextDecoration.underline),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                        // 2. Alamat & Lokasi Acara (Bisa diedit selama agenda masih aktif)
+                        _buildLocationSection(context),
+                        const SizedBox(height: 14),
 
                         // Model Dekorasi (Bisa dirubah selama status acara belum selesai)
                         _buildDecorationModelSection(context),
@@ -1717,9 +2362,10 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 3. Rincian Invoice & Status Pembayaran DP Card
-                  Container(
-                    width: double.infinity,
+                  // 3. Rincian Invoice & Status Pembayaran DP Card (Hanya Owner & Admin, disembunyikan untuk Crew Lapangan)
+                  if (!isCrew) ...[
+                    Container(
+                      width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.goldLight,
@@ -1744,39 +2390,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                 Text('Pembayaran & DP', style: AppTypography.titleMedium.copyWith(color: AppColors.primaryDark)),
                               ],
                             ),
-                            // Tombol Edit / Input DP (hanya jika acara belum selesai)
-                            if (canEdit)
-                              InkWell(
-                                onTap: () => _showEditDpDialog(context),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (_item.dpAmount > 0)
-                                        SvgPicture.asset(
-                                          'assets/icons/edit.svg',
-                                          width: 14,
-                                          height: 14,
-                                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
-                                        )
-                                      else
-                                        const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primaryGold),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _item.dpAmount > 0 ? 'Ubah DP' : 'Input DP',
-                                        style: AppTypography.caption.copyWith(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGold),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -2318,6 +2931,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     ),
                   ),
                   const SizedBox(height: 14),
+                ],
 
                   // CARD PICK LIST BARANG & ALAT OPERASIONAL (PAPERLESS)
                   Consumer(
@@ -2369,8 +2983,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text('Checklist Muat (Pick List)', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                        Text('Paperless muat barang & alat ke mobil', style: AppTypography.caption),
+                                        Text('Checklist Muat', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
                                       ],
                                     ),
                                   ],
@@ -2546,6 +3159,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   List<Widget> _buildAddonsSection(BuildContext context, String rawNotes) {
     final widgets = <Widget>[];
     if (rawNotes.trim().isEmpty) return widgets;
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
 
     // Deteksi tag addon [Item Tambahan / Addon]:
     const addonTag = '[Item Tambahan / Addon]:';
@@ -2637,7 +3251,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     itemName,
                                     style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textDark),
                                   ),
-                                  if (pricePart.isNotEmpty) ...[
+                                  if (!isCrew && pricePart.isNotEmpty) ...[
                                     const SizedBox(height: 3),
                                     Text(
                                       pricePart,
@@ -2673,6 +3287,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     List<CompanyBrand> brands,
     String mainCompanyName,
   ) {
+    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
+    if (isCrew || _item.isEventCompleted || _item.isCancelled) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -2796,6 +3412,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Widget _buildEventStatusBadge() {
+    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
     Color bg;
     Color border;
     Color textCol;
@@ -2828,6 +3445,34 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       );
     }
 
+    final badgeContent = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          iconWidget ?? Icon(icon!, size: 14, color: textCol),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: textCol),
+          ),
+          if (!isCrew) ...[
+            const SizedBox(width: 2),
+            Icon(Icons.arrow_drop_down, size: 14, color: textCol),
+          ],
+        ],
+      ),
+    );
+
+    if (isCrew) {
+      return badgeContent;
+    }
+
     return PopupMenuButton<String>(
       tooltip: 'Ubah Status Acara',
       onSelected: (val) => _updateEventStatus(val),
@@ -2845,27 +3490,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           child: Text('Tandai: Dibatalkan', style: AppTypography.labelLarge),
         ),
       ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            iconWidget ?? Icon(icon!, size: 14, color: textCol),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: textCol),
-            ),
-            const SizedBox(width: 2),
-            Icon(Icons.arrow_drop_down, size: 14, color: textCol),
-          ],
-        ),
-      ),
+      child: badgeContent,
     );
   }
 }

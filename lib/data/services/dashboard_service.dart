@@ -39,9 +39,8 @@ class DashboardService {
               ? agenda.backdropTitle
               : agenda.packageName,
           date: agenda.eventDateTime,
-          location: (agenda.clientForm != null &&
-                  agenda.clientForm!.eventAddress.isNotEmpty)
-              ? agenda.clientForm!.eventAddress
+          location: agenda.displayAddress.isNotEmpty
+              ? agenda.displayAddress
               : (agenda.mapsUrl.isNotEmpty ? 'Lokasi via Maps' : 'Lokasi Acara'),
           status: agenda.isEventCompleted
               ? BookingStatus.completed

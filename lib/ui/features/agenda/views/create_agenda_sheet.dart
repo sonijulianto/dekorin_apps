@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
@@ -15,6 +14,7 @@ import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.da
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/place_search_modal.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
@@ -30,6 +30,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   final _clientNameController = TextEditingController();
   final _clientPhoneController = TextEditingController();
   final _backdropTitleController = TextEditingController();
+  final _eventAddressController = TextEditingController();
   final _mapsUrlController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -51,90 +52,25 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   }
 
   Future<void> _searchGoogleMaps() async {
-    String query = _mapsUrlController.text.trim();
-    if (query.isEmpty) {
-      final searchResult = await showDialog<String>(
-        context: context,
-        builder: (ctx) {
-          final tempController = TextEditingController();
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Image.asset('assets/icons/google-maps-icon.webp', width: 22, height: 22),
-                const SizedBox(width: 8),
-                Text(
-                  'Cari Lokasi di Maps',
-                  style: AppTypography.titleMedium.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ketik nama gedung, hotel, venue, atau alamat acara:',
-                  style: AppTypography.bodySmall.copyWith(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: tempController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Contoh: Gedung Serbaguna Puri Begawan',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, tempController.text.trim()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGold,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text('Buka Google Maps', style: AppTypography.button),
-              ),
-            ],
-          );
-        },
-      );
+    final initial = _mapsUrlController.text.trim().isNotEmpty
+        ? _mapsUrlController.text.trim()
+        : _eventAddressController.text.trim();
 
-      if (searchResult == null || searchResult.isEmpty) return;
-      query = searchResult;
-    }
-
-    Uri url;
-    if (query.startsWith('http://') || query.startsWith('https://')) {
-      url = Uri.parse(query);
-    } else {
-      final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
-      _mapsUrlController.text = mapsUrl;
-      url = Uri.parse(mapsUrl);
-    }
-
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(url, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
+    final result = await PlaceSearchModal.show(context, initialQuery: initial);
+    if (result != null) {
+      setState(() {
+        _eventAddressController.text = result.fullAddress;
+        _mapsUrlController.text = result.mapsUrl;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Gagal membuka Google Maps: $e',
+              'Lokasi "${result.name}" berhasil dipilih!',
               style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -290,6 +226,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     _clientNameController.dispose();
     _clientPhoneController.dispose();
     _backdropTitleController.dispose();
+    _eventAddressController.dispose();
     _mapsUrlController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -443,6 +380,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
         eventDateTime: eventDateTime,
+        eventAddress: _eventAddressController.text.trim(),
         mapsUrl: mapsUrl,
         packageId: _selectedPackage?.id ?? '',
         packagePrice: effectivePackagePrice,
@@ -793,7 +731,44 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 14),
 
-              // 4. Link Maps Google Maps
+              // 4. Alamat Acara (Opsional)
+              Text(
+                'Alamat Acara (Opsional)',
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _eventAddressController,
+                keyboardType: TextInputType.streetAddress,
+                maxLines: 2,
+                minLines: 1,
+                decoration: InputDecoration(
+                  hintText: 'Contoh: Gedung Pernikahan Harmoni, Jl. Melati No. 12',
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SvgPicture.asset(
+                      'assets/icons/marker.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                    ),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search, color: AppTheme.primaryGold, size: 20),
+                    tooltip: 'Cari Tempat / Venue',
+                    onPressed: _searchGoogleMaps,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 5. Link Maps Google Maps
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

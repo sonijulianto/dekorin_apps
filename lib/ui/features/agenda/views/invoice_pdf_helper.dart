@@ -235,7 +235,9 @@ class InvoicePdfHelper {
 ''';
 
     String clientAddress = 'Jl. Lokasi Acara';
-    if (form != null && form.eventAddress.isNotEmpty) {
+    if (agenda.displayAddress.isNotEmpty) {
+      clientAddress = agenda.displayAddress;
+    } else if (form != null && form.eventAddress.isNotEmpty) {
       clientAddress = form.eventAddress;
     } else if (agenda.mapsUrl.isNotEmpty) {
       clientAddress = agenda.mapsUrl;

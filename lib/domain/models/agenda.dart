@@ -96,6 +96,7 @@ class AgendaItem {
     this.clientPhone = '',
     required this.backdropTitle,
     required this.eventDateTime,
+    this.eventAddress = '',
     required this.mapsUrl,
     required this.packageId,
     required this.packageName,
@@ -126,6 +127,7 @@ class AgendaItem {
   final String clientPhone;
   final String backdropTitle;
   final DateTime eventDateTime;
+  final String eventAddress;
   final String mapsUrl;
   final String packageId;
   final String packageName;
@@ -147,6 +149,7 @@ class AgendaItem {
   bool get isPaidOff => paymentStatus.toLowerCase() == 'paid';
   bool get isEventCompleted => status.toLowerCase() == 'completed';
   bool get isCancelled => status.toLowerCase() == 'cancelled';
+  String get displayAddress => eventAddress.isNotEmpty ? eventAddress : (clientForm?.eventAddress ?? '');
 
   double get calculatedTotalPrice {
     double total = transportFee + modelAdditionalPrice;
@@ -170,6 +173,7 @@ class AgendaItem {
     String? clientPhone,
     String? backdropTitle,
     DateTime? eventDateTime,
+    String? eventAddress,
     String? mapsUrl,
     String? packageId,
     String? packageName,
@@ -200,6 +204,7 @@ class AgendaItem {
       clientPhone: clientPhone ?? this.clientPhone,
       backdropTitle: backdropTitle ?? this.backdropTitle,
       eventDateTime: eventDateTime ?? this.eventDateTime,
+      eventAddress: eventAddress ?? this.eventAddress,
       mapsUrl: mapsUrl ?? this.mapsUrl,
       packageId: packageId ?? this.packageId,
       packageName: packageName ?? this.packageName,
@@ -252,6 +257,7 @@ class AgendaItem {
       clientPhone: json['client_phone'] as String? ?? '',
       backdropTitle: json['backdrop_title'] as String? ?? '',
       eventDateTime: parsedDate,
+      eventAddress: json['event_address'] as String? ?? parsedForm?.eventAddress ?? '',
       mapsUrl: json['maps_url'] as String? ?? '',
       packageId: json['package_id'] as String? ?? '',
       packageName: json['package_name'] as String? ?? '',
@@ -285,6 +291,7 @@ class AgendaItem {
       'client_phone': clientPhone,
       'backdrop_title': backdropTitle,
       'event_date_time': eventDateTime.toIso8601String(),
+      'event_address': eventAddress,
       'maps_url': mapsUrl,
       'package_id': packageId,
       'package_name': packageName,

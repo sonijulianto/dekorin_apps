@@ -88,6 +88,7 @@ class AgendaService {
     String clientPhone = '',
     String backdropTitle = '',
     DateTime? eventDateTime,
+    String eventAddress = '',
     String mapsUrl = '',
     String packageId = '',
     double packagePrice = 0.0,
@@ -108,6 +109,7 @@ class AgendaService {
       'client_phone': clientPhone,
       if (backdropTitle.isNotEmpty) 'backdrop_title': backdropTitle,
       if (formattedDate.isNotEmpty) 'event_date_time': formattedDate,
+      if (eventAddress.isNotEmpty) 'event_address': eventAddress,
       if (mapsUrl.isNotEmpty) 'maps_url': mapsUrl,
       if (packageId.isNotEmpty) 'package_id': packageId,
       if (packagePrice > 0) 'package_price': packagePrice,
@@ -287,6 +289,60 @@ class AgendaService {
     final payload = {'status': status};
     final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/status', body: payload);
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengupdate jadwal acara (tanggal dan jam) untuk agenda aktif
+  Future<AgendaItem> updateAgendaSchedule(String agendaId, DateTime eventDateTime) async {
+    final formattedDate = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime);
+    final payload = {'event_date_time': formattedDate};
+    try {
+      final responseData = await ApiClient.put(
+        '${ApiEndpoint.agendas}/$agendaId/schedule',
+        body: payload,
+      );
+      return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      final is404 = e.statusCode == 404 || e.message.contains('Cannot PUT') || e.message.contains('404');
+      if (is404) {
+        // Fallback ke endpoint utama /agendas/:id jika route /schedule belum aktif di live server
+        final responseData = await ApiClient.put(
+          '${ApiEndpoint.agendas}/$agendaId',
+          body: payload,
+        );
+        return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+      }
+      rethrow;
+    }
+  }
+
+  /// Mengupdate alamat dan lokasi Maps acara untuk agenda aktif
+  Future<AgendaItem> updateAgendaLocation(
+    String agendaId, {
+    required String eventAddress,
+    String mapsUrl = '',
+  }) async {
+    final payload = {
+      'event_address': eventAddress,
+      'maps_url': mapsUrl,
+    };
+    try {
+      final responseData = await ApiClient.put(
+        '${ApiEndpoint.agendas}/$agendaId/location',
+        body: payload,
+      );
+      return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      final is404 = e.statusCode == 404 || e.message.contains('Cannot PUT') || e.message.contains('404');
+      if (is404) {
+        // Fallback ke endpoint utama /agendas/:id jika route /location belum aktif di live server
+        final responseData = await ApiClient.put(
+          '${ApiEndpoint.agendas}/$agendaId',
+          body: payload,
+        );
+        return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+      }
+      rethrow;
+    }
   }
 }
 
