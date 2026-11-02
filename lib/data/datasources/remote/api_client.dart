@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
+import 'package:dekorin_apps/data/datasources/remote/image_compressor.dart';
 
 /// Exception khusus yang membawa pesan error dari API.
 class ApiException implements Exception {
@@ -86,6 +87,12 @@ class ApiClient {
       if (response.statusCode == 401) {
         _triggerUnauthorized();
       }
+      if (response.statusCode == 413) {
+        throw ApiException(
+          'Ukuran file terlalu besar melebihi kapasitas server (413 Payload Too Large).',
+          statusCode: 413,
+        );
+      }
       throw ApiException(
         response.body.isNotEmpty
             ? response.body
@@ -99,6 +106,12 @@ class ApiClient {
     } else {
       if (response.statusCode == 401) {
         _triggerUnauthorized();
+      }
+      if (response.statusCode == 413) {
+        throw ApiException(
+          'Ukuran file terlalu besar melebihi kapasitas server (413 Payload Too Large).',
+          statusCode: 413,
+        );
       }
 
       // Ambil pesan error dari API (jika ada), fallback ke pesan generic
@@ -223,6 +236,9 @@ class ApiClient {
   // ── UPLOAD IMAGE ──────────────────────────────────────────
   static Future<String> uploadImage(File file, {bool withToken = true}) async {
     try {
+      // Auto Multi-Pass Compression untuk memastikan file <= 5MB sebelum diunggah
+      final processedFile = await ImageCompressor.compressUnder5MB(file);
+
       final uri = Uri.parse('${ApiEndpoint.baseUrl}/upload');
       final request = http.MultipartRequest('POST', uri);
 
@@ -235,7 +251,7 @@ class ApiClient {
 
       final multipartFile = await http.MultipartFile.fromPath(
         'image',
-        file.path,
+        processedFile.path,
       );
       request.files.add(multipartFile);
 
