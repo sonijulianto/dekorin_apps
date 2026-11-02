@@ -33,8 +33,9 @@ class User {
   final String companyBankInfo;
 
   /// Helper getters for Role-Based Access Control
-  bool get isOwner => role.toLowerCase() == 'owner';
-  bool get isAdmin => role.toLowerCase() == 'admin';
+  bool get isSuperAdmin => role.toLowerCase() == 'superadmin';
+  bool get isOwner => role.toLowerCase() == 'owner' || isSuperAdmin;
+  bool get isAdmin => role.toLowerCase() == 'admin' || isSuperAdmin;
   bool get isCrew => role.toLowerCase() == 'crew';
 
   /// Owner has access to financial dashboard
@@ -54,6 +55,8 @@ class User {
 
   String get roleDisplayName {
     switch (role.toLowerCase()) {
+      case 'superadmin':
+        return 'Superadmin';
       case 'owner':
         return 'Owner';
       case 'admin':
