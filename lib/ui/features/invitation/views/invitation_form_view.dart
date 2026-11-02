@@ -462,7 +462,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   controller: _slugController,
                   label: 'Tautan URL Slug (Unik)',
                   hint: _selectedEventType == 'khitan' ? 'khitan-rayyan' : 'bagas-zulia',
-                  helperText: 'Akan menjadi tautan: domain.com/invitation/slug',
+                  helperText: 'Akan menjadi tautan: undangan.dekorin.my.id/slug',
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Slug wajib diisi' : null,
                 ),
                 const SizedBox(height: 12),

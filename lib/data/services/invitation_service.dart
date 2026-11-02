@@ -41,6 +41,12 @@ class InvitationService {
     return InvitationItem.fromJson(res['data'] as Map<String, dynamic>);
   }
 
+  /// Memperbarui / me-reset Link Token & PIN Akses Portal Pengantin
+  Future<InvitationItem> resetInvitationAccess(String id) async {
+    final res = await ApiClient.post('${ApiEndpoint.invitations}/$id/reset-access', body: {});
+    return InvitationItem.fromJson(res['data'] as Map<String, dynamic>);
+  }
+
   /// Menghapus undangan digital
   Future<void> deleteInvitation(String id) async {
     await ApiClient.delete('${ApiEndpoint.invitations}/$id');

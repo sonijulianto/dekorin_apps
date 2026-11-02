@@ -126,6 +126,8 @@ class InvitationItem {
     this.resepsiPhoto = '',
     this.eventPhoto = '',
     this.closingPhoto = '',
+    this.editToken = '',
+    this.editPin = '',
     this.isActive = true,
     this.createdAt,
     this.wishes = const [],
@@ -181,6 +183,8 @@ class InvitationItem {
   final String resepsiPhoto;
   final String eventPhoto;
   final String closingPhoto;
+  final String editToken;
+  final String editPin;
   final bool isActive;
   final DateTime? createdAt;
   final List<InvitationWishItem> wishes;
@@ -242,6 +246,8 @@ class InvitationItem {
       resepsiPhoto: json['resepsi_photo'] as String? ?? '',
       eventPhoto: json['event_photo'] as String? ?? '',
       closingPhoto: json['closing_photo'] as String? ?? '',
+      editToken: json['edit_token'] as String? ?? '',
+      editPin: json['edit_pin'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       wishes: wishesList,

@@ -8,6 +8,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/client_portal_access_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/guest_manager_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_form_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_generator_view.dart';
@@ -31,6 +32,19 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => GuestManagerSheet(invitation: invitation),
+    );
+  }
+
+  void _openClientPortalAccess(InvitationItem invitation) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => ClientPortalAccessSheet(
+        invitation: invitation,
+        onAccessUpdated: () => ref.invalidate(invitationsProvider),
+      ),
     );
   }
 
@@ -232,7 +246,9 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                             PopupMenuButton<String>(
                               icon: const Icon(Icons.more_vert, color: AppColors.textLight),
                               onSelected: (value) async {
-                                if (value == 'edit') {
+                                if (value == 'portal') {
+                                  _openClientPortalAccess(inv);
+                                } else if (value == 'edit') {
                                   final res = await Navigator.push<bool>(
                                     context,
                                     MaterialPageRoute(builder: (_) => InvitationFormView(invitation: inv)),
@@ -245,6 +261,21 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                 }
                               },
                               itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'portal',
+                                  child: Row(
+                                    children: [
+                                      SvgPicture.asset(
+                                        'assets/icons/lock.svg',
+                                        width: 18,
+                                        height: 18,
+                                        colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text('Akses Web Pengantin', style: AppTypography.bodyMedium),
+                                    ],
+                                  ),
+                                ),
                                 PopupMenuItem(
                                   value: 'edit',
                                   child: Row(
@@ -340,6 +371,33 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                               onPressed: () => _openGuestManager(inv),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: AppColors.goldLight.withValues(alpha: 0.65),
+                              side: BorderSide(color: AppColors.primaryGold.withValues(alpha: 0.45)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => _openClientPortalAccess(inv),
+                            icon: SvgPicture.asset(
+                              'assets/icons/share.svg',
+                              width: 14,
+                              height: 14,
+                              colorFilter: const ColorFilter.mode(AppColors.secondaryGold, BlendMode.srcIn),
+                            ),
+                            label: Text(
+                              'Bagikan Akses Web Kelola ke Pengantin',
+                              style: AppTypography.caption.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.secondaryGold,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),

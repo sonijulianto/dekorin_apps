@@ -46,12 +46,28 @@ class ApiEndpoint {
   // ── App Version / In-App Update ───────────────────────────
   static const String appVersion = '/app/version';
 
-  /// Helper untuk membuat URL publik undangan digital
+  /// Base URL khusus Subdomain Undangan Digital & Portal Pengantin
+  static String get invitationDomainBaseUrl {
+    final uri = Uri.parse(baseUrl);
+    if (uri.host == 'dekorin.my.id' || uri.host.endsWith('.dekorin.my.id')) {
+      return 'https://undangan.dekorin.my.id';
+    }
+    return webFormBaseUrl;
+  }
+
+  /// Helper untuk membuat URL publik undangan digital (https://undangan.dekorin.my.id/:slug)
   static String getInvitationWebUrl(String slug, [String? guestName]) {
-    final base = '$webFormBaseUrl/invitation/$slug';
+    final uri = Uri.parse(baseUrl);
+    final isProdDomain = uri.host == 'dekorin.my.id' || uri.host.endsWith('.dekorin.my.id');
+    final base = isProdDomain ? '$invitationDomainBaseUrl/$slug' : '$webFormBaseUrl/invitation/$slug';
     if (guestName != null && guestName.trim().isNotEmpty) {
       return '$base?to=${Uri.encodeComponent(guestName.trim())}';
     }
     return base;
+  }
+
+  /// Helper untuk membuat URL Portal Kelola Mandiri Pengantin (1-Klik Token)
+  static String getInvitationPortalManageUrl(String editToken) {
+    return '$invitationDomainBaseUrl/kelola/$editToken';
   }
 }
