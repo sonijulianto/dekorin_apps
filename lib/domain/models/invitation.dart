@@ -6,6 +6,8 @@ class InvitationTemplate {
   static const String creamyLatte = 'creamy-latte';
   static const String floral = 'floral';
   static const String luxuryGrey = 'luxury-grey';
+  static const String pn4 = 'pn4';
+  static const String ta3 = 'ta3';
   static const String khitanGreen = 'khitan-green';
 
   static const List<Map<String, dynamic>> all = [
@@ -51,6 +53,28 @@ class InvitationTemplate {
       'secondaryColor': Color(0xFF2C3333),
       'backgroundColor': Color(0xFF1E2022),
       'accentColor': Color(0xFFECDFCC),
+      'eventType': 'wedding',
+    },
+    {
+      'id': pn4,
+      'name': 'Monochrome PN4',
+      'tag': 'Editorial Monochrome',
+      'description': 'Desain editorial monokrom elegan dengan frame lengkung & tipografi klasik.',
+      'primaryColor': Color(0xFF343434),
+      'secondaryColor': Color(0xFF6E6E6E),
+      'backgroundColor': Color(0xFFF1F1F1),
+      'accentColor': Color(0xFFFFFFFF),
+      'eventType': 'wedding',
+    },
+    {
+      'id': ta3,
+      'name': 'Sakura Blossom TA3',
+      'tag': 'Romantic Floral & Arch',
+      'description': 'Desain floral sakura romantis dengan bingkai lengkung, countdown, dan love story.',
+      'primaryColor': Color(0xFFD4A373),
+      'secondaryColor': Color(0xFFC08081),
+      'backgroundColor': Color(0xFFFFF9F9),
+      'accentColor': Color(0xFFFDE8E9),
       'eventType': 'wedding',
     },
     {
