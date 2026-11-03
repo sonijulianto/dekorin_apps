@@ -1103,12 +1103,24 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Galeri Foto (gallery1 - gallery9)', style: AppTypography.labelLarge),
+            Expanded(
+              child: Text(
+                'Galeri Foto (gallery1 - gallery9)',
+                style: AppTypography.labelLarge,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
             TextButton.icon(
               onPressed: _pickGalleryImages,
               icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
               label: Text('Tambah Foto', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primaryGold),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryGold,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
           ],
         ),
@@ -1197,7 +1209,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.labelLarge),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.labelLarge,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
             if (imageUrl.isNotEmpty && onClear != null)
               GestureDetector(
                 onTap: onClear,
