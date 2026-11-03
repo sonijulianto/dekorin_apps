@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,32 @@ import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
+
+class LoveStoryItem {
+  final TextEditingController dateController;
+  final TextEditingController titleController;
+  final TextEditingController descriptionController;
+
+  LoveStoryItem({
+    String date = '',
+    String title = '',
+    String description = '',
+  })  : dateController = TextEditingController(text: date),
+        titleController = TextEditingController(text: title),
+        descriptionController = TextEditingController(text: description);
+
+  void dispose() {
+    dateController.dispose();
+    titleController.dispose();
+    descriptionController.dispose();
+  }
+
+  Map<String, String> toMap() => {
+        'date': dateController.text.trim(),
+        'title': titleController.text.trim(),
+        'description': descriptionController.text.trim(),
+      };
+}
 
 class InvitationFormView extends ConsumerStatefulWidget {
   const InvitationFormView({super.key, this.invitation});
@@ -82,7 +109,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   // Media & Cerita
   late TextEditingController _audioUrlController;
   late TextEditingController _youtubeUrlController;
-  late TextEditingController _loveStoryController;
+  final List<LoveStoryItem> _loveStoryItems = [];
   late TextEditingController _turutMengundangController;
 
   String _coverImageUrl = '';
@@ -160,7 +187,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
 
     _audioUrlController = TextEditingController(text: inv?.audioUrl ?? '');
     _youtubeUrlController = TextEditingController(text: inv?.youtubeUrl ?? '');
-    _loveStoryController = TextEditingController(text: inv?.loveStory ?? '');
+    _initLoveStoryItems(inv?.loveStory ?? '');
     _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? '');
 
     _coverImageUrl = inv != null ? inv.coverImage : '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg';
@@ -214,7 +241,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     _waConfirmationController.dispose();
     _audioUrlController.dispose();
     _youtubeUrlController.dispose();
-    _loveStoryController.dispose();
+    for (final item in _loveStoryItems) {
+      item.dispose();
+    }
     _turutMengundangController.dispose();
     super.dispose();
   }
@@ -432,7 +461,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'wa_confirmation': _waConfirmationController.text.trim(),
       'audio_url': _audioUrlController.text.trim(),
       'youtube_url': _youtubeUrlController.text.trim(),
-      'love_story': _loveStoryController.text.trim(),
+      'love_story': _serializeLoveStory(),
       'turut_mengundang': _turutMengundangController.text.trim(),
       'gallery_images': _galleryUrls.join(','),
       'is_active': true,
@@ -945,13 +974,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                 ),
                 const SizedBox(height: 12),
                 if (_selectedEventType == 'wedding') ...[
-                  DekorinTextField(
-                    controller: _loveStoryController,
-                    label: 'Kisah Cinta / Our Story (Opsional)',
-                    hint: 'Tuliskan kilas balik pertemuan pertama, momen komitmen, hingga lamaran...',
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
+                  _buildLoveStorySection(),
+                  const SizedBox(height: 14),
                 ],
                 DekorinTextField(
                   controller: _turutMengundangController,
@@ -1366,6 +1390,266 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               );
             },
           ),
+      ],
+    );
+  }
+
+  void _initLoveStoryItems(String rawStory) {
+    _loveStoryItems.clear();
+    final trimmed = rawStory.trim();
+    if (trimmed.isEmpty) return;
+
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is List) {
+        for (final item in decoded) {
+          if (item is Map) {
+            _loveStoryItems.add(
+              LoveStoryItem(
+                date: (item['date'] ?? item['tanggal'] ?? '').toString(),
+                title: (item['title'] ?? item['judul'] ?? '').toString(),
+                description: (item['description'] ?? item['deskripsi'] ?? item['body'] ?? item['story'] ?? '').toString(),
+              ),
+            );
+          }
+        }
+        if (_loveStoryItems.isNotEmpty) return;
+      }
+    } catch (_) {
+      // Fallback: parse legacy plain text
+    }
+
+    final parts = trimmed.split(RegExp(r'\n\s*---\s*\n|\n\s*={3,}\s*\n'));
+    for (final part in parts) {
+      final pTrimmed = part.trim();
+      if (pTrimmed.isEmpty) continue;
+      final lines = pTrimmed.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      if (lines.length >= 3) {
+        _loveStoryItems.add(
+          LoveStoryItem(
+            date: lines[0],
+            title: lines[1],
+            description: lines.sublist(2).join('\n'),
+          ),
+        );
+      } else if (lines.length == 2) {
+        _loveStoryItems.add(
+          LoveStoryItem(
+            date: lines[0],
+            title: lines[1],
+            description: '',
+          ),
+        );
+      } else if (lines.length == 1) {
+        if (lines[0].contains('|')) {
+          final segs = lines[0].split('|').map((s) => s.trim()).toList();
+          _loveStoryItems.add(
+            LoveStoryItem(
+              date: segs.isNotEmpty ? segs[0] : '',
+              title: segs.length > 1 ? segs[1] : '',
+              description: segs.length > 2 ? segs.sublist(2).join(' | ') : '',
+            ),
+          );
+        } else {
+          _loveStoryItems.add(
+            LoveStoryItem(
+              date: '',
+              title: '',
+              description: lines[0],
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  String _serializeLoveStory() {
+    final validItems = _loveStoryItems
+        .where((item) =>
+            item.dateController.text.trim().isNotEmpty ||
+            item.titleController.text.trim().isNotEmpty ||
+            item.descriptionController.text.trim().isNotEmpty)
+        .map((item) => item.toMap())
+        .toList();
+
+    if (validItems.isEmpty) return '';
+    return jsonEncode(validItems);
+  }
+
+  Widget _buildLoveStorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Kisah Cinta / Perjalanan Momen (Opsional)',
+                style: AppTypography.labelLarge,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _loveStoryItems.add(LoveStoryItem());
+                });
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: Text('Tambah Momen', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryGold,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Bagikan kisah romantis pertemuan, lamaran, hingga menuju pelaminan.',
+          style: AppTypography.caption.copyWith(color: AppColors.textLight),
+        ),
+        const SizedBox(height: 10),
+        if (_loveStoryItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.goldLight.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.favorite_border, color: AppColors.primaryGold, size: 28),
+                const SizedBox(height: 6),
+                Text(
+                  'Belum ada momen kisah cinta ditambahkan.\nKlik "Tambah Momen" untuk menambahkan kisah perjalanan cinta Anda.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _loveStoryItems.add(LoveStoryItem());
+                    });
+                  },
+                  icon: const Icon(Icons.add, size: 18, color: AppColors.primaryGold),
+                  label: Text('Tambah Momen Pertama', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primaryGold),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          ..._loveStoryItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.goldLight,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.favorite, size: 14, color: AppColors.primaryGold),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Momen #${index + 1}',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.primaryGold,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Hapus Momen',
+                        onPressed: () {
+                          setState(() {
+                            final removed = _loveStoryItems.removeAt(index);
+                            removed.dispose();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DekorinTextField(
+                    controller: item.dateController,
+                    label: 'Tanggal / Waktu Momen',
+                    hint: 'Contoh: 1 September 2025',
+                    prefixIcon: Icons.calendar_today_outlined,
+                  ),
+                  const SizedBox(height: 10),
+                  DekorinTextField(
+                    controller: item.titleController,
+                    label: 'Judul Momen',
+                    hint: 'Contoh: The Beginning / Pertemuan Pertama',
+                    prefixIcon: Icons.bookmark_border,
+                  ),
+                  const SizedBox(height: 10),
+                  DekorinTextField(
+                    controller: item.descriptionController,
+                    label: 'Deskripsi / Cerita',
+                    hint: 'Ceritakan kisah dan kesan menarik pada momen ini...',
+                    prefixIcon: Icons.notes_outlined,
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                _loveStoryItems.add(LoveStoryItem());
+              });
+            },
+            icon: const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primaryGold),
+            label: Text('Tambah Momen Kisah Cinta', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              side: const BorderSide(color: AppColors.primaryGold, width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
       ],
     );
   }
