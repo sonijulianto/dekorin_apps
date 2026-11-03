@@ -11,6 +11,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
 
 class InvitationFormView extends ConsumerStatefulWidget {
   const InvitationFormView({super.key, this.invitation});
@@ -28,6 +29,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   String _selectedEventType = 'wedding';
 
   bool get _isSakuraBlossom => _selectedTemplate == InvitationTemplate.ta3;
+  bool get _isMonochrome => _selectedTemplate == InvitationTemplate.pn4;
 
   late TextEditingController _titleController;
   late TextEditingController _slugController;
@@ -217,17 +219,40 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     super.dispose();
   }
 
-  Future<void> _pickAndUploadImage(Function(String url) onUploaded) async {
+  Future<void> _pickAndUploadImage(
+    Function(String url) onUploaded, {
+    bool enableCrop = false,
+    double aspectRatio = 3 / 4,
+    String cropTitle = 'Sesuaikan Foto (Potrait)',
+    String cropSubtitle = 'Geser foto ke kiri/kanan atau perbesar agar pas di bingkai potrait',
+  }) async {
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 75,
-        maxWidth: 1080,
-        maxHeight: 1080,
+        imageQuality: 85,
+        maxWidth: 2048,
+        maxHeight: 2048,
       );
       if (picked != null) {
-        final uploadedUrl = await ApiClient.uploadImage(File(picked.path));
+        File fileToUpload = File(picked.path);
+
+        if (enableCrop && mounted) {
+          final croppedFile = await PortraitCropDialog.show(
+            context,
+            imageFile: fileToUpload,
+            aspectRatio: aspectRatio,
+            title: cropTitle,
+            subtitle: cropSubtitle,
+          );
+          if (croppedFile == null) {
+            // User membatalkan dialog crop
+            return;
+          }
+          fileToUpload = croppedFile;
+        }
+
+        final uploadedUrl = await ApiClient.uploadImage(fileToUpload);
         onUploaded(uploadedUrl);
       }
     } catch (e) {
@@ -299,8 +324,57 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     }
   }
 
+  void _showErrorSnackBar(String message) {
+    setState(() => _isSubmitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+        backgroundColor: AppColors.errorRed,
+      ),
+    );
+  }
+
   Future<void> _saveInvitation() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_isMonochrome) {
+      if (_selectedEventType == 'khitan') {
+        if (_groomPhotoUrl.isEmpty) {
+          _showErrorSnackBar('Foto Anak Khitan wajib diunggah untuk tema Monochrome (*Mandatory)');
+          return;
+        }
+      } else {
+        if (_bridePhotoUrl.isEmpty) {
+          _showErrorSnackBar('Foto Mempelai Wanita wajib diunggah untuk tema Monochrome (*Mandatory)');
+          return;
+        }
+        if (_groomPhotoUrl.isEmpty) {
+          _showErrorSnackBar('Foto Mempelai Pria wajib diunggah untuk tema Monochrome (*Mandatory)');
+          return;
+        }
+      }
+      if (_coverImageUrl.isEmpty) {
+        _showErrorSnackBar('Foto Cover Utama wajib diunggah untuk tema Monochrome (*Mandatory)');
+        return;
+      }
+      if (_sec1PhotoUrl.isEmpty) {
+        _showErrorSnackBar('Foto Hero Pembuka / Section 1 wajib diunggah untuk tema Monochrome (*Mandatory)');
+        return;
+      }
+      if (_eventPhotoUrl.isEmpty) {
+        _showErrorSnackBar('Foto Countdown Acara wajib diunggah untuk tema Monochrome (*Mandatory)');
+        return;
+      }
+      if (_closingPhotoUrl.isEmpty) {
+        _showErrorSnackBar('Foto Penutup / Terima Kasih wajib diunggah untuk tema Monochrome (*Mandatory)');
+        return;
+      }
+      if (_galleryUrls.isEmpty) {
+        _showErrorSnackBar('Minimal unggah 1 foto galeri momen untuk tema Monochrome (*Mandatory)');
+        return;
+      }
+    }
+
     setState(() => _isSubmitting = true);
 
     _generateDefaultSlugAndTitle();
@@ -509,9 +583,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   ),
                   const SizedBox(height: 12),
                   _buildPhotoPicker(
-                    label: 'Foto Anak Khitan',
+                    label: _isMonochrome ? 'Foto Anak Khitan (Potrait 3:4) *' : 'Foto Anak Khitan',
                     imageUrl: _groomPhotoUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
+                    onPick: () => _pickAndUploadImage(
+                      (url) => setState(() => _groomPhotoUrl = url),
+                      enableCrop: true,
+                      cropTitle: 'Atur Foto Anak Khitan (Potrait)',
+                      cropSubtitle: 'Geser foto ke kiri / kanan agar pas dan tidak terpotong',
+                    ),
                     onClear: () => setState(() => _groomPhotoUrl = ''),
                   ),
                 ],
@@ -556,9 +635,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   if (!_isSakuraBlossom) ...[
                     const SizedBox(height: 12),
                     _buildPhotoPicker(
-                      label: 'Foto Mempelai Wanita (woman.jpeg)',
+                      label: _isMonochrome ? 'Foto Mempelai Wanita (Potrait 3:4) *' : 'Foto Mempelai Wanita (woman.jpeg)',
                       imageUrl: _bridePhotoUrl,
-                      onPick: () => _pickAndUploadImage((url) => setState(() => _bridePhotoUrl = url)),
+                      onPick: () => _pickAndUploadImage(
+                        (url) => setState(() => _bridePhotoUrl = url),
+                        enableCrop: true,
+                        cropTitle: 'Atur Foto Mempelai Wanita (Potrait)',
+                        cropSubtitle: 'Geser foto ke kiri / kanan agar wajah pas dan tidak terpotong',
+                      ),
                       onClear: () => setState(() => _bridePhotoUrl = ''),
                     ),
                   ],
@@ -605,9 +689,14 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   if (!_isSakuraBlossom) ...[
                     const SizedBox(height: 12),
                     _buildPhotoPicker(
-                      label: 'Foto Mempelai Pria (man.jpeg)',
+                      label: _isMonochrome ? 'Foto Mempelai Pria (Potrait 3:4) *' : 'Foto Mempelai Pria (man.jpeg)',
                       imageUrl: _groomPhotoUrl,
-                      onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
+                      onPick: () => _pickAndUploadImage(
+                        (url) => setState(() => _groomPhotoUrl = url),
+                        enableCrop: true,
+                        cropTitle: 'Atur Foto Mempelai Pria (Potrait)',
+                        cropSubtitle: 'Geser foto ke kiri / kanan agar wajah pas dan tidak terpotong',
+                      ),
                       onClear: () => setState(() => _groomPhotoUrl = ''),
                     ),
                   ],
@@ -770,31 +859,73 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   ),
                   const SizedBox(height: 16),
                 ] else ...[
+                  if (_isMonochrome) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2C),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.auto_awesome, color: AppColors.primaryGold, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Tema Monochrome (Minimalist) mewajibkan seluruh foto terisi lengkap (*Mandatory) agar opening cover, sticky pane, kartu mempelai, countdown/streaming, polaroid, dan album galeri tampil rapi tanpa ada foto yang kosong.',
+                              style: AppTypography.caption.copyWith(color: Colors.white, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   _buildPhotoPicker(
-                    label: 'Foto Cover Utama / Sampul (opening.jpeg)',
+                    label: _isMonochrome ? 'Foto Cover Utama / Sampul (opening.jpeg) *' : 'Foto Cover Utama / Sampul (opening.jpeg)',
                     imageUrl: _coverImageUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _coverImageUrl = url)),
+                    onPick: () => _pickAndUploadImage(
+                      (url) => setState(() => _coverImageUrl = url),
+                      enableCrop: _isMonochrome,
+                      cropTitle: 'Atur Foto Cover Utama',
+                      cropSubtitle: 'Geser atau perbesar foto agar pas di bingkai pembuka',
+                      aspectRatio: 9 / 16,
+                    ),
                     onClear: () => setState(() => _coverImageUrl = ''),
                   ),
                   const SizedBox(height: 14),
                   _buildPhotoPicker(
-                    label: 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
+                    label: _isMonochrome ? 'Foto Hero Pembuka / Section 1 (sec1.jpeg) *' : 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
                     imageUrl: _sec1PhotoUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _sec1PhotoUrl = url)),
+                    onPick: () => _pickAndUploadImage(
+                      (url) => setState(() => _sec1PhotoUrl = url),
+                      enableCrop: _isMonochrome,
+                      cropTitle: 'Atur Foto Section 1 (Sticky & Polaroid)',
+                      cropSubtitle: 'Geser foto agar pas di panel samping & polaroid',
+                      aspectRatio: 3 / 4,
+                    ),
                     onClear: () => setState(() => _sec1PhotoUrl = ''),
                   ),
                   const SizedBox(height: 14),
                   _buildPhotoPicker(
-                    label: 'Foto Countdown Acara (event.jpeg)',
+                    label: _isMonochrome ? 'Foto Countdown Acara & Streaming (event.jpeg) *' : 'Foto Countdown Acara (event.jpeg)',
                     imageUrl: _eventPhotoUrl,
                     onPick: () => _pickAndUploadImage((url) => setState(() => _eventPhotoUrl = url)),
                     onClear: () => setState(() => _eventPhotoUrl = ''),
                   ),
                   const SizedBox(height: 14),
                   _buildPhotoPicker(
-                    label: 'Foto Penutup / Terima Kasih (closing.jpeg)',
+                    label: _isMonochrome ? 'Foto Penutup / Wishes / Polaroid (closing.jpeg) *' : 'Foto Penutup / Terima Kasih (closing.jpeg)',
                     imageUrl: _closingPhotoUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _closingPhotoUrl = url)),
+                    onPick: () => _pickAndUploadImage(
+                      (url) => setState(() => _closingPhotoUrl = url),
+                      enableCrop: _isMonochrome,
+                      cropTitle: 'Atur Foto Penutup (Wishes & Polaroid)',
+                      cropSubtitle: 'Geser foto agar pas di kartu ucapan & polaroid',
+                      aspectRatio: 3 / 4,
+                    ),
                     onClear: () => setState(() => _closingPhotoUrl = ''),
                   ),
                   const SizedBox(height: 18),
@@ -1145,7 +1276,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           children: [
             Expanded(
               child: Text(
-                _isSakuraBlossom ? 'Galeri Foto (Bisa tambah foto dinamis)' : 'Galeri Foto (gallery1 - gallery9)',
+                _isMonochrome
+                    ? 'Galeri Momen (Wajib min 1 foto) *'
+                    : _isSakuraBlossom ? 'Galeri Foto (Bisa tambah foto dinamis)' : 'Galeri Foto (gallery1 - gallery9)',
                 style: AppTypography.labelLarge,
                 overflow: TextOverflow.ellipsis,
               ),
