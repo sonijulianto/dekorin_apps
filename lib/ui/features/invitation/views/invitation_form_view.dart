@@ -190,7 +190,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     _initLoveStoryItems(inv?.loveStory ?? '');
     _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? '');
 
-    _coverImageUrl = inv != null ? inv.coverImage : '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg';
+    final rawCover = inv?.coverImage ?? '';
+    _coverImageUrl = (rawCover == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
+        ? (_isSakuraBlossom ? '' : rawCover)
+        : rawCover;
     _groomPhotoUrl = inv?.groomPhoto ?? '';
     _bridePhotoUrl = inv?.bridePhoto ?? '';
     _sec1PhotoUrl = inv?.sec1Photo ?? '';
@@ -414,7 +417,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'template': _selectedTemplate,
       'event_type': _isSakuraBlossom ? 'wedding' : _selectedEventType,
       'quotes': _quotesController.text.trim(),
-      'cover_image': _isSakuraBlossom ? '' : _coverImageUrl,
+      'cover_image': (_isSakuraBlossom && _coverImageUrl == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
+          ? ''
+          : _coverImageUrl,
       'groom_name': _selectedEventType == 'khitan'
           ? (_childNameController.text.trim().isNotEmpty
                 ? _childNameController.text.trim()
@@ -879,7 +884,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Tema Sakura Blossom menggunakan ilustrasi eksklusif bawaan. Cukup tambahkan foto galeri prewedding / momen kebersamaan Anda di bawah ini tanpa batasan jumlah.',
+                            'Tema Sakura Blossom memiliki ilustrasi karakter bawaan (couple-hero.png). Anda dapat mengunggah Foto Cover Utama di bawah ini jika ingin mengganti ilustrasi tersebut dengan foto Anda sendiri (opsional). Jika dikosongkan, ilustrasi bawaan tetap digunakan.',
                             style: AppTypography.caption.copyWith(color: const Color(0xFF7D4E55), height: 1.4),
                           ),
                         ),
@@ -887,6 +892,21 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  _buildPhotoPicker(
+                    label: 'Foto Cover Utama / Hero (Opsional - Gantikan couple-hero.png)',
+                    imageUrl: _coverImageUrl,
+                    onPick: () => _pickAndUploadImage(
+                      (url) => setState(() => _coverImageUrl = url),
+                      enableCrop: true,
+                      cropTitle: 'Atur Foto Cover Sakura',
+                      cropSubtitle: 'Geser atau perbesar foto agar pas di bingkai bulat cover',
+                      aspectRatio: 1.0,
+                    ),
+                    onClear: () => setState(() => _coverImageUrl = ''),
+                  ),
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  const SizedBox(height: 10),
                 ] else ...[
                   if (_isMonochrome) ...[
                     Container(
