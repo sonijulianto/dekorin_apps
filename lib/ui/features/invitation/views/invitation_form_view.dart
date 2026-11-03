@@ -27,6 +27,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   String _selectedTemplate = InvitationTemplate.greenLeaves;
   String _selectedEventType = 'wedding';
 
+  bool get _isSakuraBlossom => _selectedTemplate == InvitationTemplate.ta3;
+
   late TextEditingController _titleController;
   late TextEditingController _slugController;
   late TextEditingController _quotesController;
@@ -307,9 +309,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'title': _titleController.text.trim(),
       'slug': _slugController.text.trim().toLowerCase().replaceAll(' ', '-'),
       'template': _selectedTemplate,
-      'event_type': _selectedEventType,
+      'event_type': _isSakuraBlossom ? 'wedding' : _selectedEventType,
       'quotes': _quotesController.text.trim(),
-      'cover_image': _coverImageUrl,
+      'cover_image': _isSakuraBlossom ? '' : _coverImageUrl,
       'groom_name': _selectedEventType == 'khitan'
           ? (_childNameController.text.trim().isNotEmpty
                 ? _childNameController.text.trim()
@@ -321,26 +323,31 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'groom_child_order': _groomChildOrderController.text.trim(),
       'groom_parents': _groomParentsController.text.trim(),
       'groom_instagram': _groomIgController.text.trim(),
-      'groom_photo': _groomPhotoUrl,
+      'groom_photo': _isSakuraBlossom ? '' : _groomPhotoUrl,
       'bride_name': _brideNameController.text.trim(),
       'bride_nickname': _brideNicknameController.text.trim(),
       'bride_child_order': _brideChildOrderController.text.trim(),
       'bride_parents': _brideParentsController.text.trim(),
       'bride_instagram': _brideIgController.text.trim(),
-      'bride_photo': _bridePhotoUrl,
-      'child_name': _childNameController.text.trim(),
-      'child_nickname': _childNicknameController.text.trim(),
-      'child_order': _childOrderController.text.trim(),
+      'bride_photo': _isSakuraBlossom ? '' : _bridePhotoUrl,
+      'child_name': _isSakuraBlossom ? '' : _childNameController.text.trim(),
+      'child_nickname': _isSakuraBlossom ? '' : _childNicknameController.text.trim(),
+      'child_order': _isSakuraBlossom ? '' : _childOrderController.text.trim(),
       'akad_date': _akadDateController.text.trim(),
       'akad_time': _akadTimeController.text.trim(),
       'akad_venue': _akadVenueController.text.trim(),
       'akad_address': _akadAddressController.text.trim(),
       'akad_maps_url': _akadMapsController.text.trim(),
+      'akad_photo': _isSakuraBlossom ? '' : _akadPhotoUrl,
       'resepsi_date': _resepsiDateController.text.trim(),
       'resepsi_time': _resepsiTimeController.text.trim(),
       'resepsi_venue': _resepsiVenueController.text.trim(),
       'resepsi_address': _resepsiAddressController.text.trim(),
       'resepsi_maps_url': _resepsiMapsController.text.trim(),
+      'resepsi_photo': _isSakuraBlossom ? '' : _resepsiPhotoUrl,
+      'sec1_photo': _isSakuraBlossom ? '' : _sec1PhotoUrl,
+      'event_photo': _isSakuraBlossom ? '' : _eventPhotoUrl,
+      'closing_photo': _isSakuraBlossom ? '' : _closingPhotoUrl,
       'bank_name_1': _bankName1Controller.text.trim(),
       'bank_account_1': _bankAccount1Controller.text.trim(),
       'bank_holder_1': _bankHolder1Controller.text.trim(),
@@ -353,11 +360,6 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'youtube_url': _youtubeUrlController.text.trim(),
       'love_story': _loveStoryController.text.trim(),
       'turut_mengundang': _turutMengundangController.text.trim(),
-      'sec1_photo': _sec1PhotoUrl,
-      'akad_photo': _akadPhotoUrl,
-      'resepsi_photo': _resepsiPhotoUrl,
-      'event_photo': _eventPhotoUrl,
-      'closing_photo': _closingPhotoUrl,
       'gallery_images': _galleryUrls.join(','),
       'is_active': true,
     };
@@ -428,28 +430,30 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               title: '2. Informasi Acara & URL Link',
               icon: Icons.link,
               children: [
-                Text('Jenis Acara', style: AppTypography.labelLarge),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildEventTypeChip(
-                        label: '💍 Pernikahan',
-                        value: 'wedding',
-                        isSelected: _selectedEventType == 'wedding',
+                if (!_isSakuraBlossom) ...[
+                  Text('Jenis Acara', style: AppTypography.labelLarge),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildEventTypeChip(
+                          label: '💍 Pernikahan',
+                          value: 'wedding',
+                          isSelected: _selectedEventType == 'wedding',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildEventTypeChip(
-                        label: '🕌 Khitanan',
-                        value: 'khitan',
-                        isSelected: _selectedEventType == 'khitan',
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildEventTypeChip(
+                          label: '🕌 Khitanan',
+                          value: 'khitan',
+                          isSelected: _selectedEventType == 'khitan',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 DekorinTextField(
                   controller: _titleController,
                   label: 'Judul Undangan',
@@ -549,13 +553,15 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     hint: 'Contoh: bagaspratama (tanpa @)',
                     prefixIcon: Icons.camera_alt_outlined,
                   ),
-                  const SizedBox(height: 12),
-                  _buildPhotoPicker(
-                    label: 'Foto Mempelai Pria (man.jpeg)',
-                    imageUrl: _groomPhotoUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
-                    onClear: () => setState(() => _groomPhotoUrl = ''),
-                  ),
+                  if (!_isSakuraBlossom) ...[
+                    const SizedBox(height: 12),
+                    _buildPhotoPicker(
+                      label: 'Foto Mempelai Pria (man.jpeg)',
+                      imageUrl: _groomPhotoUrl,
+                      onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
+                      onClear: () => setState(() => _groomPhotoUrl = ''),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -596,13 +602,15 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     hint: 'Contoh: zuliamhr (tanpa @)',
                     prefixIcon: Icons.camera_alt_outlined,
                   ),
-                  const SizedBox(height: 12),
-                  _buildPhotoPicker(
-                    label: 'Foto Mempelai Wanita (woman.jpeg)',
-                    imageUrl: _bridePhotoUrl,
-                    onPick: () => _pickAndUploadImage((url) => setState(() => _bridePhotoUrl = url)),
-                    onClear: () => setState(() => _bridePhotoUrl = ''),
-                  ),
+                  if (!_isSakuraBlossom) ...[
+                    const SizedBox(height: 12),
+                    _buildPhotoPicker(
+                      label: 'Foto Mempelai Wanita (woman.jpeg)',
+                      imageUrl: _bridePhotoUrl,
+                      onPick: () => _pickAndUploadImage((url) => setState(() => _bridePhotoUrl = url)),
+                      onClear: () => setState(() => _bridePhotoUrl = ''),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -653,13 +661,15 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     child: Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
                   ),
                 ),
-                const SizedBox(height: 14),
-                _buildPhotoPicker(
-                  label: 'Foto Banner Akad Nikah (akad.jpeg)',
-                  imageUrl: _akadPhotoUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _akadPhotoUrl = url)),
-                  onClear: () => setState(() => _akadPhotoUrl = ''),
-                ),
+                if (!_isSakuraBlossom) ...[
+                  const SizedBox(height: 14),
+                  _buildPhotoPicker(
+                    label: 'Foto Banner Akad Nikah (akad.jpeg)',
+                    imageUrl: _akadPhotoUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _akadPhotoUrl = url)),
+                    onClear: () => setState(() => _akadPhotoUrl = ''),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -715,52 +725,82 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     child: Image.asset('assets/icons/google-maps-icon.webp', width: 20, height: 20),
                   ),
                 ),
-                const SizedBox(height: 14),
-                _buildPhotoPicker(
-                  label: 'Foto Banner Resepsi (reception.jpeg)',
-                  imageUrl: _resepsiPhotoUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _resepsiPhotoUrl = url)),
-                  onClear: () => setState(() => _resepsiPhotoUrl = ''),
-                ),
+                if (!_isSakuraBlossom) ...[
+                  const SizedBox(height: 14),
+                  _buildPhotoPicker(
+                    label: 'Foto Banner Resepsi (reception.jpeg)',
+                    imageUrl: _resepsiPhotoUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _resepsiPhotoUrl = url)),
+                    onClear: () => setState(() => _resepsiPhotoUrl = ''),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
 
             // 7. FOTO KHUSUS TEMPLATE & MEDIA
             _buildSectionCard(
-              title: '7. Foto Desain Template & Galeri Momen',
+              title: _isSakuraBlossom
+                  ? '7. Galeri Momen & Media Pendukung'
+                  : '7. Foto Desain Template & Galeri Momen',
               icon: Icons.photo_library_outlined,
               children: [
-                _buildPhotoPicker(
-                  label: 'Foto Cover Utama / Sampul (opening.jpeg)',
-                  imageUrl: _coverImageUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _coverImageUrl = url)),
-                  onClear: () => setState(() => _coverImageUrl = ''),
-                ),
-                const SizedBox(height: 14),
-                _buildPhotoPicker(
-                  label: 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
-                  imageUrl: _sec1PhotoUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _sec1PhotoUrl = url)),
-                  onClear: () => setState(() => _sec1PhotoUrl = ''),
-                ),
-                const SizedBox(height: 14),
-                _buildPhotoPicker(
-                  label: 'Foto Countdown Acara (event.jpeg)',
-                  imageUrl: _eventPhotoUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _eventPhotoUrl = url)),
-                  onClear: () => setState(() => _eventPhotoUrl = ''),
-                ),
-                const SizedBox(height: 14),
-                _buildPhotoPicker(
-                  label: 'Foto Penutup / Terima Kasih (closing.jpeg)',
-                  imageUrl: _closingPhotoUrl,
-                  onPick: () => _pickAndUploadImage((url) => setState(() => _closingPhotoUrl = url)),
-                  onClear: () => setState(() => _closingPhotoUrl = ''),
-                ),
-                const SizedBox(height: 18),
-                const Divider(),
-                const SizedBox(height: 10),
+                if (_isSakuraBlossom) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F2),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFFFABB8)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.auto_awesome, color: Color(0xFFD47A88), size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Tema Sakura Blossom menggunakan ilustrasi eksklusif bawaan. Cukup tambahkan foto galeri prewedding / momen kebersamaan Anda di bawah ini tanpa batasan jumlah.',
+                            style: AppTypography.caption.copyWith(color: const Color(0xFF7D4E55), height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  _buildPhotoPicker(
+                    label: 'Foto Cover Utama / Sampul (opening.jpeg)',
+                    imageUrl: _coverImageUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _coverImageUrl = url)),
+                    onClear: () => setState(() => _coverImageUrl = ''),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPhotoPicker(
+                    label: 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
+                    imageUrl: _sec1PhotoUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _sec1PhotoUrl = url)),
+                    onClear: () => setState(() => _sec1PhotoUrl = ''),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPhotoPicker(
+                    label: 'Foto Countdown Acara (event.jpeg)',
+                    imageUrl: _eventPhotoUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _eventPhotoUrl = url)),
+                    onClear: () => setState(() => _eventPhotoUrl = ''),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPhotoPicker(
+                    label: 'Foto Penutup / Terima Kasih (closing.jpeg)',
+                    imageUrl: _closingPhotoUrl,
+                    onPick: () => _pickAndUploadImage((url) => setState(() => _closingPhotoUrl = url)),
+                    onClear: () => setState(() => _closingPhotoUrl = ''),
+                  ),
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                ],
                 _buildGallerySection(),
                 const SizedBox(height: 18),
                 const Divider(),
@@ -1105,7 +1145,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           children: [
             Expanded(
               child: Text(
-                'Galeri Foto (gallery1 - gallery9)',
+                _isSakuraBlossom ? 'Galeri Foto (Bisa tambah foto dinamis)' : 'Galeri Foto (gallery1 - gallery9)',
                 style: AppTypography.labelLarge,
                 overflow: TextOverflow.ellipsis,
               ),
