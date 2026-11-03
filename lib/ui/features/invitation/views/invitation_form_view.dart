@@ -289,11 +289,11 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         final g = _groomNicknameController.text.trim().toLowerCase().replaceAll(' ', '-');
         final b = _brideNicknameController.text.trim().toLowerCase().replaceAll(' ', '-');
         if (_slugController.text.trim().isEmpty) {
-          _slugController.text = '$g-$b';
+          _slugController.text = '$b-$g';
         }
         if (_titleController.text.trim().isEmpty) {
           _titleController.text =
-              'The Wedding of ${_groomNicknameController.text.trim()} & ${_brideNicknameController.text.trim()}';
+              'The Wedding of ${_brideNicknameController.text.trim()} & ${_groomNicknameController.text.trim()}';
         }
       }
     }
@@ -518,56 +518,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               ),
             ] else ...[
               _buildSectionCard(
-                title: '3. Mempelai Pria',
-                icon: Icons.male,
-                children: [
-                  DekorinTextField(
-                    controller: _groomNameController,
-                    label: 'Nama Lengkap Pria',
-                    hint: 'Contoh: Bagas Pratama, S.Kom.',
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama mempelai pria wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  DekorinTextField(
-                    controller: _groomNicknameController,
-                    label: 'Nama Panggilan',
-                    hint: 'Contoh: Bagas',
-                    onChanged: (_) => _generateDefaultSlugAndTitle(),
-                  ),
-                  const SizedBox(height: 12),
-                  DekorinTextField(
-                    controller: _groomChildOrderController,
-                    label: 'Urutan Anak Pria',
-                    hint: 'Putra pertama dari',
-                  ),
-                  const SizedBox(height: 12),
-                  DekorinTextField(
-                    controller: _groomParentsController,
-                    label: 'Nama Orang Tua Pria (Ayah & Ibu)',
-                    hint: 'Bpk. Bambang & Ibu Siti',
-                  ),
-                  const SizedBox(height: 12),
-                  DekorinTextField(
-                    controller: _groomIgController,
-                    label: 'Akun Instagram Pria (Opsional)',
-                    hint: 'Contoh: bagaspratama (tanpa @)',
-                    prefixIcon: Icons.camera_alt_outlined,
-                  ),
-                  if (!_isSakuraBlossom) ...[
-                    const SizedBox(height: 12),
-                    _buildPhotoPicker(
-                      label: 'Foto Mempelai Pria (man.jpeg)',
-                      imageUrl: _groomPhotoUrl,
-                      onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
-                      onClear: () => setState(() => _groomPhotoUrl = ''),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionCard(
-                title: '4. Mempelai Wanita',
+                title: '3. Mempelai Wanita',
                 icon: Icons.female,
                 children: [
                   DekorinTextField(
@@ -609,6 +560,55 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                       imageUrl: _bridePhotoUrl,
                       onPick: () => _pickAndUploadImage((url) => setState(() => _bridePhotoUrl = url)),
                       onClear: () => setState(() => _bridePhotoUrl = ''),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              _buildSectionCard(
+                title: '4. Mempelai Pria',
+                icon: Icons.male,
+                children: [
+                  DekorinTextField(
+                    controller: _groomNameController,
+                    label: 'Nama Lengkap Pria',
+                    hint: 'Contoh: Bagas Pratama, S.Kom.',
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama mempelai pria wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DekorinTextField(
+                    controller: _groomNicknameController,
+                    label: 'Nama Panggilan',
+                    hint: 'Contoh: Bagas',
+                    onChanged: (_) => _generateDefaultSlugAndTitle(),
+                  ),
+                  const SizedBox(height: 12),
+                  DekorinTextField(
+                    controller: _groomChildOrderController,
+                    label: 'Urutan Anak Pria',
+                    hint: 'Putra pertama dari',
+                  ),
+                  const SizedBox(height: 12),
+                  DekorinTextField(
+                    controller: _groomParentsController,
+                    label: 'Nama Orang Tua Pria (Ayah & Ibu)',
+                    hint: 'Bpk. Bambang & Ibu Siti',
+                  ),
+                  const SizedBox(height: 12),
+                  DekorinTextField(
+                    controller: _groomIgController,
+                    label: 'Akun Instagram Pria (Opsional)',
+                    hint: 'Contoh: bagaspratama (tanpa @)',
+                    prefixIcon: Icons.camera_alt_outlined,
+                  ),
+                  if (!_isSakuraBlossom) ...[
+                    const SizedBox(height: 12),
+                    _buildPhotoPicker(
+                      label: 'Foto Mempelai Pria (man.jpeg)',
+                      imageUrl: _groomPhotoUrl,
+                      onPick: () => _pickAndUploadImage((url) => setState(() => _groomPhotoUrl = url)),
+                      onClear: () => setState(() => _groomPhotoUrl = ''),
                     ),
                   ],
                 ],
