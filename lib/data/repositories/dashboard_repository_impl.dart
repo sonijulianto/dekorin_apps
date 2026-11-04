@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/data/services/dashboard_service.dart';
 import 'package:dekorin_apps/domain/models/booking.dart';
+import 'package:dekorin_apps/domain/models/dashboard_filter.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 import 'package:dekorin_apps/domain/repositories/dashboard_repository.dart';
 
@@ -17,8 +18,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
   final DashboardService _dashboardService;
 
   @override
-  Future<DashboardSummary> getSummary() {
-    return _dashboardService.fetchSummary();
+  Future<DashboardSummary> getSummary([DashboardFilter? filter]) {
+    return _dashboardService.fetchSummary(filter);
   }
 
   @override

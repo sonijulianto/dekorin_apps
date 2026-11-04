@@ -10,6 +10,9 @@ class DashboardSummary {
     required this.totalProfit,
     this.upcomingAgendas = const [],
     this.recentExpenses = const [],
+    this.periodFilter,
+    this.month,
+    this.year,
   });
 
   final int upcomingBookingsCount;
@@ -18,6 +21,9 @@ class DashboardSummary {
   final double totalProfit;
   final List<AgendaItem> upcomingAgendas;
   final List<ExpenseItem> recentExpenses;
+  final String? periodFilter;
+  final int? month;
+  final int? year;
 
   DashboardSummary copyWith({
     int? upcomingBookingsCount,
@@ -26,6 +32,9 @@ class DashboardSummary {
     double? totalProfit,
     List<AgendaItem>? upcomingAgendas,
     List<ExpenseItem>? recentExpenses,
+    String? periodFilter,
+    int? month,
+    int? year,
   }) {
     return DashboardSummary(
       upcomingBookingsCount: upcomingBookingsCount ?? this.upcomingBookingsCount,
@@ -34,6 +43,9 @@ class DashboardSummary {
       totalProfit: totalProfit ?? this.totalProfit,
       upcomingAgendas: upcomingAgendas ?? this.upcomingAgendas,
       recentExpenses: recentExpenses ?? this.recentExpenses,
+      periodFilter: periodFilter ?? this.periodFilter,
+      month: month ?? this.month,
+      year: year ?? this.year,
     );
   }
 
@@ -63,6 +75,9 @@ class DashboardSummary {
       totalProfit: parseDouble(json['total_profit']),
       upcomingAgendas: upcomingList,
       recentExpenses: expenseList,
+      periodFilter: json['period_filter'] as String?,
+      month: (json['month'] as num?)?.toInt(),
+      year: (json['year'] as num?)?.toInt(),
     );
   }
 }

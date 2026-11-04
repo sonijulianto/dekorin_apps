@@ -16,8 +16,11 @@ import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart' hide ThousandsSeparatorInputFormatter;
+import 'package:dekorin_apps/domain/models/dashboard_filter.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/ai_assistant_view.dart';
+import 'package:dekorin_apps/ui/features/dashboard/widgets/expense_detail_bottom_sheet.dart';
+import 'package:dekorin_apps/ui/features/dashboard/widgets/month_year_picker_sheet.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class DashboardView extends ConsumerWidget {
@@ -57,7 +60,13 @@ class DashboardView extends ConsumerWidget {
                 // 2. Hero Card Keuntungan, Pendapatan, Pengeluaran & Agenda
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildHeroSummaryCard(data.summary, isNominalsLoading: data.isNominalsLoading),
+                  child: _buildHeroSummaryCard(
+                    context,
+                    ref,
+                    data.summary,
+                    data.filter,
+                    isNominalsLoading: data.isNominalsLoading,
+                  ),
                 ),
                 const SizedBox(height: 18),
 
@@ -413,7 +422,13 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeroSummaryCard(DashboardSummary summary, {bool isNominalsLoading = false}) {
+  Widget _buildHeroSummaryCard(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardSummary summary,
+    DashboardFilter filter, {
+    bool isNominalsLoading = false,
+  }) {
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -466,15 +481,28 @@ class DashboardView extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Filter Segmented Control Tabs (Bulan | Tahun | Semua)
+                  _buildFilterSegmentedBar(context, ref, filter),
+                  const SizedBox(height: 14),
+
+                  // Header title "Keuntungan"
                   Text(
                     'Keuntungan (Pendapatan - Beban)',
                     style: AppTypography.bodyMedium.copyWith(
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w400,
                       color: Colors.white.withValues(alpha: 0.92),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
+
+                  // Navigator Periode (e.g. ◀ November 2026 ▶ / ◀ 2026 ▶ / Semua Waktu)
+                  _buildPeriodNavigator(context, ref, filter),
+                  const SizedBox(height: 6),
+
+                  // Nominal Keuntungan
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     child: isNominalsLoading
@@ -502,6 +530,8 @@ class DashboardView extends ConsumerWidget {
                           ),
                   ),
                   const SizedBox(height: 18),
+
+                  // 3 Tiles Ringkasan (Pendapatan, Pengeluaran, Agenda)
                   Row(
                     children: [
                       Expanded(
@@ -540,6 +570,212 @@ class DashboardView extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterSegmentedBar(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardFilter filter,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.22),
+          width: 0.8,
+        ),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          _buildSegmentTab(
+            title: 'Bulan',
+            isSelected: filter.type == DashboardPeriodType.month,
+            onTap: () {
+              if (filter.type != DashboardPeriodType.month) {
+                ref.read(dashboardViewModelProvider.notifier).setFilter(
+                  filter.copyWith(type: DashboardPeriodType.month),
+                );
+              }
+            },
+          ),
+          _buildSegmentTab(
+            title: 'Tahun',
+            isSelected: filter.type == DashboardPeriodType.year,
+            onTap: () {
+              if (filter.type != DashboardPeriodType.year) {
+                ref.read(dashboardViewModelProvider.notifier).setFilter(
+                  filter.copyWith(type: DashboardPeriodType.year),
+                );
+              }
+            },
+          ),
+          _buildSegmentTab(
+            title: 'Semua',
+            isSelected: filter.type == DashboardPeriodType.all,
+            onTap: () {
+              if (filter.type != DashboardPeriodType.all) {
+                ref.read(dashboardViewModelProvider.notifier).setFilter(
+                  filter.copyWith(type: DashboardPeriodType.all),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentTab({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: isSelected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(9),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(9),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Center(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.caption.copyWith(
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 12,
+                  color: isSelected ? _bronzeDark : Colors.white.withValues(alpha: 0.88),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodNavigator(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardFilter filter,
+  ) {
+    if (filter.type == DashboardPeriodType.all) {
+      return Text(
+        'Periode: Semua Waktu (Akumulasi)',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.caption.copyWith(
+          color: Colors.white.withValues(alpha: 0.78),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Periode: ',
+            style: AppTypography.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 11.5,
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (filter.type == DashboardPeriodType.month) {
+                  int newMonth = filter.month - 1;
+                  int newYear = filter.year;
+                  if (newMonth < 1) {
+                    newMonth = 12;
+                    newYear -= 1;
+                  }
+                  ref.read(dashboardViewModelProvider.notifier).setFilter(
+                    filter.copyWith(month: newMonth, year: newYear),
+                  );
+                } else if (filter.type == DashboardPeriodType.year) {
+                  ref.read(dashboardViewModelProvider.notifier).setFilter(
+                    filter.copyWith(year: filter.year - 1),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(Icons.chevron_left_rounded, size: 18, color: Colors.white),
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () => MonthYearPickerSheet.show(
+              context,
+              initialFilter: filter,
+              onSelect: (newFilter) {
+                ref.read(dashboardViewModelProvider.notifier).setFilter(newFilter);
+              },
+            ),
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    filter.displayPeriod,
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_drop_down_rounded, size: 16, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (filter.type == DashboardPeriodType.month) {
+                  int newMonth = filter.month + 1;
+                  int newYear = filter.year;
+                  if (newMonth > 12) {
+                    newMonth = 1;
+                    newYear += 1;
+                  }
+                  ref.read(dashboardViewModelProvider.notifier).setFilter(
+                    filter.copyWith(month: newMonth, year: newYear),
+                  );
+                } else if (filter.type == DashboardPeriodType.year) {
+                  ref.read(dashboardViewModelProvider.notifier).setFilter(
+                    filter.copyWith(year: filter.year + 1),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -636,146 +872,123 @@ class DashboardView extends ConsumerWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final exp = expenses[index];
-        IconData? categoryIcon;
-        Widget? categoryIconWidget;
-        Color iconBgColor = AppColors.goldLight;
-        Color iconFgColor = _goldMid;
+        final catStyle = ExpenseCategoryStyle.fromCategory(exp.category);
 
-        final catLower = exp.category.toLowerCase();
-        if (catLower.contains('bunga')) {
-          categoryIcon = Icons.local_florist_outlined;
-          iconBgColor = const Color(0xFFFCE4EC);
-          iconFgColor = const Color(0xFFC2185B);
-        } else if (catLower.contains('properti') || catLower.contains('dekor')) {
-          categoryIcon = Icons.weekend_outlined;
-          iconBgColor = const Color(0xFFF3E5F5);
-          iconFgColor = const Color(0xFF7B1FA2);
-        } else if (catLower.contains('transport') || catLower.contains('operasional')) {
-          iconBgColor = const Color(0xFFDCEBFB);
-          iconFgColor = const Color(0xFF2E6DA4);
-          categoryIconWidget = SvgPicture.asset(
-            'assets/icons/shipping-fast.svg',
-            width: 21,
-            height: 21,
-            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
-          );
-        } else if (catLower.contains('crew') || catLower.contains('upah')) {
-          iconBgColor = const Color(0xFFE0F2F1);
-          iconFgColor = const Color(0xFF00796B);
-          categoryIconWidget = SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
-          );
-        } else {
-          categoryIconWidget = SvgPicture.asset(
-            'assets/icons/expense.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
-          );
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            color: Colors.white,
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            onTap: isNominalsLoading
+                ? null
+                : () => ExpenseDetailBottomSheet.show(
+                      context,
+                      expense: exp,
+                      onDelete: () {
+                        Navigator.pop(context);
+                        _confirmDeleteExpense(context, ref, exp);
+                      },
+                    ),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFEDE8E1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: categoryIconWidget ?? Icon(categoryIcon, color: iconFgColor, size: 21),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      exp.title,
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                        color: AppColors.textDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${exp.category} \u2022 ${dateFormatter.format(exp.date)}',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: const Color(0xFF555555),
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: isNominalsLoading
-                        ? const ShimmerBox(
-                            key: ValueKey('expense_item_shimmer'),
-                            width: 85,
-                            height: 16,
-                            borderRadius: BorderRadius.all(Radius.circular(5)),
-                            baseColor: Color(0xFFEBE6DF),
-                            highlightColor: Color(0xFFF9F7F4),
-                          )
-                        : Text(
-                            key: const ValueKey('expense_item_value'),
-                            '- ${currencyFormatter.format(exp.amount)}',
-                            style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: const Color(0xFF9E3329),
-                            ),
-                          ),
-                  ),
-                  InkWell(
-                    onTap: isNominalsLoading ? null : () => _confirmDeleteExpense(context, ref, exp),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4, left: 4),
-                      child: Text(
-                        'Hapus',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: isNominalsLoading
-                              ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF4A4A4A),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFEDE8E1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: catStyle.bgColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: catStyle.buildIcon(size: 21),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exp.title,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                            color: AppColors.textDark,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${exp.category} \u2022 ${dateFormatter.format(exp.date)}',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: const Color(0xFF555555),
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: isNominalsLoading
+                            ? const ShimmerBox(
+                                key: ValueKey('expense_item_shimmer'),
+                                width: 85,
+                                height: 16,
+                                borderRadius: BorderRadius.all(Radius.circular(5)),
+                                baseColor: Color(0xFFEBE6DF),
+                                highlightColor: Color(0xFFF9F7F4),
+                              )
+                            : Text(
+                                key: const ValueKey('expense_item_value'),
+                                '- ${currencyFormatter.format(exp.amount)}',
+                                style: AppTypography.titleSmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: const Color(0xFF9E3329),
+                                ),
+                              ),
+                      ),
+                      InkWell(
+                        onTap: isNominalsLoading ? null : () => _confirmDeleteExpense(context, ref, exp),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            'Hapus',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: isNominalsLoading
+                                  ? const Color(0xFFAAAAAA)
+                                  : const Color(0xFF4A4A4A),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
