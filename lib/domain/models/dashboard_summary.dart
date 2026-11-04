@@ -1,4 +1,4 @@
-﻿import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
 
 /// Domain model representing the dashboard financial and booking summary.
@@ -18,6 +18,24 @@ class DashboardSummary {
   final double totalProfit;
   final List<AgendaItem> upcomingAgendas;
   final List<ExpenseItem> recentExpenses;
+
+  DashboardSummary copyWith({
+    int? upcomingBookingsCount,
+    double? totalRevenue,
+    double? totalExpense,
+    double? totalProfit,
+    List<AgendaItem>? upcomingAgendas,
+    List<ExpenseItem>? recentExpenses,
+  }) {
+    return DashboardSummary(
+      upcomingBookingsCount: upcomingBookingsCount ?? this.upcomingBookingsCount,
+      totalRevenue: totalRevenue ?? this.totalRevenue,
+      totalExpense: totalExpense ?? this.totalExpense,
+      totalProfit: totalProfit ?? this.totalProfit,
+      upcomingAgendas: upcomingAgendas ?? this.upcomingAgendas,
+      recentExpenses: recentExpenses ?? this.recentExpenses,
+    );
+  }
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
     double parseDouble(dynamic value) {

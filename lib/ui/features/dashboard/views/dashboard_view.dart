@@ -12,137 +12,587 @@ import 'package:dekorin_apps/data/services/expense_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
+import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
+import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart' hide ThousandsSeparatorInputFormatter;
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:dekorin_apps/ui/features/dashboard/views/ai_assistant_view.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class DashboardView extends ConsumerWidget {
   const DashboardView({super.key});
 
+  static const Color _bgCream = Color(0xFFF7F4EF);
+  static const Color _bronzeDark = Color(0xFF5C3D1E);
+  static const Color _bronzeDeep = Color(0xFF4F3317);
+  static const Color _goldHighlight = Color(0xFFB3854B);
+  static const Color _goldMid = Color(0xFF8F6431);
+  static const Color _greetingBrown = Color(0xFF6B4628);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
+    final user = ref.watch(globalAuthProvider).value;
 
-    return SafeArea(
-      child: Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showAddExpenseModal(context, ref),
-          backgroundColor: AppTheme.primaryGold,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add_shopping_cart),
-          label: Text(
-            'Catat Pengeluaran',
-            style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ),
-        body: dashboardState.when(
+    return Scaffold(
+      backgroundColor: _bgCream,
+      floatingActionButton: _buildGradientFab(context, ref),
+      body: SafeArea(
+        child: dashboardState.when(
           data: (data) => RefreshIndicator(
-            onRefresh: () => ref.read(dashboardViewModelProvider.notifier).refresh(),
+            color: AppColors.primaryGold,
+            onRefresh: () => ref.read(dashboardViewModelProvider.notifier).refresh(showNominalsShimmer: true),
             child: ListView(
-              padding: const EdgeInsets.all(16.0),
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 12, bottom: 96),
               children: [
-                // 1. Ringkasan Finansial & Booking
-                _buildSummaryCards(data.summary),
-                const SizedBox(height: 16),
+                // 1. Header Profil & Notifikasi
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildHeader(context, ref, user, data.summary.upcomingAgendas),
+                ),
+                const SizedBox(height: 18),
 
-                // 2. Tombol Aksi Cepat Input Pengeluaran
-                InkWell(
-                  onTap: () => _showAddExpenseModal(context, ref),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryGold.withValues(alpha: 0.08),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.post_add, color: AppTheme.primaryGold, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Ada Pengeluaran Baru?',
-                                style: AppTypography.bodySmall.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textDark,
-                                ),
-                              ),
-                              Text(
-                                'Catat belanja bunga, properti dekor, sewa mobil, dll',
-                                style: AppTypography.caption.copyWith(color: AppTheme.textLight),
-                              ),
-                            ],
+                // 2. Hero Card Keuntungan, Pendapatan, Pengeluaran & Agenda
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildHeroSummaryCard(data.summary, isNominalsLoading: data.isNominalsLoading),
+                ),
+                const SizedBox(height: 18),
+
+                // 2b. Banner Asisten Dekorin AI
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildAIAssistantBanner(context),
+                ),
+                const SizedBox(height: 26),
+
+                // 3. Section Booking Mendatang (Horizontal Carousel)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Booking Mendatang',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleLarge.copyWith(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: AppTheme.textLight),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${data.summary.upcomingBookingsCount} Event',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _goldMid,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
+                _buildUpcomingAgendasCarousel(context, ref, data.summary.upcomingAgendas),
+                const SizedBox(height: 28),
 
-                // 3. Section Pengeluaran Terkini
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Pengeluaran Terkini', style: AppTypography.titleLarge),
-                    Text(
-                      '${data.summary.recentExpenses.length} transaksi',
-                      style: AppTypography.caption.copyWith(color: AppTheme.textLight),
-                    ),
-                  ],
+                // 4. Section Pengeluaran Terkini
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Pengeluaran Terkini',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleLarge.copyWith(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${data.summary.recentExpenses.length} transaksi',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 12.5,
+                          color: const Color(0xFF4A4A4A),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                _buildRecentExpensesList(context, ref, data.summary.recentExpenses),
-                const SizedBox(height: 24),
-
-                // 4. Section Booking Mendatang
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Booking Mendatang (>= Hari Ini)', style: AppTypography.titleLarge),
-                    Text(
-                      '${data.summary.upcomingBookingsCount} Event',
-                      style: AppTypography.caption.copyWith(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildRecentExpensesList(
+                    context,
+                    ref,
+                    data.summary.recentExpenses,
+                    isNominalsLoading: data.isNominalsLoading,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                _buildUpcomingAgendasList(context, ref, data.summary.upcomingAgendas),
-                const SizedBox(height: 80), // Padding untuk FAB
               ],
             ),
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryGold),
+          ),
           error: (error, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Terjadi kesalahan:\n$error',
+                    style: AppTypography.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.read(dashboardViewModelProvider.notifier).refresh(),
+                    child: Text('Coba Lagi', style: AppTypography.button),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    WidgetRef ref,
+    User? user,
+    List<AgendaItem> upcomingAgendas,
+  ) {
+    final displayName = (user != null && user.name.trim().isNotEmpty)
+        ? user.name.trim()
+        : 'Admin';
+    final hasNotification = upcomingAgendas.isNotEmpty;
+
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFEDE4D9),
+            border: Border.all(
+              color: const Color(0xFFE0D3C3),
+              width: 1.5,
+            ),
+          ),
+          child: ClipOval(
+            child: (user != null && user.companyLogo.trim().isNotEmpty)
+                ? Image.network(
+                    user.companyLogo,
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(),
+                  )
+                : _buildFallbackAvatar(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RichText(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              text: 'Halo, ',
+              style: AppTypography.h3.copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                color: _greetingBrown.withValues(alpha: 0.85),
+              ),
               children: [
-                const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 48),
-                const SizedBox(height: 16),
-                Text('Terjadi kesalahan:\n$error', style: AppTypography.bodyMedium, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => ref.read(dashboardViewModelProvider.notifier).refresh(),
-                  child: Text('Coba Lagi', style: AppTypography.button),
+                TextSpan(
+                  text: displayName,
+                  style: AppTypography.h3.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _greetingBrown,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Material(
+          color: const Color(0xFFEDE4D9),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => _showNotificationsSheet(context, ref, upcomingAgendas),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    color: _greetingBrown,
+                    size: 24,
+                  ),
+                  if (hasNotification)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD84B3A),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFEDE4D9),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFallbackAvatar() {
+    return Container(
+      color: const Color(0xFFEDE4D9),
+      alignment: Alignment.center,
+      child: SvgPicture.asset(
+        'assets/icons/user.svg',
+        width: 22,
+        height: 22,
+        colorFilter: const ColorFilter.mode(_greetingBrown, BlendMode.srcIn),
+      ),
+    );
+  }
+
+  Widget _buildAIAssistantBanner(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AIAssistantView()),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF2E241C),
+              Color(0xFF453528),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primaryGold.withValues(alpha: 0.4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primaryGold, AppColors.secondaryGold],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGold.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Asisten Dekorin AI',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGold,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          'BARU',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Cek omset, deteksi jadwal bentrok & insight bisnis',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: AppColors.primaryGold,
+                size: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroSummaryCard(DashboardSummary summary, {bool isNominalsLoading = false}) {
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: [0.0, 0.42, 0.72, 1.0],
+          colors: [
+            _bronzeDark,
+            _goldHighlight,
+            _goldMid,
+            _bronzeDeep,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _bronzeDark.withValues(alpha: 0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            // Kilau metalik lembut di area atas-tengah seperti pada desain referensi
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0.15, -0.65),
+                    radius: 1.1,
+                    colors: [
+                      const Color(0xFFE5B879).withValues(alpha: 0.28),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Keuntungan (Pendapatan - Beban)',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: isNominalsLoading
+                        ? const ShimmerBox(
+                            key: ValueKey('hero_profit_shimmer'),
+                            width: 170,
+                            height: 32,
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                            baseColor: Color(0x2EFFFFFF),
+                            highlightColor: Color(0x66FFFFFF),
+                          )
+                        : FittedBox(
+                            key: const ValueKey('hero_profit_value'),
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              currencyFormatter.format(summary.totalProfit),
+                              style: AppTypography.h1.copyWith(
+                                fontSize: 30,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 11,
+                        child: _HeroMetricTile(
+                          iconAsset: 'assets/icons/wallet-income.svg',
+                          title: 'Pendapatan',
+                          value: currencyFormatter.format(summary.totalRevenue),
+                          isLoading: isNominalsLoading,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 11,
+                        child: _HeroMetricTile(
+                          iconAsset: 'assets/icons/expense.svg',
+                          title: 'Pengeluaran',
+                          value: currencyFormatter.format(summary.totalExpense),
+                          isLoading: isNominalsLoading,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 8,
+                        child: _HeroMetricTile(
+                          iconAsset: 'assets/icons/calendar.svg',
+                          title: 'Agenda',
+                          value: '${summary.upcomingBookingsCount} Event',
+                          isLoading: isNominalsLoading,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientFab(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: [0.0, 0.48, 1.0],
+          colors: [
+            Color(0xFF6B4824),
+            Color(0xFFB78A4E),
+            Color(0xFF654320),
+          ],
+        ),
+        border: Border.all(
+          color: const Color(0xFFD8B580).withValues(alpha: 0.65),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _bronzeDeep.withValues(alpha: 0.32),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showAddExpenseModal(context, ref),
+          borderRadius: BorderRadius.circular(30),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.add_shopping_cart_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 9),
+                Text(
+                  'Catat Pengeluaran',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -152,89 +602,20 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCards(DashboardSummary summary) {
-    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-    return Column(
-      children: [
-        // Baris 1: Pendapatan & Pengeluaran
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryCard(
-                title: 'Pendapatan',
-                subtitle: 'Hanya agenda lunas',
-                value: currencyFormatter.format(summary.totalRevenue),
-                icon: Icons.account_balance_wallet,
-                color: AppTheme.successGreen,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                title: 'Pengeluaran',
-                subtitle: 'Biaya operasional',
-                value: currencyFormatter.format(summary.totalExpense),
-                iconWidget: SvgPicture.asset(
-                  'assets/icons/expense.svg',
-                  width: 18,
-                  height: 18,
-                  colorFilter: ColorFilter.mode(Colors.orange.shade700, BlendMode.srcIn),
-                ),
-                color: Colors.orange.shade700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Baris 2: Keuntungan & Booking Mendatang
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryCard(
-                title: 'Keuntungan',
-                subtitle: 'Pendapatan - Beban',
-                value: currencyFormatter.format(summary.totalProfit),
-                iconWidget: SvgPicture.asset(
-                  'assets/icons/chat-arrow-grow.svg',
-                  width: 18,
-                  height: 18,
-                  colorFilter: ColorFilter.mode(Colors.blue.shade700, BlendMode.srcIn),
-                ),
-                color: Colors.blue.shade700,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                title: 'Agenda',
-                subtitle: 'Jadwal \u2265 Hari Ini',
-                value: '${summary.upcomingBookingsCount} Event',
-                iconWidget: SvgPicture.asset(
-                  'assets/icons/calendar.svg',
-                  width: 18,
-                  height: 18,
-                  colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
-                ),
-                color: AppTheme.primaryGold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentExpensesList(BuildContext context, WidgetRef ref, List<ExpenseItem> expenses) {
+  Widget _buildRecentExpensesList(
+    BuildContext context,
+    WidgetRef ref,
+    List<ExpenseItem> expenses, {
+    bool isNominalsLoading = false,
+  }) {
     if (expenses.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFEDE8E1)),
         ),
         child: Center(
           child: Text(
@@ -252,85 +633,144 @@ class DashboardView extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: expenses.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final exp = expenses[index];
-        IconData? categoryIcon = Icons.payments_outlined;
+        IconData? categoryIcon;
         Widget? categoryIconWidget;
-        Color categoryColor = Colors.orange;
+        Color iconBgColor = AppColors.goldLight;
+        Color iconFgColor = _goldMid;
 
         final catLower = exp.category.toLowerCase();
         if (catLower.contains('bunga')) {
-          categoryIcon = Icons.local_florist;
-          categoryColor = Colors.pink;
+          categoryIcon = Icons.local_florist_outlined;
+          iconBgColor = const Color(0xFFFCE4EC);
+          iconFgColor = const Color(0xFFC2185B);
         } else if (catLower.contains('properti') || catLower.contains('dekor')) {
-          categoryIcon = Icons.weekend;
-          categoryColor = Colors.purple;
+          categoryIcon = Icons.weekend_outlined;
+          iconBgColor = const Color(0xFFF3E5F5);
+          iconFgColor = const Color(0xFF7B1FA2);
         } else if (catLower.contains('transport') || catLower.contains('operasional')) {
-          categoryColor = Colors.blue;
+          iconBgColor = const Color(0xFFDCEBFB);
+          iconFgColor = const Color(0xFF2E6DA4);
           categoryIconWidget = SvgPicture.asset(
             'assets/icons/shipping-fast.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(categoryColor, BlendMode.srcIn),
+            width: 21,
+            height: 21,
+            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
           );
         } else if (catLower.contains('crew') || catLower.contains('upah')) {
-          categoryIcon = Icons.group;
-          categoryColor = Colors.teal;
+          iconBgColor = const Color(0xFFE0F2F1);
+          iconFgColor = const Color(0xFF00796B);
+          categoryIconWidget = SvgPicture.asset(
+            'assets/icons/user.svg',
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
+          );
+        } else {
+          categoryIconWidget = SvgPicture.asset(
+            'assets/icons/expense.svg',
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(iconFgColor, BlendMode.srcIn),
+          );
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFEDE8E1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: categoryColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: categoryIconWidget ?? Icon(categoryIcon, color: categoryColor, size: 20),
+                child: categoryIconWidget ?? Icon(categoryIcon, color: iconFgColor, size: 21),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       exp.title,
-                      style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        color: AppColors.textDark,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       '${exp.category} \u2022 ${dateFormatter.format(exp.date)}',
-                      style: AppTypography.caption.copyWith(color: AppTheme.textLight, fontSize: 11),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: const Color(0xFF555555),
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '- ${currencyFormatter.format(exp.amount)}',
-                    style: AppTypography.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Colors.red.shade700,
-                    ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: isNominalsLoading
+                        ? const ShimmerBox(
+                            key: ValueKey('expense_item_shimmer'),
+                            width: 85,
+                            height: 16,
+                            borderRadius: BorderRadius.all(Radius.circular(5)),
+                            baseColor: Color(0xFFEBE6DF),
+                            highlightColor: Color(0xFFF9F7F4),
+                          )
+                        : Text(
+                            key: const ValueKey('expense_item_value'),
+                            '- ${currencyFormatter.format(exp.amount)}',
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: const Color(0xFF9E3329),
+                            ),
+                          ),
                   ),
                   InkWell(
-                    onTap: () => _confirmDeleteExpense(context, ref, exp),
+                    onTap: isNominalsLoading ? null : () => _confirmDeleteExpense(context, ref, exp),
+                    borderRadius: BorderRadius.circular(4),
                     child: Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Text('Hapus', style: AppTypography.caption.copyWith(color: Colors.grey, fontSize: 11)),
+                      padding: const EdgeInsets.only(top: 4, left: 4),
+                      child: Text(
+                        'Hapus',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isNominalsLoading
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF4A4A4A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -355,33 +795,29 @@ class DashboardView extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(ctx);
               try {
-                await ref.read(expenseServiceProvider).deleteExpense(exp.id);
-                ref.read(dashboardViewModelProvider.notifier).refresh();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Pengeluaran berhasil dihapus',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.green,
+                await ref.read(dashboardViewModelProvider.notifier).deleteExpense(exp.id);
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Pengeluaran berhasil dihapus',
+                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                     ),
-                  );
-                }
+                    backgroundColor: Colors.green,
+                  ),
+                );
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Gagal menghapus: $e',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.red,
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Gagal menghapus: $e',
+                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                     ),
-                  );
-                }
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -392,20 +828,23 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
-  Widget _buildUpcomingAgendasList(BuildContext context, WidgetRef ref, List<AgendaItem> agendas) {
+  Widget _buildUpcomingAgendasCarousel(BuildContext context, WidgetRef ref, List<AgendaItem> agendas) {
     if (agendas.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Center(
-          child: Text(
-            'Tidak ada booking mendatang yang terjadwal.',
-            style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFEDE8E1)),
+          ),
+          child: Center(
+            child: Text(
+              'Tidak ada booking mendatang yang terjadwal.',
+              style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight),
+            ),
           ),
         ),
       );
@@ -413,95 +852,251 @@ class DashboardView extends ConsumerWidget {
 
     final dateFormatter = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final cardWidth = (MediaQuery.sizeOf(context).width * 0.58).clamp(215.0, 260.0);
 
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: agendas.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final agenda = agendas[index];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int index = 0; index < agendas.length; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              SizedBox(
+                width: cardWidth,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AgendaDetailView(item: agendas[index])),
+                      ).then((_) {
+                        ref.read(dashboardViewModelProvider.notifier).refresh();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFEDE8E1)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.045),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  agendas[index].clientName,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15.5,
+                                    color: AppColors.textDark,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _PaymentStatusBadge(
+                                isPaid: agendas[index].isPaidOff,
+                                dpAmount: agendas[index].dpAmount,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Text(
+                                '\u{1F389}',
+                                style: AppTypography.bodySmall.copyWith(fontSize: 13),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  agendas[index].backdropTitle.isNotEmpty
+                                      ? agendas[index].backdropTitle
+                                      : agendas[index].packageName,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: const Color(0xFF3A3A3A),
+                                    fontSize: 12.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              SvgPicture.asset(
+                                'assets/icons/calendar.svg',
+                                width: 14,
+                                height: 14,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFF7A7A7A),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  dateFormatter.format(agendas[index].eventDateTime),
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: const Color(0xFF3A3A3A),
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          const SizedBox(height: 12),
+                          Text(
+                            currencyFormatter.format(agendas[index].calculatedTotalPrice),
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15.5,
+                              color: AppColors.textDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
-        return InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaDetailView(item: agenda))).then((_) {
-              ref.read(dashboardViewModelProvider.notifier).refresh();
-            });
-          },
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(14.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 3)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        agenda.clientName,
-                        style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 15),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+  void _showNotificationsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<AgendaItem> upcomingAgendas,
+  ) {
+    final dateFormatter = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Pengingat Event Mendatang',
+                    style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (upcomingAgendas.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'Tidak ada notifikasi event mendatang.',
+                      style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
                     ),
-                    // Payment Status Badge
-                    _PaymentStatusBadge(isPaid: agenda.isPaidOff, dpAmount: agenda.dpAmount),
-                  ],
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.45,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: upcomingAgendas.length,
+                    separatorBuilder: (context, index) => const Divider(
+                      height: 1,
+                      color: AppColors.dividerColor,
+                    ),
+                    itemBuilder: (context, index) {
+                      final agenda = upcomingAgendas[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.goldLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: SvgPicture.asset(
+                            'assets/icons/calendar.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: const ColorFilter.mode(
+                              _greetingBrown,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          agenda.clientName,
+                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          dateFormatter.format(agenda.eventDateTime),
+                          style: AppTypography.caption,
+                        ),
+                        trailing: _PaymentStatusBadge(
+                          isPaid: agenda.isPaidOff,
+                          dpAmount: agenda.dpAmount,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => AgendaDetailView(item: agenda)),
+                          ).then((_) {
+                            ref.read(dashboardViewModelProvider.notifier).refresh();
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.celebration, size: 15, color: AppTheme.primaryGold),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        agenda.backdropTitle.isNotEmpty ? agenda.backdropTitle : agenda.packageName,
-                        style: AppTypography.bodySmall.copyWith(color: AppTheme.textDark, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    SvgPicture.asset(
-                      'assets/icons/calendar.svg',
-                      width: 14,
-                      height: 14,
-                      colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      dateFormatter.format(agenda.eventDateTime),
-                      style: AppTypography.bodySmall.copyWith(color: AppTheme.textLight, fontSize: 12),
-                    ),
-                    const Spacer(),
-                    Text(
-                      currencyFormatter.format(agenda.calculatedTotalPrice),
-                      style: AppTypography.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppTheme.primaryDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -509,8 +1104,105 @@ class DashboardView extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _AddExpenseBottomSheet(ref: ref),
+    );
+  }
+}
+
+class _HeroMetricTile extends StatelessWidget {
+  const _HeroMetricTile({
+    required this.iconAsset,
+    required this.title,
+    required this.value,
+    this.isLoading = false,
+  });
+
+  final String iconAsset;
+  final String title;
+  final String value;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.24),
+            Colors.white.withValues(alpha: 0.10),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.26),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5ECE2).withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: SvgPicture.asset(
+              iconAsset,
+              width: 16,
+              height: 16,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF634222),
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: AppTypography.caption.copyWith(
+              color: Colors.white.withValues(alpha: 0.92),
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: isLoading
+                ? const ShimmerBox(
+                    key: ValueKey('hero_metric_shimmer'),
+                    width: 70,
+                    height: 16,
+                    borderRadius: BorderRadius.all(Radius.circular(5)),
+                    baseColor: Color(0x2EFFFFFF),
+                    highlightColor: Color(0x66FFFFFF),
+                  )
+                : FittedBox(
+                    key: const ValueKey('hero_metric_value'),
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -525,136 +1217,56 @@ class _PaymentStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isPaid) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.green.shade400),
+          color: const Color(0xFFE8F6EE),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF82C99B)),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, size: 11, color: Colors.green.shade700),
-            const SizedBox(width: 4),
-            Text(
-              'Lunas',
-              style: AppTypography.caption.copyWith(
-                color: Colors.green.shade700,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        child: Text(
+          'Lunas',
+          style: AppTypography.caption.copyWith(
+            color: const Color(0xFF1E7E45),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     } else if (dpAmount > 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.amber.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.amber.shade400),
+          color: const Color(0xFFFAF0D7),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFD9BC7C)),
         ),
         child: Text(
           'DP Masuk',
           style: AppTypography.caption.copyWith(
-            color: Colors.amber.shade900,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
+            color: const Color(0xFF7B5B25),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
       );
     } else {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.red.shade200),
+          color: const Color(0xFFFDECEC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE6A1A1)),
         ),
         child: Text(
           'Belum Bayar',
-          style: AppTypography.caption.copyWith(color: Colors.red.shade700, fontSize: 10, fontWeight: FontWeight.bold),
+          style: AppTypography.caption.copyWith(
+            color: const Color(0xFFA93226),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.title,
-    this.subtitle,
-    required this.value,
-    this.icon,
-    this.iconWidget,
-    required this.color,
-  });
-
-  final String title;
-  final String? subtitle;
-  final String value;
-  final IconData? icon;
-  final Widget? iconWidget;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                child: iconWidget ?? Icon(icon!, color: color, size: 18),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppTheme.textDark,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle!,
-                        style: AppTypography.caption.copyWith(color: AppTheme.textLight, fontSize: 9),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 15, color: color),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -846,7 +1458,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
             notes: _notesController.text.trim(),
           );
 
-      widget.ref.read(dashboardViewModelProvider.notifier).refresh();
+      widget.ref.read(dashboardViewModelProvider.notifier).refresh(showNominalsShimmer: true);
 
       if (mounted) {
         Navigator.pop(context);

@@ -52,73 +52,106 @@ class _MainViewState extends ConsumerState<MainView> {
             ProfileView(),
           ];
 
+    const activeNavColor = Color(0xFFB3854B);
+    const inactiveNavColor = Color(0xFF7A7A7A);
+
     // Menentukan daftar icon navigasi bawah
     final List<BottomNavigationBarItem> navItems = isOwner
         ? [
             const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 3),
+                child: Icon(Icons.dashboard_outlined, size: 24),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 3),
+                child: Icon(Icons.dashboard_rounded, size: 24),
+              ),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/calendar.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              icon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+                ),
               ),
-              activeIcon: SvgPicture.asset(
-                'assets/icons/calendar.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              activeIcon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+                ),
               ),
               label: 'Agenda',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/user.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              icon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/user.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+                ),
               ),
-              activeIcon: SvgPicture.asset(
-                'assets/icons/user.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              activeIcon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/user.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+                ),
               ),
               label: 'Profile',
             ),
           ]
         : [
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/calendar.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              icon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+                ),
               ),
-              activeIcon: SvgPicture.asset(
-                'assets/icons/calendar.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              activeIcon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+                ),
               ),
               label: 'Agenda',
             ),
             BottomNavigationBarItem(
-              icon: SvgPicture.asset(
-                'assets/icons/user.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+              icon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/user.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+                ),
               ),
-              activeIcon: SvgPicture.asset(
-                'assets/icons/user.svg',
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              activeIcon: Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: SvgPicture.asset(
+                  'assets/icons/user.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+                ),
               ),
               label: 'Profile',
             ),
@@ -131,17 +164,40 @@ class _MainViewState extends ConsumerState<MainView> {
       // Tutup keyboard ketika tap di mana pun di luar field input
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
+        backgroundColor: const Color(0xFFF7F4EF),
         body: pages[currentIndex],
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: AppTheme.primaryGold,
-          unselectedItemColor: AppTheme.textLight,
-          selectedLabelStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: AppTypography.labelMedium,
-          backgroundColor: Colors.white,
-          elevation: 10,
-          items: navItems,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: BottomNavigationBar(
+              currentIndex: currentIndex,
+              onTap: _onItemTapped,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: activeNavColor,
+              unselectedItemColor: inactiveNavColor,
+              selectedLabelStyle: AppTypography.labelMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: activeNavColor,
+              ),
+              unselectedLabelStyle: AppTypography.labelMedium.copyWith(
+                color: inactiveNavColor,
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              items: navItems,
+            ),
+          ),
         ),
       ),
     );

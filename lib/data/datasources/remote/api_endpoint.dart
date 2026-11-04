@@ -31,6 +31,7 @@ class ApiEndpoint {
   static const String dashboardSummary = '/dashboard/summary';
   static const String expenses = '/expenses';
   static const String aiScanReceipt = '/ai/scan-receipt';
+  static const String aiAssistant = '/ai/assistant';
 
   // ── Agendas, Packages, Models & Addons ────────────────────
   static const String agendas = '/agendas';
