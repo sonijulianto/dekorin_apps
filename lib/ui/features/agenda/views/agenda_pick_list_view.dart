@@ -1069,16 +1069,18 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
   Widget _buildItemTile(AgendaProperty item, {required bool isPackMode}) {
     final isChecked = isPackMode ? item.isPacked : item.isReturned;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
         color: isChecked ? Colors.green.shade50.withValues(alpha: 0.5) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isChecked ? Colors.green.shade200 : AppColors.borderLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isChecked ? Colors.green.shade200 : AppColors.borderLight,
+          ),
         ),
-      ),
-      child: ListTile(
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Transform.scale(
           scale: 1.15,
@@ -1176,6 +1178,7 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -729,28 +729,31 @@ Hormat kami sekeluarga,
   }
 
   Widget _buildCard({required String title, required IconData icon, required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
+        side: const BorderSide(color: AppColors.borderLight),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.primaryGold, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(title, style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold)),
-              ),
-            ],
-          ),
-          const Divider(height: 20, color: AppColors.dividerColor),
-          ...children,
-        ],
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: AppColors.primaryGold, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(title, style: AppTypography.titleSmall.copyWith(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+            const Divider(height: 20, color: AppColors.dividerColor),
+            ...children,
+          ],
+        ),
       ),
     );
   }

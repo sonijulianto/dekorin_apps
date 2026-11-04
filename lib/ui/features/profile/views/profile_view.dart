@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/app_update_service.dart';
+import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_template_setting_view.dart';
@@ -39,144 +40,8 @@ class ProfileView extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Company Info Banner (Multi-Company Identity)
-            if (user?.companyName.isNotEmpty ?? false) ...[
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: user!.canManageCompany
-                      ? () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const EditCompanyView()));
-                        }
-                      : null,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2C3E50), Color(0xFF1A252F)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.4), width: 1.2),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(13),
-                            child: user.companyLogo.isNotEmpty
-                                ? Image.network(
-                                    user.companyLogo,
-                                    width: 52,
-                                    height: 52,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => _buildFallbackStoreLogo(),
-                                  )
-                                : _buildFallbackStoreLogo(),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user.companyName,
-                                style: AppTypography.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (user.companyAddress.isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  user.companyAddress,
-                                  style: AppTypography.caption.copyWith(color: Colors.white.withValues(alpha: 0.7)),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Profile Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderLight),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: user?.isOwner == true
-                        ? Colors.purple.withValues(alpha: 0.15)
-                        : (user?.isCrew == true ? Colors.blue.withValues(alpha: 0.15) : AppColors.goldLight),
-                    child: Icon(
-                      user?.isOwner == true ? Icons.workspace_premium : (user?.isCrew == true ? Icons.engineering : Icons.person),
-                      size: 32,
-                      color: user?.isOwner == true ? Colors.purple : (user?.isCrew == true ? Colors.blue : AppColors.primaryGold),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user?.name ?? 'Pengguna Dekorin', style: AppTypography.titleMedium),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(Icons.phone_android, size: 14, color: AppColors.textLight),
-                            const SizedBox(width: 4),
-                            Text(
-                              user?.phone.isNotEmpty == true ? user!.phone : (user?.email ?? '-'),
-                              style: AppTypography.bodySmall.copyWith(fontFamily: 'monospace'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: user?.isOwner == true
-                                ? Colors.purple.withValues(alpha: 0.15)
-                                : (user?.isCrew == true ? Colors.blue.withValues(alpha: 0.15) : AppColors.goldLight),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            user?.roleDisplayName ?? 'Administrator',
-                            style: AppTypography.caption.copyWith(
-                              color: user?.isOwner == true ? Colors.purple : (user?.isCrew == true ? Colors.blue : AppColors.primaryGold),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // VIP Gold Profile & Company Header Card
+            _buildProfileHeaderCard(context, user),
             const SizedBox(height: 24),
 
             // Akun & Keamanan Section (Tampil untuk semua role: Owner, Admin, Crew)
@@ -187,12 +52,13 @@ class ProfileView extends ConsumerWidget {
                 style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
+            Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderLight),
+                side: const BorderSide(color: AppColors.borderLight),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
                   ListTile(
@@ -222,12 +88,13 @@ class ProfileView extends ConsumerWidget {
                   style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
                 ),
               ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     ListTile(
@@ -299,12 +166,13 @@ class ProfileView extends ConsumerWidget {
                   style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
                 ),
               ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     ListTile(
@@ -338,12 +206,13 @@ class ProfileView extends ConsumerWidget {
                   style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
                 ),
               ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     ListTile(
@@ -429,12 +298,13 @@ class ProfileView extends ConsumerWidget {
                 style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
+            Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.borderLight),
+                side: const BorderSide(color: AppColors.borderLight),
               ),
+              clipBehavior: Clip.antiAlias,
               child: FutureBuilder<String>(
                 future: AppUpdateService.getCurrentVersionName(),
                 builder: (context, snapshot) {
@@ -507,15 +377,274 @@ class ProfileView extends ConsumerWidget {
     );
   }
 
+  Widget _buildProfileHeaderCard(BuildContext context, User? user) {
+    final companyName = (user?.companyName.isNotEmpty ?? false) ? user!.companyName : 'Nama Usaha Belum Diatur';
+    final companyAddress = (user?.companyAddress.isNotEmpty ?? false)
+        ? user!.companyAddress
+        : 'Alamat usaha belum diatur';
+    final userName = (user?.name.isNotEmpty ?? false) ? user!.name : 'Pengguna Dekorin';
+    final userPhone = (user?.phone.isNotEmpty ?? false)
+        ? user!.phone
+        : ((user?.email.isNotEmpty ?? false) ? user!.email : '-');
+    final roleName = user?.roleDisplayName ?? 'Superadmin';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF563B13),
+            Color(0xFF88632E),
+            Color(0xFFA57D3E),
+            Color(0xFF85632A),
+            Color(0xFF4E350E),
+          ],
+          stops: [0.0, 0.28, 0.52, 0.78, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFE5B56D).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4E350E).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Ambient soft radial light highlight on top-right
+          Positioned(
+            top: -40,
+            right: 10,
+            child: Container(
+              width: 220,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFDEB57B).withValues(alpha: 0.28),
+                    const Color(0xFFDEB57B).withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: (user?.canManageCompany ?? false)
+                  ? () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const EditCompanyView()));
+                    }
+                  : null,
+              borderRadius: BorderRadius.circular(22),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top Section: Store Logo + Name + Address
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Store Logo Container (white rounded square)
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          padding: const EdgeInsets.all(6),
+                          child: (user?.companyLogo.isNotEmpty ?? false)
+                              ? Image.network(
+                                  user!.companyLogo,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => _buildFallbackStoreLogo(),
+                                )
+                              : _buildFallbackStoreLogo(),
+                        ),
+                        const SizedBox(width: 14),
+                        // Store Name & Address
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                companyName,
+                                style: AppTypography.titleLarge.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 1.5),
+                                    child: Icon(
+                                      Icons.location_on,
+                                      size: 15,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      companyAddress,
+                                      style: AppTypography.caption.copyWith(
+                                        color: Colors.white.withValues(alpha: 0.92),
+                                        fontSize: 12,
+                                        height: 1.35,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Bottom Section: Frosted Card with User Name, Phone & Role Badge
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      'assets/icons/mobile-notch.svg',
+                                      width: 14,
+                                      height: 14,
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        userPhone,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.95),
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Gold Metallic Role Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color(0xFFFAF2E6),
+                                  Color(0xFFE9D7BC),
+                                  Color(0xFFD3B284),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.75),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              roleName,
+                              style: AppTypography.labelMedium.copyWith(
+                                color: const Color(0xFF2C1E0A),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFallbackStoreLogo() {
     return Container(
-      color: Colors.white.withValues(alpha: 0.15),
+      color: Colors.white,
       child: Center(
         child: Image.asset(
           'assets/images/logo_icon.png',
-          width: 30,
-          height: 30,
-          errorBuilder: (context, error, stackTrace) => const Icon(Icons.storefront, color: AppColors.primaryGold, size: 26),
+          width: 36,
+          height: 36,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.storefront, color: AppColors.primaryGold, size: 28),
         ),
       ),
     );

@@ -151,9 +151,7 @@ class DashboardView extends ConsumerWidget {
               ],
             ),
           ),
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.primaryGold),
-          ),
+          loading: () => const DashboardShimmerLoading(),
           error: (error, stack) => Center(
             child: Padding(
               padding: const EdgeInsets.all(24),

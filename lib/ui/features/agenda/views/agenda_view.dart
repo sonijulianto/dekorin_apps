@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_calendar_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
@@ -132,7 +133,7 @@ class AgendaView extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
+              loading: () => const AgendaShimmerLoading(),
               error: (error, _) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),

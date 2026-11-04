@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +15,7 @@ import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/domain/repositories/dashboard_repository.dart';
+import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -583,4 +586,65 @@ void main() {
     expect(find.textContaining('Oktober'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('DashboardView displays DashboardShimmerLoading without full-screen spinner when loading', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final completer = Completer<DashboardSummary>();
+    final delayedRepo = _DelayedFakeDashboardRepository(summaryFuture: completer.future);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardRepositoryProvider.overrideWithValue(delayedRepo),
+          globalAuthProvider.overrideWith(() => _FakeAuthNotifier()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const DashboardView(),
+        ),
+      ),
+    );
+
+    // Initial pump while future is unresolved
+    await tester.pump();
+
+    // Verify shimmer loading skeleton is displayed and CircularProgressIndicator is NOT used
+    expect(find.byType(DashboardShimmerLoading), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    // Resolve the future with summary data
+    completer.complete(DashboardSummary(
+      upcomingBookingsCount: 0,
+      totalRevenue: 0,
+      totalExpense: 0,
+      totalProfit: 0,
+      upcomingAgendas: [],
+      recentExpenses: [],
+    ));
+    await tester.pumpAndSettle();
+
+    // Verify shimmer is replaced with real content
+    expect(find.byType(DashboardShimmerLoading), findsNothing);
+    expect(find.text('Booking Mendatang'), findsOneWidget);
+    expect(find.text('Catat Pengeluaran'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _DelayedFakeDashboardRepository implements DashboardRepository {
+  _DelayedFakeDashboardRepository({required this.summaryFuture});
+
+  final Future<DashboardSummary> summaryFuture;
+
+  @override
+  Future<DashboardSummary> getSummary([DashboardFilter? filter]) => summaryFuture;
+
+  @override
+  Future<List<Booking>> getThisWeekBookings() async => [];
 }
