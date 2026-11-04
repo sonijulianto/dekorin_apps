@@ -130,81 +130,109 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   void initState() {
     super.initState();
     final inv = widget.invitation;
+    final isNew = inv == null;
+    final randSuffix = (DateTime.now().millisecondsSinceEpoch % 9000 + 1000).toString();
 
     _selectedTemplate = inv?.template.isNotEmpty == true ? inv!.template : InvitationTemplate.greenLeaves;
     _selectedEventType = inv?.eventType.isNotEmpty == true ? inv!.eventType : 'wedding';
 
-    _titleController = TextEditingController(text: inv?.title ?? '');
-    _slugController = TextEditingController(text: inv?.slug ?? '');
+    _titleController = TextEditingController(text: inv?.title ?? 'The Wedding of Bagas & Zulia');
+    _slugController = TextEditingController(text: inv?.slug ?? 'bagas-zulia-$randSuffix');
     _quotesController = TextEditingController(
       text:
           inv?.quotes ??
           '"Dan di antara tanda-tanda kekuasaan-Nya ialah Dia menciptakan untukmu isteri-isteri dari jenismu sendiri, supaya kamu cenderung dan merasa tenteram kepadanya, dan dijadikan-Nya di antaramu rasa kasih dan sayang." (QS. Ar-Rum: 21)',
     );
 
-    _groomNameController = TextEditingController(text: inv?.groomName ?? '');
-    _groomNicknameController = TextEditingController(text: inv?.groomNickname ?? '');
+    _groomNameController = TextEditingController(text: inv?.groomName ?? 'Bagas Pratama, S.Kom.');
+    _groomNicknameController = TextEditingController(text: inv?.groomNickname ?? 'Bagas');
     _groomChildOrderController = TextEditingController(
       text: inv?.groomChildOrder.isNotEmpty == true ? inv!.groomChildOrder : 'Putra pertama dari',
     );
-    _groomParentsController = TextEditingController(text: inv?.groomParents ?? '');
-    _groomIgController = TextEditingController(text: inv?.groomInstagram ?? '');
+    _groomParentsController = TextEditingController(text: inv?.groomParents ?? 'Bpk. Bambang & Ibu Siti');
+    _groomIgController = TextEditingController(text: inv?.groomInstagram ?? 'bagaspratama');
 
-    _brideNameController = TextEditingController(text: inv?.brideName ?? '');
-    _brideNicknameController = TextEditingController(text: inv?.brideNickname ?? '');
+    _brideNameController = TextEditingController(text: inv?.brideName ?? 'Zulia Maharani, S.Pd.');
+    _brideNicknameController = TextEditingController(text: inv?.brideNickname ?? 'Zulia');
     _brideChildOrderController = TextEditingController(
       text: inv?.brideChildOrder.isNotEmpty == true ? inv!.brideChildOrder : 'Putri kedua dari',
     );
-    _brideParentsController = TextEditingController(text: inv?.brideParents ?? '');
-    _brideIgController = TextEditingController(text: inv?.brideInstagram ?? '');
+    _brideParentsController = TextEditingController(text: inv?.brideParents ?? 'Bpk. Agus & Ibu Dewi');
+    _brideIgController = TextEditingController(text: inv?.brideInstagram ?? 'zuliamhr');
 
-    _childNameController = TextEditingController(text: inv?.childName ?? '');
-    _childNicknameController = TextEditingController(text: inv?.childNickname ?? '');
+    _childNameController = TextEditingController(text: inv?.childName ?? 'Rayyan Althaf Pratama');
+    _childNicknameController = TextEditingController(text: inv?.childNickname ?? 'Rayyan');
     _childOrderController = TextEditingController(
-      text: inv?.childOrder.isNotEmpty == true ? inv!.childOrder : 'Putra tercinta dari',
+      text: inv?.childOrder.isNotEmpty == true ? inv!.childOrder : 'Putra pertama dari',
     );
 
     _akadDateController = TextEditingController(text: inv?.akadDate ?? 'Sabtu, 20 Desember 2026');
     _akadTimeController = TextEditingController(text: inv?.akadTime ?? '08:00 - 10:00 WIB');
-    _akadVenueController = TextEditingController(text: inv?.akadVenue ?? '');
-    _akadAddressController = TextEditingController(text: inv?.akadAddress ?? '');
-    _akadMapsController = TextEditingController(text: inv?.akadMapsUrl ?? '');
+    _akadVenueController = TextEditingController(text: inv?.akadVenue ?? 'Masjid Agung Al-Barkah');
+    _akadAddressController = TextEditingController(text: inv?.akadAddress ?? 'Jl. Veteran No. 46, RT.004/RW.001, Marga Jaya, Bekasi Selatan');
+    _akadMapsController = TextEditingController(text: inv?.akadMapsUrl ?? 'https://maps.app.goo.gl/9bN52xXn');
 
     _resepsiDateController = TextEditingController(text: inv?.resepsiDate ?? 'Sabtu, 20 Desember 2026');
     _resepsiTimeController = TextEditingController(text: inv?.resepsiTime ?? '11:00 - 14:00 WIB');
-    _resepsiVenueController = TextEditingController(text: inv?.resepsiVenue ?? '');
-    _resepsiAddressController = TextEditingController(text: inv?.resepsiAddress ?? '');
-    _resepsiMapsController = TextEditingController(text: inv?.resepsiMapsUrl ?? '');
+    _resepsiVenueController = TextEditingController(text: inv?.resepsiVenue ?? 'Grand Ballroom Hotel Santika');
+    _resepsiAddressController = TextEditingController(text: inv?.resepsiAddress ?? 'Jl. Jend. Ahmad Yani No. 1, RT.001/RW.005, Margajaya, Bekasi Selatan');
+    _resepsiMapsController = TextEditingController(text: inv?.resepsiMapsUrl ?? 'https://maps.app.goo.gl/9bN52xXn');
 
     _bankName1Controller = TextEditingController(text: inv?.bankName1 ?? 'BCA');
-    _bankAccount1Controller = TextEditingController(text: inv?.bankAccount1 ?? '');
-    _bankHolder1Controller = TextEditingController(text: inv?.bankHolder1 ?? '');
+    _bankAccount1Controller = TextEditingController(text: inv?.bankAccount1 ?? '1234567890');
+    _bankHolder1Controller = TextEditingController(text: inv?.bankHolder1 ?? 'Bagas Pratama');
 
     _bankName2Controller = TextEditingController(text: inv?.bankName2 ?? 'Bank Mandiri');
-    _bankAccount2Controller = TextEditingController(text: inv?.bankAccount2 ?? '');
-    _bankHolder2Controller = TextEditingController(text: inv?.bankHolder2 ?? '');
+    _bankAccount2Controller = TextEditingController(text: inv?.bankAccount2 ?? '9876543210');
+    _bankHolder2Controller = TextEditingController(text: inv?.bankHolder2 ?? 'Zulia Maharani');
 
-    _giftAddressController = TextEditingController(text: inv?.giftAddress ?? '');
-    _waConfirmationController = TextEditingController(text: inv?.waConfirmation ?? '');
+    _giftAddressController = TextEditingController(text: inv?.giftAddress ?? 'Jl. Melati No. 12, RT.002/RW.005, Margajaya, Bekasi Selatan (Penerima: Bagas & Zulia)');
+    _waConfirmationController = TextEditingController(text: inv?.waConfirmation ?? '081234567890');
 
     _audioUrlController = TextEditingController(text: inv?.audioUrl ?? '');
     _youtubeUrlController = TextEditingController(text: inv?.youtubeUrl ?? '');
-    _initLoveStoryItems(inv?.loveStory ?? '');
-    _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? '');
+    if (inv != null) {
+      _initLoveStoryItems(inv.loveStory);
+    } else {
+      _loveStoryItems.addAll([
+        LoveStoryItem(
+          date: '1 September 2021',
+          title: 'Pertama Kali Bertemu',
+          description: 'Kami pertama kali bertemu di sebuah seminar kampus dan saling bertukar kontak.',
+        ),
+        LoveStoryItem(
+          date: '14 Februari 2023',
+          title: 'Komitmen Bersama',
+          description: 'Setelah melewati berbagai suka dan duka bersama, kami memutuskan untuk berkomitmen melangkah ke jenjang yang lebih serius.',
+        ),
+        LoveStoryItem(
+          date: '20 Oktober 2025',
+          title: 'Lamaran',
+          description: 'Dengan restu dari kedua keluarga besar, kami melangsungkan prosesi lamaran dan menyatukan tekad untuk menikah.',
+        ),
+      ]);
+    }
+    _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? 'Keluarga Besar Bpk. Bambang & Ibu Siti\nKeluarga Besar Bpk. Agus & Ibu Dewi');
 
-    final rawCover = inv?.coverImage ?? '';
+    final rawCover = inv?.coverImage ?? (isNew ? (_isIllustrationTemplate ? '' : '/assets/templates/pn4/photos/LeniArdi2.jpeg') : '');
     _coverImageUrl = (rawCover == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
         ? (_isIllustrationTemplate ? '' : rawCover)
         : rawCover;
-    _groomPhotoUrl = inv?.groomPhoto ?? '';
-    _bridePhotoUrl = inv?.bridePhoto ?? '';
-    _sec1PhotoUrl = inv?.sec1Photo ?? '';
-    _akadPhotoUrl = inv?.akadPhoto ?? '';
-    _resepsiPhotoUrl = inv?.resepsiPhoto ?? '';
-    _eventPhotoUrl = inv?.eventPhoto ?? '';
-    _closingPhotoUrl = inv?.closingPhoto ?? '';
+    _groomPhotoUrl = inv?.groomPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi15.jpeg' : '');
+    _bridePhotoUrl = inv?.bridePhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi16.jpeg' : '');
+    _sec1PhotoUrl = inv?.sec1Photo ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi15.jpeg' : '');
+    _akadPhotoUrl = inv?.akadPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi15.jpeg' : '');
+    _resepsiPhotoUrl = inv?.resepsiPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi16.jpeg' : '');
+    _eventPhotoUrl = inv?.eventPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi16.jpeg' : '');
+    _closingPhotoUrl = inv?.closingPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi2.jpeg' : '');
     if (inv != null && inv.galleryImages.isNotEmpty) {
       _galleryUrls = inv.galleryImages.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else if (isNew) {
+      _galleryUrls = [
+        '/assets/templates/pn4/photos/LeniArdi2.jpeg',
+        '/assets/templates/pn4/photos/LeniArdi15.jpeg',
+        '/assets/templates/pn4/photos/LeniArdi16.jpeg',
+      ];
     }
   }
 
@@ -1135,6 +1163,30 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             _selectedTemplate = InvitationTemplate.khitanGreen;
           } else if (value == 'wedding' && _selectedTemplate == InvitationTemplate.khitanGreen) {
             _selectedTemplate = InvitationTemplate.greenLeaves;
+          }
+          final isNew = widget.invitation == null;
+          if (isNew) {
+            if (value == 'khitan') {
+              if (_titleController.text.isEmpty || _titleController.text.startsWith('The Wedding of')) {
+                _titleController.text = 'Tasyakuran Khitanan ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Rayyan"}';
+              }
+              if (_slugController.text.isEmpty || _slugController.text.startsWith('bagas-zulia')) {
+                _slugController.text = 'khitan-rayyan-${DateTime.now().millisecondsSinceEpoch % 10000}';
+              }
+              if (_quotesController.text.isEmpty || _quotesController.text.contains('Ar-Rum')) {
+                _quotesController.text = '“Semoga menjadi anak yang sholeh, berbakti kepada kedua orang tua, serta berguna bagi nusa, bangsa, dan agama. Aamiin ya Rabbal \'Alamin.”';
+              }
+            } else {
+              if (_titleController.text.isEmpty || _titleController.text.startsWith('Tasyakuran Khitanan')) {
+                _titleController.text = 'The Wedding of ${_brideNicknameController.text.isNotEmpty ? _brideNicknameController.text : "Zulia"} & ${_groomNicknameController.text.isNotEmpty ? _groomNicknameController.text : "Bagas"}';
+              }
+              if (_slugController.text.isEmpty || _slugController.text.startsWith('khitan-rayyan')) {
+                _slugController.text = 'bagas-zulia-${DateTime.now().millisecondsSinceEpoch % 10000}';
+              }
+              if (_quotesController.text.isEmpty || _quotesController.text.contains('anak yang sholeh')) {
+                _quotesController.text = '"Dan di antara tanda-tanda kekuasaan-Nya ialah Dia menciptakan untukmu isteri-isteri dari jenismu sendiri, supaya kamu cenderung dan merasa tenteram kepadanya, dan dijadikan-Nya di antaramu rasa kasih dan sayang." (QS. Ar-Rum: 21)';
+              }
+            }
           }
           _generateDefaultSlugAndTitle();
         });
