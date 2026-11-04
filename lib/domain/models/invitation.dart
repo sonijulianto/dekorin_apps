@@ -8,6 +8,7 @@ class InvitationTemplate {
   static const String luxuryGrey = 'luxury-grey';
   static const String pn4 = 'pn4';
   static const String ta3 = 'ta3';
+  static const String ta17 = 'ta17';
   static const String khitanGreen = 'khitan-green';
 
   static const List<Map<String, dynamic>> all = [
@@ -75,6 +76,17 @@ class InvitationTemplate {
       'secondaryColor': Color(0xFFC08081),
       'backgroundColor': Color(0xFFFFF9F9),
       'accentColor': Color(0xFFFDE8E9),
+      'eventType': 'wedding',
+    },
+    {
+      'id': ta17,
+      'name': 'Ocean Blossom TA17',
+      'tag': 'Pastel Blue & Floral',
+      'description': 'Desain floral biru pastel elegan dengan bingkai lengkung, countdown, dan love story.',
+      'primaryColor': Color(0xFF4B8DCB),
+      'secondaryColor': Color(0xFF295177),
+      'backgroundColor': Color(0xFFF0F6FC),
+      'accentColor': Color(0xFFA4C8EB),
       'eventType': 'wedding',
     },
     {
