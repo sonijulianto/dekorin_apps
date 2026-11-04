@@ -1,4 +1,4 @@
-﻿class ExpenseItem {
+class ExpenseItem {
   const ExpenseItem({
     required this.id,
     required this.title,
@@ -48,5 +48,45 @@
       'date': date.toIso8601String(),
       'notes': notes,
     };
+  }
+}
+
+/// Hasil analisis foto nota / kuitansi dari Gemini Vision AI
+class ExpenseOcrResult {
+  const ExpenseOcrResult({
+    required this.title,
+    required this.amount,
+    this.category = 'Lainnya',
+    required this.date,
+    this.notes = '',
+  });
+
+  final String title;
+  final double amount;
+  final String category;
+  final DateTime date;
+  final String notes;
+
+  factory ExpenseOcrResult.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    try {
+      parsedDate = DateTime.parse(json['date'] as String);
+    } catch (_) {
+      parsedDate = DateTime.now();
+    }
+
+    double parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    return ExpenseOcrResult(
+      title: json['title'] as String? ?? '',
+      amount: parseDouble(json['amount']),
+      category: json['category'] as String? ?? 'Lainnya',
+      date: parsedDate,
+      notes: json['notes'] as String? ?? '',
+    );
   }
 }

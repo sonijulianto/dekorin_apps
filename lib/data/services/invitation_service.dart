@@ -8,10 +8,29 @@ final invitationServiceProvider = Provider<InvitationService>((ref) {
 });
 
 class InvitationService {
-  /// Mengambil semua daftar undangan digital
-  Future<List<InvitationItem>> getInvitations() async {
+  /// Mengambil daftar undangan digital dengan dukungan pagination, pencarian, dan filter
+  Future<List<InvitationItem>> getInvitations({
+    int page = 1,
+    int limit = 50,
+    String? search,
+    String? status,
+  }) async {
     try {
-      final res = await ApiClient.get(ApiEndpoint.invitations);
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      if (search != null && search.trim().isNotEmpty) {
+        queryParams['search'] = search.trim();
+      }
+      if (status != null && status.trim().isNotEmpty) {
+        queryParams['status'] = status.trim();
+      }
+
+      final queryString = Uri(queryParameters: queryParams).query;
+      final endpoint = '${ApiEndpoint.invitations}?$queryString';
+
+      final res = await ApiClient.get(endpoint);
       final List<dynamic> data = res['data'] as List<dynamic>? ?? [];
       return data.map((item) => InvitationItem.fromJson(item as Map<String, dynamic>)).toList();
     } catch (e) {
@@ -52,10 +71,16 @@ class InvitationService {
     await ApiClient.delete('${ApiEndpoint.invitations}/$id');
   }
 
-  /// Mengambil daftar ucapan / wishes tamu untuk suatu undangan
-  Future<List<InvitationWishItem>> getWishes(String invitationId) async {
+  /// Mengambil daftar ucapan / wishes tamu untuk suatu undangan dengan pagination
+  Future<List<InvitationWishItem>> getWishes(
+    String invitationId, {
+    int page = 1,
+    int limit = 50,
+  }) async {
     try {
-      final res = await ApiClient.get('${ApiEndpoint.invitations}/$invitationId/wishes');
+      final res = await ApiClient.get(
+        '${ApiEndpoint.invitations}/$invitationId/wishes?page=$page&limit=$limit',
+      );
       final List<dynamic> data = res['data'] as List<dynamic>? ?? [];
       return data.map((w) => InvitationWishItem.fromJson(w as Map<String, dynamic>)).toList();
     } catch (_) {

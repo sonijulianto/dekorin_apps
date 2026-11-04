@@ -1,4 +1,6 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
@@ -54,5 +56,17 @@ class ExpenseService {
   /// Menghapus pengeluaran berdasarkan ID
   Future<void> deleteExpense(String id) async {
     await ApiClient.delete('${ApiEndpoint.expenses}/$id');
+  }
+
+  /// Membaca foto nota / kuitansi pengeluaran dengan bantuan Gemini Vision AI di backend
+  Future<ExpenseOcrResult> scanReceiptWithAi(File imageFile) async {
+    final response = await ApiClient.uploadMultipart(
+      ApiEndpoint.aiScanReceipt,
+      fileField: 'receipt',
+      file: imageFile,
+    );
+
+    final data = response['data'] as Map<String, dynamic>? ?? {};
+    return ExpenseOcrResult.fromJson(data);
   }
 }

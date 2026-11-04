@@ -14,7 +14,7 @@ enum AgendaDateFilterType {
 
 class AgendaFilterState {
   const AgendaFilterState({
-    this.filterType = AgendaDateFilterType.all,
+    this.filterType = AgendaDateFilterType.thisWeek,
     this.customStartDate,
     this.customEndDate,
   });
@@ -115,5 +115,9 @@ class AgendaViewModel extends AutoDisposeAsyncNotifier<AgendaStateData> {
       customEndDate: end,
     );
     // Riverpod watch akan memicu re-fetch otomatis
+  }
+
+  Future<void> resetFilter() async {
+    ref.read(agendaFilterProvider.notifier).state = const AgendaFilterState();
   }
 }

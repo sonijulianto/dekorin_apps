@@ -18,7 +18,9 @@ import 'package:dekorin_apps/ui/features/agenda/views/place_search_modal.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
-  const CreateAgendaSheet({super.key});
+  const CreateAgendaSheet({super.key, this.initialDate});
+
+  final DateTime? initialDate;
 
   @override
   ConsumerState<CreateAgendaSheet> createState() => _CreateAgendaSheetState();
@@ -42,6 +44,12 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   double _selectedModelAdditionalPrice = 0.0;
   List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+  }
 
   String _resolveBrandLabel(List<CompanyBrand> brands, String mainCompanyName) {
     if (_selectedBrandId.isEmpty) {

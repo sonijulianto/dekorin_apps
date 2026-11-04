@@ -268,4 +268,51 @@ class ApiClient {
       throw ApiException('Gagal mengunggah gambar: $e');
     }
   }
+
+  // ── UPLOAD MULTIPART GENERIC ──────────────────────────────
+  static Future<dynamic> uploadMultipart(
+    String endpoint, {
+    required String fileField,
+    required File file,
+    Map<String, String>? fields,
+    bool withToken = true,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    try {
+      // Auto compress image jika berupa foto
+      final processedFile = await ImageCompressor.compressUnder5MB(file);
+
+      final uri = Uri.parse('${ApiEndpoint.baseUrl}$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+
+      if (withToken) {
+        final token = DataPreferences.getToken();
+        if (token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      final multipartFile = await http.MultipartFile.fromPath(
+        fileField,
+        processedFile.path,
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send().timeout(timeout);
+      final response = await http.Response.fromStream(streamedResponse).timeout(timeout);
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw ApiException('Proses analisis AI membutuhkan waktu lebih lama. Silakan periksa koneksi Anda.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Gagal memproses file: $e');
+    }
+  }
 }

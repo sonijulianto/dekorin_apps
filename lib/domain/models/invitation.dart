@@ -167,6 +167,7 @@ class InvitationItem {
     this.isActive = true,
     this.createdAt,
     this.wishes = const [],
+    this.wishesCount = 0,
   });
 
   final String id;
@@ -224,6 +225,7 @@ class InvitationItem {
   final bool isActive;
   final DateTime? createdAt;
   final List<InvitationWishItem> wishes;
+  final int wishesCount;
 
   factory InvitationItem.fromJson(Map<String, dynamic> json) {
     var rawWishes = json['wishes'] as List<dynamic>? ?? [];
@@ -287,6 +289,7 @@ class InvitationItem {
       isActive: json['is_active'] as bool? ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       wishes: wishesList,
+      wishesCount: (json['wishes_count'] as num?)?.toInt() ?? wishesList.length,
     );
   }
 

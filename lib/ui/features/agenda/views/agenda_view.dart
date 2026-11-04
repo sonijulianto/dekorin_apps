@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_calendar_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
@@ -61,6 +62,28 @@ class AgendaView extends ConsumerWidget {
           'Agenda Dekorasi',
           style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Kalender Agenda',
+            icon: SvgPicture.asset(
+              'assets/icons/calendar.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(AppTheme.textDark, BlendMode.srcIn),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AgendaCalendarView(),
+                ),
+              ).then((_) {
+                ref.read(agendaViewModelProvider.notifier).refresh();
+              });
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       floatingActionButton: (user?.canCreateAgenda ?? true)
           ? FloatingActionButton.extended(
@@ -149,6 +172,25 @@ class AgendaView extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
+            _FilterChip(
+              label: 'Kalender',
+              iconWidget: SvgPicture.asset(
+                'assets/icons/calendar.svg',
+                width: 16,
+                height: 16,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
+              isSelected: false,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AgendaCalendarView()),
+                ).then((_) {
+                  ref.read(agendaViewModelProvider.notifier).refresh();
+                });
+              },
+            ),
+            const SizedBox(width: 8),
             _FilterChip(
               label: 'Semua',
               icon: Icons.calendar_view_week,
@@ -245,10 +287,10 @@ class AgendaView extends ConsumerWidget {
               ),
             ),
           ),
-          if (filterState.filterType != AgendaDateFilterType.all)
+          if (filterState.filterType != AgendaDateFilterType.thisWeek)
             GestureDetector(
               onTap: () {
-                ref.read(agendaViewModelProvider.notifier).setFilter(AgendaDateFilterType.all);
+                ref.read(agendaViewModelProvider.notifier).resetFilter();
               },
               child: Text(
                 'Reset',

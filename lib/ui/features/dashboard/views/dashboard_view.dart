@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
@@ -672,6 +675,7 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
   String _selectedCategory = 'Bunga';
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
+  bool _isScanning = false;
 
   final List<String> _categories = ['Bunga', 'Properti Dekor', 'Operasional', 'Transport', 'Honor Crew', 'Lainnya'];
 
@@ -681,6 +685,124 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndScanReceipt() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pilih Sumber Foto Nota',
+                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.goldLight,
+                  child: Icon(Icons.camera_alt, color: AppColors.primaryGold),
+                ),
+                title: Text('Kamera', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                subtitle: Text('Ambil foto struk langsung', style: AppTypography.caption),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.goldLight,
+                  child: Icon(Icons.photo_library, color: AppColors.primaryGold),
+                ),
+                title: Text('Galeri', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                subtitle: Text('Pilih dari album foto', style: AppTypography.caption),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() => _isScanning = true);
+
+      final result = await widget.ref
+          .read(expenseServiceProvider)
+          .scanReceiptWithAi(File(pickedFile.path));
+
+      if (!mounted) return;
+
+      setState(() {
+        if (result.title.isNotEmpty) {
+          _titleController.text = result.title;
+        }
+        if (result.amount > 0) {
+          _amountController.text = NumberFormat('#,###', 'id_ID')
+              .format(result.amount.toInt())
+              .replaceAll(',', '.');
+        }
+        if (result.category.isNotEmpty && _categories.contains(result.category)) {
+          _selectedCategory = result.category;
+        }
+        _selectedDate = result.date;
+        if (result.notes.isNotEmpty) {
+          _notesController.text = result.notes;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Nota berhasil dibaca! Silakan periksa rincian sebelum disimpan.',
+                  style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal memindai nota: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -784,6 +906,109 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
                 ),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
+            ),
+            const SizedBox(height: 16),
+
+            // Tombol AI Scan Nota
+            InkWell(
+              onTap: _isScanning ? null : _pickAndScanReceipt,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryGold.withValues(alpha: 0.15),
+                      AppColors.goldLight,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.primaryGold.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGold,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryGold.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: _isScanning
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _isScanning ? 'Menganalisis Nota...' : 'Scan Nota / Struk (AI)',
+                                style: AppTypography.titleSmall.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGold,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'BARU',
+                                  style: AppTypography.caption.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _isScanning
+                                ? 'Gemini AI sedang membaca rincian & nominal...'
+                                : 'Foto struk belanja untuk mengisi form otomatis',
+                            style: AppTypography.caption.copyWith(
+                              color: Colors.grey.shade600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!_isScanning)
+                      const Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppColors.primaryGold,
+                        size: 20,
+                      ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
 
