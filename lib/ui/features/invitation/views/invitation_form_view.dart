@@ -1293,7 +1293,10 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Text(
                             tmpl['name'] as String,
@@ -1303,7 +1306,6 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -1326,6 +1328,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                         tmpl['description'] as String,
                         style: AppTypography.caption.copyWith(fontSize: 11),
                         maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

@@ -344,5 +344,61 @@ class AgendaService {
       rethrow;
     }
   }
+
+  /// Mengupdate seluruh data agenda secara lengkap (PUT /api/agendas/:id)
+  Future<AgendaItem> updateAgenda(
+    String agendaId, {
+    String brandId = '',
+    required String clientName,
+    String clientPhone = '',
+    String backdropTitle = '',
+    DateTime? eventDateTime,
+    String eventAddress = '',
+    String mapsUrl = '',
+    String packageId = '',
+    String packageName = '',
+    double packagePrice = 0.0,
+    String modelId = '',
+    String modelName = '',
+    String modelWidth = '',
+    String modelImageUrl = '',
+    double modelAdditionalPrice = 0.0,
+    double transportFee = 0.0,
+    double dpAmount = 0.0,
+    String paymentStatus = '',
+    String status = '',
+    String notes = '',
+  }) async {
+    final formattedDate = eventDateTime != null
+        ? DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(eventDateTime)
+        : '';
+
+    final payload = {
+      'brand_id': brandId,
+      'client_name': clientName,
+      'client_phone': clientPhone,
+      'backdrop_title': backdropTitle,
+      if (formattedDate.isNotEmpty) 'event_date_time': formattedDate,
+      'event_address': eventAddress,
+      'maps_url': mapsUrl,
+      'package_id': packageId,
+      'package_name': packageName,
+      'package_price': packagePrice,
+      'model_id': modelId,
+      'model_name': modelName,
+      'model_width': modelWidth,
+      'model_image_url': modelImageUrl,
+      'model_additional_price': modelAdditionalPrice,
+      'transport_fee': transportFee,
+      'dp_amount': dpAmount,
+      if (paymentStatus.isNotEmpty) 'payment_status': paymentStatus,
+      if (status.isNotEmpty) 'status': status,
+      'notes': notes,
+    };
+
+    final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
 }
+
 

@@ -336,12 +336,15 @@ Hormat kami sekeluarga,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '/${widget.invitation.slug}',
-                            style: AppTypography.caption.copyWith(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: AppColors.textLight,
+                          Expanded(
+                            child: Text(
+                              '/${widget.invitation.slug}',
+                              style: AppTypography.caption.copyWith(
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                color: AppColors.textLight,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
