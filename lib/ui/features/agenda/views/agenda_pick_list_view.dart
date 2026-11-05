@@ -42,7 +42,7 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
 
   void _showAddPropertyDialog() {
     final propertiesAsync = ref.read(propertiesProvider);
-    final masterProps = propertiesAsync.value ?? <Property>[];
+    final masterProps = propertiesAsync.valueOrNull ?? <Property>[];
 
     Property? selectedMasterProp;
     final customNameController = TextEditingController();
@@ -510,7 +510,7 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
 
   void _openMultiSelectPicker() async {
     final propertiesAsync = ref.read(propertiesProvider);
-    final masterProps = propertiesAsync.value ?? <Property>[];
+    final masterProps = propertiesAsync.valueOrNull ?? <Property>[];
     if (masterProps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Master properti belum tersedia.', style: AppTypography.bodyMedium.copyWith(color: Colors.white))),
@@ -518,7 +518,7 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
       return;
     }
 
-    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).value ?? [];
+    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).valueOrNull ?? [];
     final currentIds = currentItems.map((it) => it.propertyId).toSet();
     final currentQtys = {for (var it in currentItems) it.propertyId: it.qty};
 
@@ -628,7 +628,7 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
   }
 
   void _confirmApplyModel(DecorationModel m) {
-    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).value ?? [];
+    final currentItems = ref.read(agendaPropertiesProvider(widget.agenda.id)).valueOrNull ?? [];
 
     void executeApply(String mode) async {
       try {

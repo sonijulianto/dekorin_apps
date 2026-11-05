@@ -309,8 +309,8 @@ class _InvoicePreviewViewState extends ConsumerState<InvoicePreviewView> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(globalAuthProvider).value;
-    final brands = ref.watch(companyBrandsProvider).value ?? const <CompanyBrand>[];
+    final user = ref.watch(globalAuthProvider).valueOrNull;
+    final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
     final mainCompanyName = user?.companyName ?? 'Brand Utama';
     final activeBrandLabel = _agenda.brandName.isNotEmpty
         ? _agenda.brandName

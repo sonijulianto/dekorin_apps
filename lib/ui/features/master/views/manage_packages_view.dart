@@ -784,8 +784,8 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
 
     final packagesAsync = ref.watch(packagesProvider);
     final brandsAsync = ref.watch(companyBrandsProvider);
-    final brands = brandsAsync.value ?? const <CompanyBrand>[];
-    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
+    final mainBrandName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,

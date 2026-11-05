@@ -383,7 +383,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: () {
-                                      final otherModels = (_localModels ?? ref.read(decorationModelsProvider).value ?? [])
+                                      final otherModels = (_localModels ?? ref.read(decorationModelsProvider).valueOrNull ?? [])
                                           .where((m) => m.id != model?.id && m.modelProperties.isNotEmpty)
                                           .toList();
 
@@ -825,8 +825,8 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
   Widget build(BuildContext context) {
     final modelsAsync = ref.watch(decorationModelsProvider);
     final brandsAsync = ref.watch(companyBrandsProvider);
-    final brands = brandsAsync.value ?? const <CompanyBrand>[];
-    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
+    final mainBrandName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,

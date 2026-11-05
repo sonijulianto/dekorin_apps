@@ -24,6 +24,7 @@ final propertyAvailabilityProvider =
 
 final agendaPropertiesProvider =
     FutureProvider.autoDispose.family<List<AgendaProperty>, String>((ref, agendaId) async {
+  if (agendaId.trim().isEmpty) return const [];
   final service = ref.watch(propertyServiceProvider);
   return service.getAgendaProperties(agendaId);
 });
@@ -132,9 +133,19 @@ class PropertyService {
 
   /// Mengambil pick list agenda
   Future<List<AgendaProperty>> getAgendaProperties(String agendaId) async {
-    final response = await ApiClient.get('${ApiEndpoint.agendas}/$agendaId/properties');
-    final List<dynamic> data = response['data'] as List<dynamic>? ?? [];
-    return data.map((item) => AgendaProperty.fromJson(item as Map<String, dynamic>)).toList();
+    if (agendaId.trim().isEmpty) return const [];
+    try {
+      final response = await ApiClient.get('${ApiEndpoint.agendas}/$agendaId/properties');
+      final List<dynamic> data = response['data'] as List<dynamic>? ?? [];
+      return data.map((item) => AgendaProperty.fromJson(item as Map<String, dynamic>)).toList();
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      // Defensive fallback jika agenda tidak ditemukan (404) agar tidak crash di UI
+      if (errStr.contains('tidak ditemukan') || errStr.contains('404')) {
+        return const [];
+      }
+      rethrow;
+    }
   }
 
   /// Populate pick list dari template model dekorasi

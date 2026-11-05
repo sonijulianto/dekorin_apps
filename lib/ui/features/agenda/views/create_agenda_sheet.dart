@@ -436,8 +436,8 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   @override
   Widget build(BuildContext context) {
     final brandsAsync = ref.watch(companyBrandsProvider);
-    final brands = brandsAsync.value ?? const <CompanyBrand>[];
-    final mainCompanyName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
+    final mainCompanyName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
     final selectedBrandLabel = _resolveBrandLabel(brands, mainCompanyName);
 
     return Container(

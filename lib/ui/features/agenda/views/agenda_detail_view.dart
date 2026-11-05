@@ -2104,8 +2104,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final double transportFee = _item.transportFee;
     final double totalBiaya = subtotal + transportFee;
     final double sisaPelunasan = (totalBiaya - _item.dpAmount) > 0 ? (totalBiaya - _item.dpAmount) : 0.0;
-    final brands = ref.watch(companyBrandsProvider).value ?? const <CompanyBrand>[];
-    final mainCompanyName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
+    final mainCompanyName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
     final currentBrandLabel = _item.brandName.isNotEmpty
         ? _item.brandName
         : (mainCompanyName.isNotEmpty ? '$mainCompanyName (Utama)' : 'Brand Utama');
@@ -2937,7 +2937,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   Consumer(
                     builder: (context, ref, _) {
                       final pickListAsync = ref.watch(agendaPropertiesProvider(_item.id));
-                      final items = pickListAsync.value ?? [];
+                      final items = pickListAsync.valueOrNull ?? [];
                       final packedCount = items.where((it) => it.isPacked).length;
                       final returnedCount = items.where((it) => it.isReturned).length;
                       final totalCount = items.length;
