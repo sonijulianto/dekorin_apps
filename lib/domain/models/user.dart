@@ -53,6 +53,9 @@ class User {
   /// Owner and Admin can manage company profile & settings
   bool get canManageCompany => isOwner || isAdmin;
 
+  /// Owner and Admin can access AI Color Simulation Studio for client consultations
+  bool get canUseAiStudio => isOwner || isAdmin;
+
   String get roleDisplayName {
     switch (role.toLowerCase()) {
       case 'superadmin':

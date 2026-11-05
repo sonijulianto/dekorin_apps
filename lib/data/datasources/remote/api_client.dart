@@ -147,18 +147,20 @@ class ApiClient {
     String endpoint, {
     Map<String, dynamic>? body,
     bool withToken = true,
+    Duration? timeout,
   }) async {
+    final effectiveTimeout = timeout ?? _timeout;
     try {
       final response = await http.post(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      ).timeout(_timeout);
+      ).timeout(effectiveTimeout);
       return _handleResponse(response);
     } on SocketException {
       throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
+      throw ApiException('Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan koneksi internet stabil.');
     } on ApiException {
       rethrow;
     } catch (e) {

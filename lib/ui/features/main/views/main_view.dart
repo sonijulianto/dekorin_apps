@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_view.dart';
+import 'package:dekorin_apps/ui/features/ai_studio/views/ai_decor_studio_view.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/profile/views/profile_view.dart';
@@ -37,125 +38,100 @@ class _MainViewState extends ConsumerState<MainView> {
   Widget build(BuildContext context) {
     final user = ref.watch(globalAuthProvider).value;
     final isOwner = user?.canAccessDashboard ?? true;
-
-    // Menentukan daftar halaman berdasarkan role:
-    // Owner: [Dashboard, Agenda, Profile]
-    // Admin & Crew: [Agenda, Profile] (Dashboard disembunyikan)
-    final List<Widget> pages = isOwner
-        ? const [
-            DashboardView(),
-            AgendaView(),
-            ProfileView(),
-          ]
-        : const [
-            AgendaView(),
-            ProfileView(),
-          ];
+    final canUseAiStudio = user?.canUseAiStudio ?? true;
 
     const activeNavColor = Color(0xFFB3854B);
     const inactiveNavColor = Color(0xFF7A7A7A);
 
-    // Menentukan daftar icon navigasi bawah
-    final List<BottomNavigationBarItem> navItems = isOwner
-        ? [
-            const BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 3),
-                child: Icon(Icons.dashboard_outlined, size: 24),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 3),
-                child: Icon(Icons.dashboard_rounded, size: 24),
-              ),
-              label: 'Dashboard',
+    // Menentukan daftar halaman & item navigasi bawah berdasarkan role:
+    // - Owner: [Dashboard, Agenda, Simulasi AI, Profile]
+    // - Admin: [Agenda, Simulasi AI, Profile]
+    // - Crew:  [Agenda, Profile]
+    final List<Widget> pages = [
+      if (isOwner) const DashboardView(),
+      const AgendaView(),
+      if (canUseAiStudio) const AiDecorStudioView(),
+      const ProfileView(),
+    ];
+
+    final List<BottomNavigationBarItem> navItems = [
+      if (isOwner)
+        const BottomNavigationBarItem(
+          icon: Padding(
+            padding: EdgeInsets.only(bottom: 3),
+            child: Icon(Icons.dashboard_outlined, size: 24),
+          ),
+          activeIcon: Padding(
+            padding: EdgeInsets.only(bottom: 3),
+            child: Icon(Icons.dashboard_rounded, size: 24),
+          ),
+          label: 'Dashboard',
+        ),
+      BottomNavigationBarItem(
+        icon: Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: SvgPicture.asset(
+            'assets/icons/calendar.svg',
+            width: 22,
+            height: 22,
+            colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+          ),
+        ),
+        activeIcon: Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: SvgPicture.asset(
+            'assets/icons/calendar.svg',
+            width: 22,
+            height: 22,
+            colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+          ),
+        ),
+        label: 'Agenda',
+      ),
+      if (canUseAiStudio)
+        BottomNavigationBarItem(
+          icon: Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: SvgPicture.asset(
+              'assets/icons/ai-magic.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
             ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/calendar.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-                ),
-              ),
-              activeIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/calendar.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-                ),
-              ),
-              label: 'Agenda',
+          ),
+          activeIcon: Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: SvgPicture.asset(
+              'assets/icons/ai-magic.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
             ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/user.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-                ),
-              ),
-              activeIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/user.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-                ),
-              ),
-              label: 'Profile',
-            ),
-          ]
-        : [
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/calendar.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-                ),
-              ),
-              activeIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/calendar.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-                ),
-              ),
-              label: 'Agenda',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/user.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-                ),
-              ),
-              activeIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: SvgPicture.asset(
-                  'assets/icons/user.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-                ),
-              ),
-              label: 'Profile',
-            ),
-          ];
+          ),
+          label: 'Simulasi AI',
+        ),
+      BottomNavigationBarItem(
+        icon: Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: SvgPicture.asset(
+            'assets/icons/user.svg',
+            width: 22,
+            height: 22,
+            colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
+          ),
+        ),
+        activeIcon: Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: SvgPicture.asset(
+            'assets/icons/user.svg',
+            width: 22,
+            height: 22,
+            colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
+          ),
+        ),
+        label: 'Profile',
+      ),
+    ];
 
     // Mencegah index out of bounds jika beralih akun/role
     final currentIndex = _selectedIndex >= pages.length ? 0 : _selectedIndex;
@@ -165,7 +141,10 @@ class _MainViewState extends ConsumerState<MainView> {
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F4EF),
-        body: pages[currentIndex],
+        body: IndexedStack(
+          index: currentIndex,
+          children: pages,
+        ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Colors.white,

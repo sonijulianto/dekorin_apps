@@ -13,6 +13,7 @@ class DataPreferences {
   static const _token = "token";
   static const _user = "user"; // Menambahkan key untuk data user
   static const _invoiceTemplate = "invoice_template";
+  static const _aiDecorHistory = "ai_decor_history";
 
   static Future init() async {
     _preferences = await SharedPreferences.getInstance();
@@ -60,6 +61,12 @@ class DataPreferences {
       await _preferences.setString(_invoiceTemplate, templateId);
   static String getInvoiceTemplate() =>
       _preferences.getString(_invoiceTemplate) ?? "template_modern_navy";
+
+  // Riwayat Simulasi Warna Dekorasi AI
+  static Future<bool> setAiDecorHistory(String historyJson) async =>
+      await _preferences.setString(_aiDecorHistory, historyJson);
+  static String? getAiDecorHistory() =>
+      _preferences.getString(_aiDecorHistory);
 
   static Future<void> logout() async {
     _cachedToken = null;
