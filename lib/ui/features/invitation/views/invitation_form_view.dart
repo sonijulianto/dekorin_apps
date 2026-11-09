@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
@@ -61,6 +62,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   bool get _isOceanBlossom => _selectedTemplate == InvitationTemplate.ta17;
   bool get _isIllustrationTemplate => _isSakuraBlossom || _isOceanBlossom;
   bool get _isMonochrome => _selectedTemplate == InvitationTemplate.pn4;
+  bool get _isJawa3 => _selectedTemplate == InvitationTemplate.jawa3;
 
   late TextEditingController _titleController;
   late TextEditingController _slugController;
@@ -222,10 +224,12 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     }
     _turutMengundangController = TextEditingController(text: inv?.turutMengundang ?? 'Keluarga Besar Bpk. Bambang & Ibu Siti\nKeluarga Besar Bpk. Agus & Ibu Dewi');
 
-    final rawCover = inv?.coverImage ?? (isNew ? (_isIllustrationTemplate ? '' : '/assets/templates/pn4/photos/LeniArdi2.jpeg') : '');
-    _coverImageUrl = (rawCover == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
-        ? (_isIllustrationTemplate ? '' : rawCover)
-        : rawCover;
+    final rawCover = inv?.coverImage ?? (isNew ? (_isIllustrationTemplate ? '' : (_isJawa3 ? '/assets/templates/jawa3/bg-cover.jpg' : '/assets/templates/pn4/photos/LeniArdi2.jpeg')) : '');
+    _coverImageUrl = _isJawa3
+        ? '/assets/templates/jawa3/bg-cover.jpg'
+        : ((rawCover == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
+            ? (_isIllustrationTemplate ? '' : rawCover)
+            : rawCover);
     _groomPhotoUrl = inv?.groomPhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi15.jpeg' : '');
     _bridePhotoUrl = inv?.bridePhoto ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi16.jpeg' : '');
     _sec1PhotoUrl = inv?.sec1Photo ?? (isNew ? '/assets/templates/pn4/photos/LeniArdi15.jpeg' : '');
@@ -455,9 +459,11 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'template': _selectedTemplate,
       'event_type': _selectedEventType,
       'quotes': _quotesController.text.trim(),
-      'cover_image': (_isIllustrationTemplate && _coverImageUrl == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
-          ? ''
-          : _coverImageUrl,
+      'cover_image': _isJawa3
+          ? '/assets/templates/jawa3/bg-cover.jpg'
+          : (_isIllustrationTemplate && _coverImageUrl == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
+              ? ''
+              : _coverImageUrl,
       'groom_name': (_selectedEventType == 'khitan' || _selectedEventType == 'birthday' || _selectedEventType == 'aqiqah')
           ? (_childNameController.text.trim().isNotEmpty
                 ? _childNameController.text.trim()
@@ -990,19 +996,89 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  _buildPhotoPicker(
-                    label: _isMonochrome ? 'Foto Cover Utama / Sampul (opening.jpeg) *' : 'Foto Cover Utama / Sampul (opening.jpeg)',
-                    imageUrl: _coverImageUrl,
-                    onPick: () => _pickAndUploadImage(
-                      (url) => setState(() => _coverImageUrl = url),
-                      enableCrop: _isMonochrome,
-                      cropTitle: 'Atur Foto Cover Utama',
-                      cropSubtitle: 'Geser atau perbesar foto agar pas di bingkai pembuka',
-                      aspectRatio: 9 / 16,
+                  if (_isJawa3) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4F2323).withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFC59563).withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFC59563), width: 1.2),
+                              color: const Color(0xFF4F2323),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.network(
+                              '${ApiEndpoint.webFormBaseUrl}/assets/templates/jawa3/bg-cover.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Icon(Icons.lock_outline, color: AppColors.primaryGold, size: 24),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      'assets/icons/lock.svg',
+                                      width: 14,
+                                      height: 14,
+                                      colorFilter: const ColorFilter.mode(Color(0xFF8B4513), BlendMode.srcIn),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Foto Cover Utama (Terkunci Otomatis)',
+                                      style: AppTypography.titleSmall.copyWith(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF4F2323),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Cover tema Art Jawa Coklat 3 menggunakan latar belakang gunungan wayang eksklusif bawaan dan tidak dapat diganti.',
+                                  style: AppTypography.caption.copyWith(
+                                    color: const Color(0xFF5C4033),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    onClear: () => setState(() => _coverImageUrl = ''),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 14),
+                  ] else ...[
+                    _buildPhotoPicker(
+                      label: _isMonochrome ? 'Foto Cover Utama / Sampul (opening.jpeg) *' : 'Foto Cover Utama / Sampul (opening.jpeg)',
+                      imageUrl: _coverImageUrl,
+                      onPick: () => _pickAndUploadImage(
+                        (url) => setState(() => _coverImageUrl = url),
+                        enableCrop: _isMonochrome,
+                        cropTitle: 'Atur Foto Cover Utama',
+                        cropSubtitle: 'Geser atau perbesar foto agar pas di bingkai pembuka',
+                        aspectRatio: 9 / 16,
+                      ),
+                      onClear: () => setState(() => _coverImageUrl = ''),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   _buildPhotoPicker(
                     label: _isMonochrome ? 'Foto Hero Pembuka / Section 1 (sec1.jpeg) *' : 'Foto Hero Pembuka / Section 1 (sec1.jpeg)',
                     imageUrl: _sec1PhotoUrl,
@@ -1605,6 +1681,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     if (result != null && mounted) {
       setState(() {
         _selectedTemplate = result;
+        if (_isJawa3) {
+          _coverImageUrl = '/assets/templates/jawa3/bg-cover.jpg';
+        }
         _generateDefaultSlugAndTitle();
       });
     }
