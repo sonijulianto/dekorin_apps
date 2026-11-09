@@ -26,6 +26,8 @@ class ApiEndpoint {
   static const String users = '/users';
   static const String companyProfile = '/company/profile';
   static const String companyBrands = '/company/brands';
+  static const String rolePermissions = '/company/role-permissions';
+  static const String resetRolePermissions = '/company/role-permissions/reset';
 
   // ── Dashboard & Expenses ──────────────────────────────────
   static const String dashboardSummary = '/dashboard/summary';

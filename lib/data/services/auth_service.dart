@@ -56,6 +56,14 @@ class AuthService {
     await DataPreferences.logout();
   }
 
+  /// Mengambil profil akun pengguna yang sedang aktif beserta permissions terbaru dari server
+  Future<UserModel> getProfile() async {
+    final responseData = await ApiClient.get('/superadmin/me');
+    final user = UserModel.fromJson(responseData['data'] ?? responseData);
+    await DataPreferences.setUser(jsonEncode(user.toJson()));
+    return user;
+  }
+
   /// Mengubah password akun pengguna yang sedang login
   Future<void> changePassword({
     required String currentPassword,

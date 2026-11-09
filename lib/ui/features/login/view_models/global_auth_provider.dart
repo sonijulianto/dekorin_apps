@@ -68,8 +68,18 @@ class AuthNotifier extends AsyncNotifier<User?> {
       companyDescription: updatedUser.companyDescription,
       companyInstagram: updatedUser.companyInstagram,
       companyBankInfo: updatedUser.companyBankInfo,
+      permissions: updatedUser.permissions,
     );
     await DataPreferences.setUser(jsonEncode(userModel.toJson()));
+  }
+
+  /// Merefresh profil dan permissions pengguna dari server
+  Future<void> refreshProfile() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final userModel = await authService.getProfile();
+      state = AsyncData(userModel.toDomain());
+    } catch (_) {}
   }
 
   /// Fungsi untuk Logout

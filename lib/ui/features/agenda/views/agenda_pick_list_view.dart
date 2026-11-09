@@ -9,6 +9,7 @@ import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/property.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/widgets/multi_select_property_sheet.dart';
 
 class AgendaPickListView extends ConsumerStatefulWidget {
@@ -753,6 +754,8 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
   @override
   Widget build(BuildContext context) {
     final agendaPropsAsync = ref.watch(agendaPropertiesProvider(widget.agenda.id));
+    final currentUser = ref.watch(globalAuthProvider).value;
+    final canManageItems = currentUser?.canManagePicklistItems ?? true;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -772,68 +775,70 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            tooltip: 'Pilih Banyak Sekaligus',
-            icon: const Icon(Icons.checklist_rounded, color: AppColors.primaryGold),
-            onPressed: _openMultiSelectPicker,
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: AppColors.textLight),
-            onSelected: (val) {
-              if (val == 'apply_model') {
-                _showApplyFromAnotherModelDialog();
-              } else if (val == 'sync_current') {
-                _showSyncFromModelDialog();
-              } else if (val == 'add_custom') {
-                _showAddPropertyDialog();
-              } else if (val == 'clear_all') {
-                _clearPickList();
-              }
-            },
-            itemBuilder: (ctx) => [
-              PopupMenuItem(
-                value: 'apply_model',
-                child: Row(
-                  children: [
-                    const Icon(Icons.copy_rounded, size: 18, color: AppColors.primaryGold),
-                    const SizedBox(width: 8),
-                    Text('Terapkan dari Model Lain', style: AppTypography.bodySmall),
-                  ],
+          if (canManageItems) ...[
+            IconButton(
+              tooltip: 'Pilih Banyak Sekaligus',
+              icon: const Icon(Icons.checklist_rounded, color: AppColors.primaryGold),
+              onPressed: _openMultiSelectPicker,
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: AppColors.textLight),
+              onSelected: (val) {
+                if (val == 'apply_model') {
+                  _showApplyFromAnotherModelDialog();
+                } else if (val == 'sync_current') {
+                  _showSyncFromModelDialog();
+                } else if (val == 'add_custom') {
+                  _showAddPropertyDialog();
+                } else if (val == 'clear_all') {
+                  _clearPickList();
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'apply_model',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.copy_rounded, size: 18, color: AppColors.primaryGold),
+                      const SizedBox(width: 8),
+                      Text('Terapkan dari Model Lain', style: AppTypography.bodySmall),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'sync_current',
-                child: Row(
-                  children: [
-                    const Icon(Icons.sync_rounded, size: 18, color: AppColors.primaryGold),
-                    const SizedBox(width: 8),
-                    Text('Sinkronkan Model Acara', style: AppTypography.bodySmall),
-                  ],
+                PopupMenuItem(
+                  value: 'sync_current',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sync_rounded, size: 18, color: AppColors.primaryGold),
+                      const SizedBox(width: 8),
+                      Text('Sinkronkan Model Acara', style: AppTypography.bodySmall),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'add_custom',
-                child: Row(
-                  children: [
-                    const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primaryGold),
-                    const SizedBox(width: 8),
-                    Text('Tambah Barang Bebas/Custom', style: AppTypography.bodySmall),
-                  ],
+                PopupMenuItem(
+                  value: 'add_custom',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add_circle_outline, size: 18, color: AppColors.primaryGold),
+                      const SizedBox(width: 8),
+                      Text('Tambah Barang Bebas/Custom', style: AppTypography.bodySmall),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'clear_all',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_sweep_outlined, size: 18, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Text('Kosongkan Pick List', style: AppTypography.bodySmall.copyWith(color: Colors.red)),
-                  ],
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'clear_all',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_sweep_outlined, size: 18, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Text('Kosongkan Pick List', style: AppTypography.bodySmall.copyWith(color: Colors.red)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -1068,6 +1073,9 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
 
   Widget _buildItemTile(AgendaProperty item, {required bool isPackMode}) {
     final isChecked = isPackMode ? item.isPacked : item.isReturned;
+    final currentUser = ref.watch(globalAuthProvider).value;
+    final canChecklist = currentUser?.canChecklistPicklist ?? true;
+    final canManageItems = currentUser?.canManagePicklistItems ?? true;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1088,23 +1096,25 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
             value: isChecked,
             activeColor: Colors.green.shade600,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            onChanged: (val) async {
-              HapticFeedback.lightImpact();
-              try {
-                if (isPackMode) {
-                  await ref.read(propertyServiceProvider).togglePacked(widget.agenda.id, item.id);
-                } else {
-                  await ref.read(propertyServiceProvider).toggleReturned(widget.agenda.id, item.id);
-                }
-                ref.invalidate(agendaPropertiesProvider(widget.agenda.id));
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal mengubah status: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
+            onChanged: canChecklist
+                ? (val) async {
+                    HapticFeedback.lightImpact();
+                    try {
+                      if (isPackMode) {
+                        await ref.read(propertyServiceProvider).togglePacked(widget.agenda.id, item.id);
+                      } else {
+                        await ref.read(propertyServiceProvider).toggleReturned(widget.agenda.id, item.id);
+                      }
+                      ref.invalidate(agendaPropertiesProvider(widget.agenda.id));
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal mengubah status: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  }
+                : null,
           ),
         ),
         title: Text(
@@ -1145,38 +1155,40 @@ class _AgendaPickListViewState extends ConsumerState<AgendaPickListView>
             ],
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textLight),
-          onSelected: (action) {
-            if (action == 'edit') {
-              _showEditItemDialog(item);
-            } else if (action == 'delete') {
-              _deleteItem(item);
-            }
-          },
-          itemBuilder: (ctx) => [
-            PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  const Icon(Icons.edit_outlined, size: 16, color: AppColors.primaryGold),
-                  const SizedBox(width: 8),
-                  Text('Ubah Qty / Catatan', style: AppTypography.bodySmall),
+        trailing: canManageItems
+            ? PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textLight),
+                onSelected: (action) {
+                  if (action == 'edit') {
+                    _showEditItemDialog(item);
+                  } else if (action == 'delete') {
+                    _deleteItem(item);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit_outlined, size: 16, color: AppColors.primaryGold),
+                        const SizedBox(width: 8),
+                        Text('Ubah Qty / Catatan', style: AppTypography.bodySmall),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Text('Hapus Item', style: AppTypography.bodySmall.copyWith(color: Colors.red)),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Text('Hapus Item', style: AppTypography.bodySmall.copyWith(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-        ),
+              )
+            : null,
       ),
     ),
   );

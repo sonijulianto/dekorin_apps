@@ -15,6 +15,7 @@ class User {
     this.companyDescription = '',
     this.companyInstagram = '',
     this.companyBankInfo = '',
+    this.permissions = const [],
   });
 
   final String id;
@@ -31,6 +32,7 @@ class User {
   final String companyDescription;
   final String companyInstagram;
   final String companyBankInfo;
+  final List<String> permissions;
 
   /// Helper getters for Role-Based Access Control
   bool get isSuperAdmin => role.toLowerCase() == 'superadmin';
@@ -38,23 +40,66 @@ class User {
   bool get isAdmin => role.toLowerCase() == 'admin' || isSuperAdmin;
   bool get isCrew => role.toLowerCase() == 'crew';
 
-  /// Owner has access to financial dashboard
-  bool get canAccessDashboard => isOwner;
+  /// Memeriksa apakah user memiliki izin terhadap fitur tertentu.
+  /// Catatan: Superadmin & Owner selalu memiliki izin penuh ke seluruh fitur.
+  bool can(String permissionKey) {
+    if (isOwner) return true;
+    return permissions.contains(permissionKey);
+  }
 
-  /// Owner and Admin can create agendas
-  bool get canCreateAgenda => isOwner || isAdmin;
+  /// Akses ke ringkasan keuangan di Dashboard
+  bool get canAccessDashboard => isOwner || can('finance.view_summary');
 
-  /// Owner and Admin can manage decoration master data
-  bool get canManageMasterData => isOwner || isAdmin;
+  /// Akses melihat nominal harga, DP, dan sisa tagihan pada agenda/invoice
+  bool get canViewPrice => isOwner || can('finance.view_price');
 
-  /// Owner and Admin can manage team members
-  bool get canManageTeam => isOwner || isAdmin;
+  /// Akses melihat riwayat biaya operasional dan pengeluaran
+  bool get canViewExpenses => isOwner || can('expenses.view');
 
-  /// Owner and Admin can manage company profile & settings
+  /// Akses menambah, mengedit, atau menghapus pengeluaran
+  bool get canManageExpenses => isOwner || can('expenses.manage');
+
+  /// Akses membuat agenda acara baru
+  bool get canCreateAgenda => isOwner || can('agenda.create');
+
+  /// Akses mengubah rincian agenda acara
+  bool get canEditAgenda => isOwner || can('agenda.edit');
+
+  /// Akses menghapus agenda acara
+  bool get canDeleteAgenda => isOwner || can('agenda.delete');
+
+  /// Akses mengunduh/mencetak dokumen invoice dan surat jalan
+  bool get canDownloadInvoice => isOwner || can('agenda.download_invoice');
+
+  /// Akses mencentang muat (pack) dan kembali (return) pada pick list acara
+  bool get canChecklistPicklist => isOwner || can('picklist.checklist');
+
+  /// Akses menambah atau mengurangi barang bawaan pick list acara
+  bool get canManagePicklistItems => isOwner || can('picklist.manage_items');
+
+  /// Akses melihat katalog properti & ketersediaan alat dekorasi
+  bool get canViewInventory => isOwner || can('inventory.view');
+
+  /// Akses menambah/mengedit/menghapus inventaris properti dan alat
+  bool get canManageInventory => isOwner || can('inventory.manage');
+
+  /// Akses mengelola master data katalog paket, addon, dan model dekorasi
+  bool get canManageMasterData => isOwner || can('catalog.manage');
+
+  /// Akses mengelola sub-brand perusahaan
+  bool get canManageBrand => isOwner || can('brand.manage');
+
+  /// Akses mengelola website undangan digital pengantin
+  bool get canManageInvitations => isOwner || can('invitation.manage');
+
+  /// Akses mengelola akun Crew/Staf lapangan
+  bool get canManageTeam => isOwner || can('team.manage_crew');
+
+  /// Akses mengelola profil usaha dekorasi & data perusahaan
   bool get canManageCompany => isOwner || isAdmin;
 
-  /// Owner and Admin can access AI Color Simulation Studio for client consultations
-  bool get canUseAiStudio => isOwner || isAdmin;
+  /// Akses ke AI Decor Studio & AI Assistant
+  bool get canUseAiStudio => isOwner || can('ai.use_studio');
 
   String get roleDisplayName {
     switch (role.toLowerCase()) {
@@ -86,6 +131,7 @@ class User {
     String? companyDescription,
     String? companyInstagram,
     String? companyBankInfo,
+    List<String>? permissions,
   }) {
     return User(
       id: id ?? this.id,
@@ -102,6 +148,7 @@ class User {
       companyDescription: companyDescription ?? this.companyDescription,
       companyInstagram: companyInstagram ?? this.companyInstagram,
       companyBankInfo: companyBankInfo ?? this.companyBankInfo,
+      permissions: permissions ?? this.permissions,
     );
   }
 

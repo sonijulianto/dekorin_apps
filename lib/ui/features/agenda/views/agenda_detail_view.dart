@@ -76,8 +76,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Future<void> _updateEventStatus(String newStatus) async {
-    final isCrew = ref.read(globalAuthProvider).value?.isCrew ?? false;
-    if (isCrew) return;
+    final canEdit = ref.read(globalAuthProvider).value?.canEditAgenda ?? false;
+    if (!canEdit) return;
 
     try {
       final updated = await ref.read(agendaServiceProvider).updateEventStatus(_item.id, newStatus);
@@ -269,7 +269,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Widget _buildEventStatusBadge() {
-    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final canEdit = ref.watch(globalAuthProvider).value?.canEditAgenda ?? false;
     Color bg;
     Color border;
     Color textCol;
@@ -318,7 +318,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
             label,
             style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: textCol),
           ),
-          if (!isCrew) ...[
+          if (canEdit) ...[
             const SizedBox(width: 2),
             Icon(Icons.arrow_drop_down, size: 14, color: textCol),
           ],
@@ -326,7 +326,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       ),
     );
 
-    if (isCrew) {
+    if (!canEdit) {
       return badgeContent;
     }
 
@@ -484,6 +484,9 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final form = _item.clientForm;
     final currentUser = ref.watch(globalAuthProvider).value;
     final bool isCrew = currentUser?.isCrew ?? false;
+    final bool canViewPrice = currentUser?.canViewPrice ?? (!isCrew);
+    final bool canEditAgenda = currentUser?.canEditAgenda ?? (!isCrew);
+    final bool canDownloadInvoice = currentUser?.canDownloadInvoice ?? (!isCrew);
 
     // Kalkulasi Harga Paket & Addon
     double packagePrice = _item.packagePrice;
@@ -540,7 +543,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         ),
         actions: [
           // Cetak / Lihat Invoice
-          if (!isCrew)
+          if (canDownloadInvoice)
             IconButton(
               icon: SvgPicture.asset(
                 'assets/icons/print.svg',
@@ -561,7 +564,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
             ),
 
           // Tombol Edit Agenda Terpusat
-          if (!isCrew && !_item.isCancelled)
+          if (canEditAgenda && !_item.isCancelled)
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: AppColors.primaryGold),
               tooltip: 'Edit Agenda Acara',
@@ -925,7 +928,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                           Text('Lebar: ${_item.modelWidth}', style: AppTypography.caption.copyWith(color: AppColors.textDark)),
                                         ],
                                       ),
-                                    if (!isCrew && _item.modelAdditionalPrice > 0) ...[
+                                    if (canViewPrice && _item.modelAdditionalPrice > 0) ...[
                                       const SizedBox(height: 3),
                                       Text(
                                         '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
@@ -1155,8 +1158,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     },
                   ),
 
-                  // 5. Rincian Tagihan & Pembayaran (Hanya untuk Owner & Admin, disembunyikan untuk Crew)
-                  if (!isCrew) ...[
+                  // 5. Rincian Tagihan & Pembayaran (Hanya tampil jika memiliki izin canViewPrice)
+                  if (canViewPrice) ...[
                     _buildCleanCard(
                       children: [
                         Row(

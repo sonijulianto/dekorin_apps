@@ -17,6 +17,7 @@ class UserModel {
     this.companyDescription = '',
     this.companyInstagram = '',
     this.companyBankInfo = '',
+    this.permissions = const [],
   });
 
   final String id;
@@ -33,6 +34,7 @@ class UserModel {
   final String companyDescription;
   final String companyInstagram;
   final String companyBankInfo;
+  final List<String> permissions;
 
   /// Creates a [UserModel] from a JSON map.
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,10 @@ class UserModel {
       companyDescription: json['company_description'] as String? ?? '',
       companyInstagram: json['company_instagram'] as String? ?? '',
       companyBankInfo: json['company_bank_info'] as String? ?? '',
+      permissions: (json['permissions'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -71,6 +77,7 @@ class UserModel {
       'company_description': companyDescription,
       'company_instagram': companyInstagram,
       'company_bank_info': companyBankInfo,
+      'permissions': permissions,
     };
   }
 
@@ -91,6 +98,7 @@ class UserModel {
       companyDescription: companyDescription,
       companyInstagram: companyInstagram,
       companyBankInfo: companyBankInfo,
+      permissions: permissions,
     );
   }
 }
