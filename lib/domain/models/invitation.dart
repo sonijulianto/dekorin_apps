@@ -1,87 +1,114 @@
 import 'package:flutter/material.dart';
 
-/// Pilihan Template Desain Undangan Digital
-class InvitationTemplate {
-  static const String greenLeaves = 'green-leaves';
-  static const String creamyLatte = 'creamy-latte';
-  static const String floral = 'floral';
-  static const String luxuryGrey = 'luxury-grey';
-  static const String pn4 = 'pn4';
-  static const String ta3 = 'ta3';
-  static const String ta17 = 'ta17';
-  static const String khitanGreen = 'khitan-green';
+/// Kategori Acara untuk Undangan Digital
+class InvitationEventCategory {
+  static const String wedding = 'wedding';
+  static const String khitan = 'khitan';
+  static const String birthday = 'birthday';
+  static const String engagement = 'engagement';
+  static const String aqiqah = 'aqiqah';
+  static const String graduation = 'graduation';
+  static const String housewarming = 'housewarming';
+  static const String gathering = 'gathering';
 
   static const List<Map<String, dynamic>> all = [
     {
-      'id': greenLeaves,
-      'name': 'Green Leaves',
-      'tag': 'Natural & Asri',
-      'description': 'Nuansa dedaunan hijau alami yang segar, menyejukkan, dan asri.',
-      'primaryColor': Color(0xFF588157),
-      'secondaryColor': Color(0xFF3A5A40),
-      'backgroundColor': Color(0xFFF4F7F4),
-      'accentColor': Color(0xFFA3B18A),
-      'eventType': 'wedding',
+      'id': wedding,
+      'name': 'Pernikahan (Wedding)',
+      'shortName': 'Pernikahan',
+      'icon': '💍',
+      'description': 'Undangan pernikahan kedua mempelai lengkap dengan akad, resepsi, dan cerita cinta.',
     },
     {
-      'id': creamyLatte,
-      'name': 'Creamy Latte',
-      'tag': 'Warm & Timeless',
-      'description': 'Warna krem dan earthy hangat yang klasik, tenang, dan bersahaja.',
-      'primaryColor': Color(0xFFB4846C),
-      'secondaryColor': Color(0xFF7D5A50),
-      'backgroundColor': Color(0xFFFAF5EF),
-      'accentColor': Color(0xFFE5B299),
-      'eventType': 'wedding',
+      'id': khitan,
+      'name': 'Tasyakuran Khitanan',
+      'shortName': 'Khitanan',
+      'icon': '🕌',
+      'description': 'Undangan tasyakuran khitanan anak dengan data anak & orang tua, doa tasyakuran.',
     },
     {
-      'id': floral,
-      'name': 'Floral Terracotta',
-      'tag': 'Romantic & Soft',
-      'description': 'Sentuhan bunga mekar yang lembut dan romantis bernuansa terracotta.',
-      'primaryColor': Color(0xFFD47A60),
-      'secondaryColor': Color(0xFF8E443D),
-      'backgroundColor': Color(0xFFFDF8F5),
-      'accentColor': Color(0xFFF4A261),
-      'eventType': 'wedding',
+      'id': birthday,
+      'name': 'Ulang Tahun (Birthday)',
+      'shortName': 'Ulang Tahun',
+      'icon': '🎂',
+      'description': 'Undangan pesta perayaan ulang tahun ceria dan penuh kebahagiaan.',
     },
     {
-      'id': luxuryGrey,
-      'name': 'Luxury Grey',
-      'tag': 'Modern & Dark Luxury',
-      'description': 'Monokrom abu-abu gelap dan charcoal eksklusif berpadu emas mewah.',
-      'primaryColor': Color(0xFFD4A574),
-      'secondaryColor': Color(0xFF2C3333),
-      'backgroundColor': Color(0xFF1E2022),
-      'accentColor': Color(0xFFECDFCC),
-      'eventType': 'wedding',
+      'id': engagement,
+      'name': 'Lamaran / Tunangan',
+      'shortName': 'Lamaran',
+      'icon': '💐',
+      'description': 'Undangan prosesi lamaran & pertemuan keluarga besar kedua calon mempelai.',
     },
     {
-      'id': pn4,
-      'name': 'Monochrome PN4',
-      'tag': 'Editorial Monochrome',
-      'description': 'Desain editorial monokrom elegan dengan frame lengkung & tipografi klasik.',
-      'primaryColor': Color(0xFF343434),
-      'secondaryColor': Color(0xFF6E6E6E),
-      'backgroundColor': Color(0xFFF1F1F1),
-      'accentColor': Color(0xFFFFFFFF),
-      'eventType': 'wedding',
+      'id': aqiqah,
+      'name': 'Aqiqah & Kelahiran',
+      'shortName': 'Aqiqah',
+      'icon': '👶',
+      'description': 'Undangan syukuran aqiqah dan tasyakuran kelahiran putra/putri tercinta.',
     },
     {
-      'id': ta3,
-      'name': 'Sakura Blossom TA3',
-      'tag': 'Romantic Floral & Arch',
-      'description': 'Desain floral sakura romantis dengan bingkai lengkung, countdown, dan love story.',
-      'primaryColor': Color(0xFFD4A373),
-      'secondaryColor': Color(0xFFC08081),
-      'backgroundColor': Color(0xFFFFF9F9),
-      'accentColor': Color(0xFFFDE8E9),
-      'eventType': 'wedding',
+      'id': graduation,
+      'name': 'Wisuda & Kelulusan',
+      'shortName': 'Wisuda',
+      'icon': '🎓',
+      'description': 'Undangan syukuran kelulusan atau perayaan wisuda sarjana.',
     },
+    {
+      'id': housewarming,
+      'name': 'Syukuran Rumah Baru',
+      'shortName': 'Rumah Baru',
+      'icon': '🏡',
+      'description': 'Undangan selamatan menempati kediaman atau kantor baru.',
+    },
+    {
+      'id': gathering,
+      'name': 'Reuni & Gathering',
+      'shortName': 'Gathering',
+      'icon': '🤝',
+      'description': 'Undangan temu kangen alumni, gathering keluarga, atau komunitas.',
+    },
+  ];
+
+  static Map<String, dynamic> getById(String id) {
+    return all.firstWhere(
+      (c) => c['id'] == id,
+      orElse: () => all.first, // wedding
+    );
+  }
+
+  /// Mengambil daftar kategori acara yang aktif / memiliki minimal 1 template yang mendukung
+  static List<Map<String, dynamic>> getAvailableCategories() {
+    final availableCategoryIds = <String>{};
+    for (final tmpl in InvitationTemplate.all) {
+      if (tmpl['supportedCategories'] is List) {
+        for (final cat in tmpl['supportedCategories'] as List) {
+          availableCategoryIds.add(cat.toString());
+        }
+      } else if (tmpl['category'] is String) {
+        availableCategoryIds.add(tmpl['category'] as String);
+      }
+    }
+
+    return all.where((c) => availableCategoryIds.contains(c['id'])).toList();
+  }
+}
+
+/// Pilihan Template Desain Undangan Digital (Monochrome PN4, Sakura Blossom TA3, Ocean Blossom TA17, Art Jawa Coklat 3)
+class InvitationTemplate {
+  static const String ta17 = 'ta17';
+  static const String ta3 = 'ta3';
+  static const String pn4 = 'pn4';
+  static const String jawa3 = 'jawa3';
+
+  static const List<Map<String, dynamic>> all = [
     {
       'id': ta17,
       'name': 'Ocean Blossom TA17',
       'tag': 'Pastel Blue & Floral',
+      'category': 'wedding',
+      'categoryName': 'Pernikahan',
+      'supportedCategories': ['wedding'],
       'description': 'Desain floral biru pastel elegan dengan bingkai lengkung, countdown, dan love story.',
       'primaryColor': Color(0xFF4B8DCB),
       'secondaryColor': Color(0xFF295177),
@@ -90,23 +117,67 @@ class InvitationTemplate {
       'eventType': 'wedding',
     },
     {
-      'id': khitanGreen,
-      'name': 'Khitan Green',
-      'tag': 'Tasyakuran Khitan',
-      'description': 'Tema khusus tasyakuran khitanan anak dengan ornamen islami hijau zamrud.',
-      'primaryColor': Color(0xFF2E8B57),
-      'secondaryColor': Color(0xFF1B4D3E),
-      'backgroundColor': Color(0xFFF0F7F4),
-      'accentColor': Color(0xFFC1E1C1),
-      'eventType': 'khitan',
+      'id': jawa3,
+      'name': 'Art Jawa Coklat 3',
+      'tag': 'Javanese Royal & Wayang',
+      'category': 'wedding',
+      'categoryName': 'Pernikahan',
+      'supportedCategories': ['wedding', 'khitan'],
+      'description': 'Desain adat Jawa keraton klasik dengan gunungan wayang emas, animasi air, bingkai oval, dan kisah cinta.',
+      'primaryColor': Color(0xFFAC9271),
+      'secondaryColor': Color(0xFF4F2323),
+      'backgroundColor': Color(0xFFFFFCF3),
+      'accentColor': Color(0xFFD7BB83),
+      'eventType': 'wedding',
+    },
+    {
+      'id': ta3,
+      'name': 'Sakura Blossom TA3',
+      'tag': 'Romantic Floral & Arch',
+      'category': 'wedding',
+      'categoryName': 'Pernikahan',
+      'supportedCategories': ['wedding'],
+      'description': 'Desain floral sakura romantis dengan bingkai lengkung, countdown, dan love story.',
+      'primaryColor': Color(0xFFD4A373),
+      'secondaryColor': Color(0xFFC08081),
+      'backgroundColor': Color(0xFFFFF9F9),
+      'accentColor': Color(0xFFFDE8E9),
+      'eventType': 'wedding',
+    },
+    {
+      'id': pn4,
+      'name': 'Monochrome PN4',
+      'tag': 'Editorial Monochrome',
+      'category': 'wedding',
+      'categoryName': 'Pernikahan',
+      'supportedCategories': ['wedding'],
+      'description': 'Desain editorial monokrom elegan dengan frame lengkung & tipografi klasik.',
+      'primaryColor': Color(0xFF343434),
+      'secondaryColor': Color(0xFF6E6E6E),
+      'backgroundColor': Color(0xFFF1F1F1),
+      'accentColor': Color(0xFFFFFFFF),
+      'eventType': 'wedding',
     },
   ];
 
   static Map<String, dynamic> getById(String id) {
     return all.firstWhere(
       (t) => t['id'] == id,
-      orElse: () => all.first,
+      orElse: () => all.first, // Default ke Ocean Blossom TA17
     );
+  }
+
+  /// Mengambil template yang mendukung kategori tertentu.
+  /// Jika categoryId == 'all', kembalikan semua template.
+  static List<Map<String, dynamic>> getByCategory(String categoryId) {
+    if (categoryId == 'all') return all;
+    return all.where((tmpl) {
+      final supported = tmpl['supportedCategories'] as List?;
+      if (supported != null && supported.contains(categoryId)) {
+        return true;
+      }
+      return tmpl['category'] == categoryId;
+    }).toList();
   }
 }
 
@@ -115,7 +186,7 @@ class InvitationItem {
     required this.id,
     required this.slug,
     required this.title,
-    this.template = 'green-leaves',
+    this.template = 'ta17',
     this.eventType = 'wedding',
     this.coverImage = '',
     this.quotes = '',
@@ -237,7 +308,7 @@ class InvitationItem {
       id: json['id'] as String? ?? '',
       slug: json['slug'] as String? ?? '',
       title: json['title'] as String? ?? '',
-      template: json['template'] as String? ?? 'green-leaves',
+      template: json['template'] as String? ?? 'ta17',
       eventType: json['event_type'] as String? ?? 'wedding',
       coverImage: json['cover_image'] as String? ?? '',
       quotes: json['quotes'] as String? ?? '',

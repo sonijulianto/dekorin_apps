@@ -13,6 +13,7 @@ import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
 
 class LoveStoryItem {
   final TextEditingController dateController;
@@ -52,7 +53,7 @@ class InvitationFormView extends ConsumerStatefulWidget {
 class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   final _formKey = GlobalKey<FormState>();
 
-  String _selectedTemplate = InvitationTemplate.greenLeaves;
+  String _selectedTemplate = InvitationTemplate.ta17;
   String _selectedEventType = 'wedding';
 
   bool get _isSakuraBlossom => _selectedTemplate == InvitationTemplate.ta3;
@@ -133,7 +134,13 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     final isNew = inv == null;
     final randSuffix = (DateTime.now().millisecondsSinceEpoch % 9000 + 1000).toString();
 
-    _selectedTemplate = inv?.template.isNotEmpty == true ? inv!.template : InvitationTemplate.greenLeaves;
+    _selectedTemplate = (inv?.template.isNotEmpty == true &&
+            (inv!.template == InvitationTemplate.ta17 ||
+                inv.template == InvitationTemplate.ta3 ||
+                inv.template == InvitationTemplate.pn4 ||
+                inv.template == InvitationTemplate.jawa3))
+        ? inv.template
+        : InvitationTemplate.ta17;
     _selectedEventType = inv?.eventType.isNotEmpty == true ? inv!.eventType : 'wedding';
 
     _titleController = TextEditingController(text: inv?.title ?? 'The Wedding of Bagas & Zulia');
@@ -445,18 +452,20 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'title': _titleController.text.trim(),
       'slug': _slugController.text.trim().toLowerCase().replaceAll(' ', '-'),
       'template': _selectedTemplate,
-      'event_type': _isIllustrationTemplate ? 'wedding' : _selectedEventType,
+      'event_type': _selectedEventType,
       'quotes': _quotesController.text.trim(),
       'cover_image': (_isIllustrationTemplate && _coverImageUrl == '/assets/owlink/b9c1e420-cd8d-11f0-9fb2-69fd61d4e768.jpg')
           ? ''
           : _coverImageUrl,
-      'groom_name': _selectedEventType == 'khitan'
+      'groom_name': (_selectedEventType == 'khitan' || _selectedEventType == 'birthday' || _selectedEventType == 'aqiqah')
           ? (_childNameController.text.trim().isNotEmpty
                 ? _childNameController.text.trim()
                 : _groomNameController.text.trim())
           : _groomNameController.text.trim(),
-      'groom_nickname': _selectedEventType == 'khitan'
-          ? _childNicknameController.text.trim()
+      'groom_nickname': (_selectedEventType == 'khitan' || _selectedEventType == 'birthday' || _selectedEventType == 'aqiqah')
+          ? (_childNicknameController.text.trim().isNotEmpty
+                ? _childNicknameController.text.trim()
+                : _groomNicknameController.text.trim())
           : _groomNicknameController.text.trim(),
       'groom_child_order': _groomChildOrderController.text.trim(),
       'groom_parents': _groomParentsController.text.trim(),
@@ -468,9 +477,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
       'bride_parents': _brideParentsController.text.trim(),
       'bride_instagram': _brideIgController.text.trim(),
       'bride_photo': _isIllustrationTemplate ? '' : _bridePhotoUrl,
-      'child_name': _isIllustrationTemplate ? '' : _childNameController.text.trim(),
-      'child_nickname': _isIllustrationTemplate ? '' : _childNicknameController.text.trim(),
-      'child_order': _isIllustrationTemplate ? '' : _childOrderController.text.trim(),
+      'child_name': _childNameController.text.trim(),
+      'child_nickname': _childNicknameController.text.trim(),
+      'child_order': _childOrderController.text.trim(),
       'akad_date': _akadDateController.text.trim(),
       'akad_time': _akadTimeController.text.trim(),
       'akad_venue': _akadVenueController.text.trim(),
@@ -537,6 +546,9 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.invitation != null;
+    final isSinglePerson = _selectedEventType == 'khitan' ||
+        _selectedEventType == 'birthday' ||
+        _selectedEventType == 'aqiqah';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -551,94 +563,94 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // 1. SELECT TEMPLATE DESAIN
+            // 1. PILIH ACARA (DROPDOWN SEARCHABLE)
             _buildSectionCard(
-              title: '1. Pilihan Template Desain',
-              icon: Icons.palette_outlined,
+              title: '1. Kategori Acara',
+              icon: Icons.celebration_outlined,
               children: [
-                Text('Pilih desain tema visual untuk undangan digital Anda:', style: AppTypography.caption),
+                Text(
+                  'Pilih jenis / kategori perayaan untuk undangan digital Anda:',
+                  style: AppTypography.caption,
+                ),
                 const SizedBox(height: 12),
-                _buildTemplateSelector(),
+                _buildEventCategoryDropdown(),
               ],
             ),
             const SizedBox(height: 16),
 
-            // 2. TIPE ACARA & INFORMASI DASAR
+            // 2. PILIH TEMA / TEMPLATE (REDIRECT KE HALAMAN BARU BISA SEARCH)
             _buildSectionCard(
-              title: '2. Informasi Acara & URL Link',
+              title: '2. Pilihan Desain & Tema',
+              icon: Icons.palette_outlined,
+              children: [
+                Text(
+                  'Pilih tema visual yang sesuai dengan nuansa acara Anda:',
+                  style: AppTypography.caption,
+                ),
+                const SizedBox(height: 12),
+                _buildTemplateSelectorCard(),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 3. MASUKKAN DATA ACARA & INFORMASI URL
+            _buildSectionCard(
+              title: '3. Informasi Acara & URL Link',
               icon: Icons.link,
               children: [
-                if (!_isIllustrationTemplate) ...[
-                  Text('Jenis Acara', style: AppTypography.labelLarge),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildEventTypeChip(
-                          label: '💍 Pernikahan',
-                          value: 'wedding',
-                          isSelected: _selectedEventType == 'wedding',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildEventTypeChip(
-                          label: '🕌 Khitanan',
-                          value: 'khitan',
-                          isSelected: _selectedEventType == 'khitan',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ],
                 DekorinTextField(
                   controller: _titleController,
                   label: 'Judul Undangan',
-                  hint: _selectedEventType == 'khitan'
-                      ? 'Contoh: Tasyakuran Khitanan Rayyan'
-                      : 'Contoh: The Wedding of Bagas & Zulia',
+                  hint: _getTitleHint(),
                 ),
                 const SizedBox(height: 12),
                 DekorinTextField(
                   controller: _slugController,
                   label: 'Tautan URL Slug (Unik)',
-                  hint: _selectedEventType == 'khitan' ? 'khitan-rayyan' : 'bagas-zulia',
+                  hint: _getSlugHint(),
                   helperText: 'Akan menjadi tautan: undangan.dekorin.my.id/slug',
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Slug wajib diisi' : null,
                 ),
                 const SizedBox(height: 12),
                 DekorinTextField(
                   controller: _quotesController,
-                  label: 'Kutipan Ayat / Doa',
-                  hint: 'Kutipan ayat suci...',
+                  label: 'Kutipan Ayat / Doa Acara',
+                  hint: 'Kutipan ayat suci atau kata mutiara...',
                   maxLines: 3,
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // 3. TOKOH / MEMPELAI
-            if (_selectedEventType == 'khitan') ...[
+            // 4. TOKOH / MEMPELAI
+            if (isSinglePerson) ...[
               _buildSectionCard(
-                title: '3. Data Anak yang Dikhitan',
+                title: _selectedEventType == 'khitan'
+                    ? '4. Data Anak yang Dikhitan'
+                    : (_selectedEventType == 'birthday'
+                        ? '4. Data yang Berulang Tahun'
+                        : '4. Data Putra / Putri'),
                 icon: Icons.child_care,
                 children: [
                   DekorinTextField(
                     controller: _childNameController,
-                    label: 'Nama Lengkap Anak',
-                    hint: 'Contoh: Rayyan Althaf Pratama',
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama anak wajib diisi' : null,
+                    label: _selectedEventType == 'birthday' ? 'Nama Lengkap' : 'Nama Lengkap Anak',
+                    hint: _selectedEventType == 'birthday' ? 'Contoh: Kenzo Althaf Pratama' : 'Contoh: Rayyan Althaf Pratama',
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
                   ),
                   const SizedBox(height: 12),
                   DekorinTextField(
                     controller: _childNicknameController,
                     label: 'Nama Panggilan',
-                    hint: 'Contoh: Rayyan',
+                    hint: _selectedEventType == 'birthday' ? 'Contoh: Kenzo' : 'Contoh: Rayyan',
                     onChanged: (_) => _generateDefaultSlugAndTitle(),
                   ),
                   const SizedBox(height: 12),
-                  DekorinTextField(controller: _childOrderController, label: 'Urutan Anak', hint: 'Putra pertama dari'),
+                  DekorinTextField(
+                    controller: _childOrderController,
+                    label: _selectedEventType == 'birthday' ? 'Perayaan Ulang Tahun Ke-' : 'Urutan Anak',
+                    hint: _selectedEventType == 'birthday' ? 'Contoh: Ke-5 Tahun' : 'Putra pertama dari',
+                  ),
                   const SizedBox(height: 12),
                   DekorinTextField(
                     controller: _groomParentsController,
@@ -647,12 +659,12 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   ),
                   const SizedBox(height: 12),
                   _buildPhotoPicker(
-                    label: _isMonochrome ? 'Foto Anak Khitan (Potrait 3:4) *' : 'Foto Anak Khitan',
+                    label: _isMonochrome ? 'Foto Profil (Potrait 3:4) *' : 'Foto Profil',
                     imageUrl: _groomPhotoUrl,
                     onPick: () => _pickAndUploadImage(
                       (url) => setState(() => _groomPhotoUrl = url),
                       enableCrop: true,
-                      cropTitle: 'Atur Foto Anak Khitan (Potrait)',
+                      cropTitle: 'Atur Foto Profil (Potrait)',
                       cropSubtitle: 'Geser foto ke kiri / kanan agar pas dan tidak terpotong',
                     ),
                     onClear: () => setState(() => _groomPhotoUrl = ''),
@@ -661,7 +673,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               ),
             ] else ...[
               _buildSectionCard(
-                title: '3. Mempelai Wanita',
+                title: '4. Mempelai Wanita',
                 icon: Icons.female,
                 children: [
                   DekorinTextField(
@@ -715,7 +727,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
               const SizedBox(height: 16),
 
               _buildSectionCard(
-                title: '4. Mempelai Pria',
+                title: '5. Mempelai Pria',
                 icon: Icons.male,
                 children: [
                   DekorinTextField(
@@ -769,9 +781,13 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             ],
             const SizedBox(height: 16),
 
-            // 5. JADWAL AKAD / ACARA INTI
+            // JADWAL ACARA INTI / AKAD NIKAH
             _buildSectionCard(
-              title: _selectedEventType == 'khitan' ? '4. Acara Khitanan' : '5. Jadwal & Lokasi Akad Nikah',
+              title: isSinglePerson
+                  ? (_selectedEventType == 'khitan'
+                      ? '5. Acara Khitanan'
+                      : (_selectedEventType == 'birthday' ? '5. Jadwal Pesta Ulang Tahun' : '5. Jadwal Acara Inti'))
+                  : '6. Jadwal & Lokasi Akad Nikah',
               icon: Icons.favorite_border,
               children: [
                 Row(
@@ -827,11 +843,13 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             ),
             const SizedBox(height: 16),
 
-            // 6. JADWAL RESEPSI / TASYAKURAN
+            // JADWAL RESEPSI / TASYAKURAN
             _buildSectionCard(
-              title: _selectedEventType == 'khitan'
-                  ? '5. Acara Tasyakuran & Ramah Tamah'
-                  : '6. Jadwal & Lokasi Resepsi',
+              title: isSinglePerson
+                  ? (_selectedEventType == 'khitan'
+                      ? '6. Acara Tasyakuran & Ramah Tamah'
+                      : '6. Jadwal Resepsi / Ramah Tamah')
+                  : '7. Jadwal & Lokasi Resepsi',
               icon: Icons.celebration_outlined,
               children: [
                 Row(
@@ -891,11 +909,15 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             ),
             const SizedBox(height: 16),
 
-            // 7. FOTO KHUSUS TEMPLATE & MEDIA
+            // FOTO KHUSUS TEMPLATE & MEDIA
             _buildSectionCard(
-              title: _isIllustrationTemplate
-                  ? '7. Galeri Momen & Media Pendukung'
-                  : '7. Foto Desain Template & Galeri Momen',
+              title: isSinglePerson
+                  ? (_isIllustrationTemplate
+                      ? '7. Galeri Momen & Media Pendukung'
+                      : '7. Foto Desain Template & Galeri Momen')
+                  : (_isIllustrationTemplate
+                      ? '8. Galeri Momen & Media Pendukung'
+                      : '8. Foto Desain Template & Galeri Momen'),
               icon: Icons.photo_library_outlined,
               children: [
                 if (_isIllustrationTemplate) ...[
@@ -1049,9 +1071,11 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             ),
             const SizedBox(height: 16),
 
-            // 8. REKENING & HADIAH
+            // REKENING & HADIAH
             _buildSectionCard(
-              title: '8. Amplop Digital & Tanda Kasih',
+              title: isSinglePerson
+                  ? '8. Amplop Digital & Tanda Kasih'
+                  : '9. Amplop Digital & Tanda Kasih',
               icon: Icons.account_balance,
               children: [
                 Row(
@@ -1154,195 +1178,545 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     );
   }
 
-  Widget _buildEventTypeChip({required String label, required String value, required bool isSelected}) {
+  String _getTitleHint() {
+    switch (_selectedEventType) {
+      case 'khitan':
+        return 'Contoh: Tasyakuran Khitanan Rayyan Althaf';
+      case 'birthday':
+        return 'Contoh: The 5th Birthday Party of Kenzo';
+      case 'aqiqah':
+        return 'Contoh: Tasyakuran Aqiqah Muhammad Bilal';
+      case 'engagement':
+        return 'Contoh: The Engagement of Bagas & Zulia';
+      default:
+        return 'Contoh: The Wedding of Zulia & Bagas';
+    }
+  }
+
+  String _getSlugHint() {
+    switch (_selectedEventType) {
+      case 'khitan':
+        return 'khitan-rayyan';
+      case 'birthday':
+        return 'birthday-kenzo';
+      case 'aqiqah':
+        return 'aqiqah-bilal';
+      case 'engagement':
+        return 'engagement-bagas-zulia';
+      default:
+        return 'zulia-bagas';
+    }
+  }
+
+  Widget _buildEventCategoryDropdown() {
+    final currentCat = InvitationEventCategory.getById(_selectedEventType);
     return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedEventType = value;
-          if (value == 'khitan' && _selectedTemplate != InvitationTemplate.khitanGreen) {
-            _selectedTemplate = InvitationTemplate.khitanGreen;
-          } else if (value == 'wedding' && _selectedTemplate == InvitationTemplate.khitanGreen) {
-            _selectedTemplate = InvitationTemplate.greenLeaves;
-          }
-          final isNew = widget.invitation == null;
-          if (isNew) {
-            if (value == 'khitan') {
-              if (_titleController.text.isEmpty || _titleController.text.startsWith('The Wedding of')) {
-                _titleController.text = 'Tasyakuran Khitanan ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Rayyan"}';
-              }
-              if (_slugController.text.isEmpty || _slugController.text.startsWith('bagas-zulia')) {
-                _slugController.text = 'khitan-rayyan-${DateTime.now().millisecondsSinceEpoch % 10000}';
-              }
-              if (_quotesController.text.isEmpty || _quotesController.text.contains('Ar-Rum')) {
-                _quotesController.text = '“Semoga menjadi anak yang sholeh, berbakti kepada kedua orang tua, serta berguna bagi nusa, bangsa, dan agama. Aamiin ya Rabbal \'Alamin.”';
-              }
-            } else {
-              if (_titleController.text.isEmpty || _titleController.text.startsWith('Tasyakuran Khitanan')) {
-                _titleController.text = 'The Wedding of ${_brideNicknameController.text.isNotEmpty ? _brideNicknameController.text : "Zulia"} & ${_groomNicknameController.text.isNotEmpty ? _groomNicknameController.text : "Bagas"}';
-              }
-              if (_slugController.text.isEmpty || _slugController.text.startsWith('khitan-rayyan')) {
-                _slugController.text = 'bagas-zulia-${DateTime.now().millisecondsSinceEpoch % 10000}';
-              }
-              if (_quotesController.text.isEmpty || _quotesController.text.contains('anak yang sholeh')) {
-                _quotesController.text = '"Dan di antara tanda-tanda kekuasaan-Nya ialah Dia menciptakan untukmu isteri-isteri dari jenismu sendiri, supaya kamu cenderung dan merasa tenteram kepadanya, dan dijadikan-Nya di antaramu rasa kasih dan sayang." (QS. Ar-Rum: 21)';
-              }
-            }
-          }
-          _generateDefaultSlugAndTitle();
-        });
-      },
+      onTap: _openEventCategoryPicker,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.goldLight : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
-            width: isSelected ? 2 : 1,
-          ),
+          border: Border.all(color: AppColors.borderLight),
         ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTypography.bodyMedium.copyWith(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppColors.primaryGold : AppColors.textDark,
-          ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.goldLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                currentCat['icon'] as String? ?? '🎉',
+                style: AppTypography.titleMedium.copyWith(fontSize: 20),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    currentCat['name'] as String? ?? 'Pilih Acara',
+                    style: AppTypography.titleSmall.copyWith(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    currentCat['description'] as String? ?? '',
+                    style: AppTypography.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.goldLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Pilih',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.primaryGold,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down, color: AppColors.primaryGold, size: 20),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTemplateSelector() {
-    return Column(
-      children: InvitationTemplate.all.map((tmpl) {
-        final isSelected = _selectedTemplate == tmpl['id'];
-        final primaryColor = tmpl['primaryColor'] as Color;
-        final secondaryColor = tmpl['secondaryColor'] as Color;
-        final bgColor = tmpl['backgroundColor'] as Color;
+  void _openEventCategoryPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredCategories = InvitationEventCategory.getAvailableCategories().where((cat) {
+              final query = searchQuery.toLowerCase().trim();
+              if (query.isEmpty) return true;
+              final name = (cat['name'] as String? ?? '').toLowerCase();
+              final desc = (cat['description'] as String? ?? '').toLowerCase();
+              final short = (cat['shortName'] as String? ?? '').toLowerCase();
+              return name.contains(query) || desc.contains(query) || short.contains(query);
+            }).toList();
 
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTemplate = tmpl['id'] as String;
-              if (tmpl['eventType'] == 'khitan') {
-                _selectedEventType = 'khitan';
-              } else {
-                _selectedEventType = 'wedding';
-              }
-              _generateDefaultSlugAndTitle();
-            });
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.goldLight.withValues(alpha: 0.5) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primaryGold.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+            return DraggableScrollableSheet(
+              initialChildSize: 0.75,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    // Handle Bar
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              children: [
-                // Color Palette Indicator
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.black12),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        left: 8,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-                        ),
-                      ),
-                      Positioned(
-                        right: 8,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(color: secondaryColor, shape: BoxShape.circle),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      child: Row(
                         children: [
-                          Text(
-                            tmpl['name'] as String,
-                            style: AppTypography.titleSmall.copyWith(
-                              fontSize: 14,
-                              color: isSelected ? AppColors.primaryGold : AppColors.textDark,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Pilih Kategori Acara', style: AppTypography.titleMedium),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Sesuaikan form data & tema dengan jenis perayaan Anda',
+                                  style: AppTypography.caption,
+                                ),
+                              ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              tmpl['tag'] as String,
-                              style: AppTypography.caption.copyWith(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: primaryColor,
-                              ),
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        tmpl['description'] as String,
-                        style: AppTypography.caption.copyWith(fontSize: 11),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    // Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: TextField(
+                          onChanged: (val) {
+                            setModalState(() {
+                              searchQuery = val;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            icon: const Icon(Icons.search, color: AppColors.textLight, size: 20),
+                            hintText: 'Cari kategori acara (cth: Pernikahan, Khitan)...',
+                            hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textLight),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          style: AppTypography.bodyMedium,
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: filteredCategories.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Kategori acara tidak ditemukan',
+                                    style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: filteredCategories.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final cat = filteredCategories[index];
+                                final isSelected = cat['id'] == _selectedEventType;
+
+                                return InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _onEventTypeSelected(cat['id'] as String);
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? AppColors.goldLight.withValues(alpha: 0.5) : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isSelected ? AppColors.primaryGold : AppColors.borderLight,
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? AppColors.primaryGold.withValues(alpha: 0.15) : AppColors.backgroundLight,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            cat['icon'] as String? ?? '🎉',
+                                            style: AppTypography.titleMedium.copyWith(fontSize: 22),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      cat['name'] as String? ?? '',
+                                                      style: AppTypography.titleSmall.copyWith(
+                                                        color: isSelected ? AppColors.primaryGold : AppColors.textDark,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (isSelected)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: AppColors.primaryGold,
+                                                        borderRadius: BorderRadius.circular(10),
+                                                      ),
+                                                      child: Text(
+                                                        'Aktif',
+                                                        style: AppTypography.caption.copyWith(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                cat['description'] as String? ?? '',
+                                                style: AppTypography.caption,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          isSelected ? Icons.check_circle : Icons.arrow_forward_ios,
+                                          color: isSelected ? AppColors.primaryGold : Colors.grey.shade400,
+                                          size: isSelected ? 22 : 14,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _onEventTypeSelected(String newType) {
+    setState(() {
+      _selectedEventType = newType;
+      final isNew = widget.invitation == null;
+      if (isNew) {
+        if (newType == 'khitan') {
+          if (_titleController.text.isEmpty ||
+              _titleController.text.startsWith('The Wedding') ||
+              _titleController.text.startsWith('The Engagement')) {
+            _titleController.text =
+                'Tasyakuran Khitanan ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Rayyan"}';
+          }
+          if (_slugController.text.isEmpty || _slugController.text.startsWith('bagas-zulia')) {
+            _slugController.text = 'khitan-rayyan-${DateTime.now().millisecondsSinceEpoch % 10000}';
+          }
+          if (_quotesController.text.isEmpty || _quotesController.text.contains('Ar-Rum')) {
+            _quotesController.text =
+                '“Semoga menjadi anak yang sholeh, berbakti kepada kedua orang tua, serta berguna bagi nusa, bangsa, dan agama. Aamiin ya Rabbal \'Alamin.”';
+          }
+        } else if (newType == 'birthday') {
+          if (_titleController.text.isEmpty ||
+              _titleController.text.startsWith('The Wedding') ||
+              _titleController.text.startsWith('Tasyakuran')) {
+            _titleController.text =
+                'The Birthday Party of ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Kenzo"}';
+          }
+          if (_slugController.text.isEmpty ||
+              _slugController.text.startsWith('bagas-zulia') ||
+              _slugController.text.startsWith('khitan')) {
+            _slugController.text = 'birthday-kenzo-${DateTime.now().millisecondsSinceEpoch % 10000}';
+          }
+          if (_quotesController.text.isEmpty ||
+              _quotesController.text.contains('Ar-Rum') ||
+              _quotesController.text.contains('anak yang sholeh')) {
+            _quotesController.text =
+                '“Bertambah satu tahun lagi usia penuh berkah, tawa, dan kebahagiaan bersama keluarga dan sahabat tercinta.”';
+          }
+        } else if (newType == 'aqiqah') {
+          if (_titleController.text.isEmpty || _titleController.text.startsWith('The Wedding')) {
+            _titleController.text =
+                'Tasyakuran Aqiqah ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Bilal"}';
+          }
+          if (_slugController.text.isEmpty || _slugController.text.startsWith('bagas-zulia')) {
+            _slugController.text = 'aqiqah-bilal-${DateTime.now().millisecondsSinceEpoch % 10000}';
+          }
+          if (_quotesController.text.isEmpty || _quotesController.text.contains('Ar-Rum')) {
+            _quotesController.text =
+                '“Semoga Allah memberkahi anak ini bagimu dan menjadikannya anak yang berbakti serta bertakwa.”';
+          }
+        } else {
+          if (_titleController.text.isEmpty ||
+              _titleController.text.startsWith('Tasyakuran') ||
+              _titleController.text.startsWith('The Birthday')) {
+            _titleController.text =
+                'The Wedding of ${_brideNicknameController.text.isNotEmpty ? _brideNicknameController.text : "Zulia"} & ${_groomNicknameController.text.isNotEmpty ? _groomNicknameController.text : "Bagas"}';
+          }
+          if (_slugController.text.isEmpty ||
+              _slugController.text.startsWith('khitan') ||
+              _slugController.text.startsWith('birthday') ||
+              _slugController.text.startsWith('aqiqah')) {
+            _slugController.text = 'bagas-zulia-${DateTime.now().millisecondsSinceEpoch % 10000}';
+          }
+          if (_quotesController.text.isEmpty ||
+              _quotesController.text.contains('anak yang sholeh') ||
+              _quotesController.text.contains('penuh berkah')) {
+            _quotesController.text =
+                '"Dan di antara tanda-tanda kekuasaan-Nya ialah Dia menciptakan untukmu isteri-isteri dari jenismu sendiri, supaya kamu cenderung dan merasa tenteram kepadanya, dan dijadikan-Nya di antaramu rasa kasih dan sayang." (QS. Ar-Rum: 21)';
+          }
+        }
+      }
+      _generateDefaultSlugAndTitle();
+    });
+  }
+
+  Future<void> _navigateToTemplatePicker() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvitationTemplatePickerView(
+          initialTemplateId: _selectedTemplate,
+          categoryFilter: _selectedEventType,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedTemplate = result;
+        _generateDefaultSlugAndTitle();
+      });
+    }
+  }
+
+  Widget _buildTemplateSelectorCard() {
+    final tmpl = InvitationTemplate.getById(_selectedTemplate);
+    final primaryColor = tmpl['primaryColor'] as Color? ?? AppColors.primaryGold;
+    final secondaryColor = tmpl['secondaryColor'] as Color? ?? AppColors.secondaryGold;
+    final bgColor = tmpl['backgroundColor'] as Color? ?? Colors.white;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.goldLight.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.4), width: 1.2),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Visual Swatch Preview
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                Icon(
-                  isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: isSelected ? AppColors.primaryGold : Colors.grey.shade400,
-                  size: 22,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned(
+                      left: 10,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
+                      ),
+                    ),
+                    Positioned(
+                      right: 10,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(color: secondaryColor, shape: BoxShape.circle),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          tmpl['name'] as String? ?? '',
+                          style: AppTypography.titleSmall.copyWith(
+                            color: AppColors.textDark,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tmpl['tag'] as String? ?? '',
+                            style: AppTypography.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tmpl['description'] as String? ?? '',
+                      style: AppTypography.caption,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: _navigateToTemplatePicker,
+              icon: const Icon(Icons.explore_outlined, size: 18, color: AppColors.primaryGold),
+              label: Text(
+                'Pilih / Ganti Template Lain',
+                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primaryGold, width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: Colors.white,
+              ),
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 
