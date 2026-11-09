@@ -14,6 +14,7 @@ import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_preview_view.dart';
 
 class LoveStoryItem {
   final TextEditingController dateController;
@@ -711,7 +712,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   if (!_isIllustrationTemplate) ...[
                     const SizedBox(height: 12),
                     _buildPhotoPicker(
-                      label: _isMonochrome ? 'Foto Mempelai Wanita (Potrait 3:4) *' : 'Foto Mempelai Wanita (woman.jpeg)',
+                      label: _isMonochrome ? 'Foto Mempelai Wanita (Potrait 3:4) *' : 'Foto Mempelai Wanita',
                       imageUrl: _bridePhotoUrl,
                       onPick: () => _pickAndUploadImage(
                         (url) => setState(() => _bridePhotoUrl = url),
@@ -765,7 +766,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                   if (!_isIllustrationTemplate) ...[
                     const SizedBox(height: 12),
                     _buildPhotoPicker(
-                      label: _isMonochrome ? 'Foto Mempelai Pria (Potrait 3:4) *' : 'Foto Mempelai Pria (man.jpeg)',
+                      label: _isMonochrome ? 'Foto Mempelai Pria (Potrait 3:4) *' : 'Foto Mempelai Pria',
                       imageUrl: _groomPhotoUrl,
                       onPick: () => _pickAndUploadImage(
                         (url) => setState(() => _groomPhotoUrl = url),
@@ -1574,6 +1575,22 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     });
   }
 
+  void _openCurrentTemplatePreview() {
+    final tmpl = InvitationTemplate.getById(_selectedTemplate);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvitationTemplatePreviewView(
+          templateId: _selectedTemplate,
+          templateName: tmpl['name'] as String? ?? 'Preview Template',
+          slug: _slugController.text.trim().isNotEmpty
+              ? _slugController.text.trim()
+              : widget.invitation?.slug,
+        ),
+      ),
+    );
+  }
+
   Future<void> _navigateToTemplatePicker() async {
     final result = await Navigator.push<String>(
       context,
@@ -1698,22 +1715,47 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           const SizedBox(height: 14),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: OutlinedButton.icon(
-              onPressed: _navigateToTemplatePicker,
-              icon: const Icon(Icons.explore_outlined, size: 18, color: AppColors.primaryGold),
-              label: Text(
-                'Pilih / Ganti Template Lain',
-                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+          Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: _openCurrentTemplatePreview,
+                    icon: const Icon(Icons.visibility_outlined, size: 17, color: AppColors.primaryGold),
+                    label: Text(
+                      'Preview',
+                      style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primaryGold, width: 1.2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ),
               ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primaryGold, width: 1.2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                backgroundColor: Colors.white,
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 5,
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: _navigateToTemplatePicker,
+                    icon: const Icon(Icons.explore_outlined, size: 17, color: Colors.white),
+                    label: Text(
+                      'Ganti Template',
+                      style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGold,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

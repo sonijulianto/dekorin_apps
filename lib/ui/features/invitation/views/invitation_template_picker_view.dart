@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_preview_view.dart';
 
 /// Screen untuk memilih template / tema desain undangan digital.
 ///
@@ -43,6 +44,18 @@ class _InvitationTemplatePickerViewState
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openTemplatePreview(String templateId, String templateName) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvitationTemplatePreviewView(
+          templateId: templateId,
+          templateName: templateName,
+        ),
+      ),
+    );
   }
 
   List<Map<String, dynamic>> _getFilteredTemplates() {
@@ -270,18 +283,16 @@ class _InvitationTemplatePickerViewState
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () {
-            setState(() {
-              _selectedTemplateId = tmplId;
-            });
-            Navigator.pop(context, tmplId);
-          },
+          onTap: () => _openTemplatePreview(
+            tmplId,
+            tmpl['name'] as String? ?? 'Preview Template',
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Palet Warna & Status Badge
+                // Top Row: Palet Warna & Status Badge / Preview Pill
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -336,6 +347,46 @@ class _InvitationTemplatePickerViewState
                               ),
                             ),
                           ],
+                        ),
+                      )
+                    else
+                      InkWell(
+                        onTap: () => _openTemplatePreview(
+                          tmplId,
+                          tmpl['name'] as String? ?? 'Preview Template',
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.goldLight.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primaryGold.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.remove_red_eye_outlined,
+                                size: 12,
+                                color: AppColors.primaryGold,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Preview',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.secondaryGold,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -399,42 +450,96 @@ class _InvitationTemplatePickerViewState
                 ),
                 const SizedBox(height: 14),
 
-                // Button "Gunakan Template Ini"
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isSelected
-                          ? AppColors.primaryGold
-                          : AppColors.goldLight,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppColors.primaryGold
-                              : AppColors.borderLight,
+                // Action Buttons: View Preview (In-App) & Gunakan Template
+                Row(
+                  children: [
+                    // Tombol View Preview In-App
+                    Expanded(
+                      flex: 4,
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: AppColors.primaryGold,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          onPressed: () => _openTemplatePreview(
+                            tmplId,
+                            tmpl['name'] as String? ?? 'Preview Template',
+                          ),
+                          icon: const Icon(
+                            Icons.visibility_outlined,
+                            size: 16,
+                            color: AppColors.primaryGold,
+                          ),
+                          label: Text(
+                            'Lihat Preview',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.secondaryGold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedTemplateId = tmplId;
-                      });
-                      Navigator.pop(context, tmplId);
-                    },
-                    child: Text(
-                      isSelected ? '✓ Sedang Digunakan' : 'Gunakan Template Ini',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.secondaryGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                    const SizedBox(width: 8),
+
+                    // Tombol Pilih Desain
+                    Expanded(
+                      flex: 5,
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSelected
+                                ? AppColors.primaryGold
+                                : AppColors.goldLight,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? AppColors.primaryGold
+                                    : AppColors.borderLight,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _selectedTemplateId = tmplId;
+                            });
+                            Navigator.pop(context, tmplId);
+                          },
+                          icon: Icon(
+                            isSelected ? Icons.check_circle : Icons.arrow_forward,
+                            size: 15,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.secondaryGold,
+                          ),
+                          label: Text(
+                            isSelected ? 'Sedang Dipakai' : 'Pilih Desain',
+                            style: AppTypography.caption.copyWith(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.secondaryGold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

@@ -73,4 +73,17 @@ class ApiEndpoint {
   static String getInvitationPortalManageUrl(String editToken) {
     return '$invitationDomainBaseUrl/kelola/$editToken';
   }
+
+  /// Helper untuk membuat URL live interactive preview desain template undangan digital
+  static String getInvitationTemplatePreviewUrl(String templateId, [String? slug]) {
+    final uri = Uri.parse(baseUrl);
+    final isProdDomain = uri.host == 'dekorin.my.id' || uri.host.endsWith('.dekorin.my.id');
+    final base = isProdDomain
+        ? '$invitationDomainBaseUrl/preview/$templateId'
+        : '$webFormBaseUrl/invitation/preview/$templateId';
+    if (slug != null && slug.trim().isNotEmpty) {
+      return '$base?slug=${Uri.encodeComponent(slug.trim())}&preview=1';
+    }
+    return '$base?preview=1';
+  }
 }

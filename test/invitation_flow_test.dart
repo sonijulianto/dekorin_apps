@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
 
@@ -87,6 +88,20 @@ void main() {
       expect(find.text('Ocean Blossom TA17'), findsOneWidget);
       expect(find.text('Sakura Blossom TA3'), findsOneWidget);
       expect(find.text('Monochrome PN4'), findsOneWidget);
+
+      // Pastikan tombol 'Lihat Preview' tersedia di setiap kartu template
+      expect(find.text('Lihat Preview'), findsWidgets);
+    });
+
+    test('ApiEndpoint.getInvitationTemplatePreviewUrl generates valid preview url', () {
+      final urlTa17 = ApiEndpoint.getInvitationTemplatePreviewUrl('ta17');
+      expect(urlTa17, contains('/preview/ta17'));
+      expect(urlTa17, contains('preview=1'));
+
+      final urlWithSlug = ApiEndpoint.getInvitationTemplatePreviewUrl('pn4', 'bagas-zulia');
+      expect(urlWithSlug, contains('/preview/pn4'));
+      expect(urlWithSlug, contains('slug=bagas-zulia'));
+      expect(urlWithSlug, contains('preview=1'));
     });
   });
 }
