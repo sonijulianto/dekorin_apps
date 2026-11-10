@@ -8,6 +8,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/models/app_version_info.dart';
 import 'package:dekorin_apps/data/services/app_update_service.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 
 /// Dialog konfirmasi & proses In-App Update Dekorin
 class AppUpdateDialog extends StatefulWidget {
@@ -320,9 +321,24 @@ class AppUpdateChecker {
     _isChecking = true;
 
     try {
-      final currentBuild = await AppUpdateService.getCurrentBuildNumber();
-      final currentVersion = await AppUpdateService.getCurrentVersionName();
-      final latest = await AppUpdateService.getLatestVersion();
+      Future<({int currentBuild, String currentVersion, AppVersionInfo? latest})> fetchVersion() async {
+        final currentBuild = await AppUpdateService.getCurrentBuildNumber();
+        final currentVersion = await AppUpdateService.getCurrentVersionName();
+        final latest = await AppUpdateService.getLatestVersion();
+        return (currentBuild: currentBuild, currentVersion: currentVersion, latest: latest);
+      }
+
+      final result = showToastIfLatest
+          ? await DekorinLoadingDialog.run(
+              context,
+              message: 'Memeriksa pembaruan...',
+              task: fetchVersion,
+            )
+          : await fetchVersion();
+
+      final currentBuild = result.currentBuild;
+      final currentVersion = result.currentVersion;
+      final latest = result.latest;
 
       if (!context.mounted) {
         _isChecking = false;

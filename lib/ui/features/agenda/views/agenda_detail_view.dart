@@ -13,11 +13,13 @@ import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_edit_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/crew_brief_form_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/widgets/agenda_pricing_widgets.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -37,6 +39,7 @@ class AgendaDetailView extends ConsumerStatefulWidget {
 
 class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   late AgendaItem _item;
+  bool _isUpdatingStatus = false;
 
   @override
   void initState() {
@@ -45,24 +48,36 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
   }
 
   Future<void> _updatePaymentStatus(String newStatus) async {
+    if (_isUpdatingStatus) return;
+    _isUpdatingStatus = true;
+    final preservedSchedule = _item.eventDateTime;
     try {
-      final updated = await ref.read(agendaServiceProvider).updatePaymentStatus(_item.id, newStatus);
+      final updated = await DekorinLoadingDialog.run(
+        context,
+        message: 'Memperbarui status pembayaran...',
+        task: () => ref.read(agendaServiceProvider).updatePaymentStatus(
+          _item.id,
+          newStatus,
+          fallbackEventDateTime: preservedSchedule,
+        ),
+      );
+      if (!mounted) return;
       setState(() {
-        _item = updated;
+        _item = preservedSchedule.year > 1970
+            ? updated.copyWith(eventDateTime: preservedSchedule)
+            : updated;
       });
       ref.invalidate(agendaViewModelProvider);
       ref.invalidate(dashboardViewModelProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              newStatus == 'paid' ? 'Pembayaran berhasil ditandai LUNAS!' : 'Status pembayaran berhasil diperbarui!',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
-            backgroundColor: newStatus == 'paid' ? Colors.green : AppColors.primaryGold,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStatus == 'paid' ? 'Pembayaran berhasil ditandai LUNAS!' : 'Status pembayaran berhasil diperbarui!',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
-        );
-      }
+          backgroundColor: newStatus == 'paid' ? Colors.green : AppColors.primaryGold,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,31 +87,44 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           ),
         );
       }
+    } finally {
+      _isUpdatingStatus = false;
     }
   }
 
   Future<void> _updateEventStatus(String newStatus) async {
     final canEdit = ref.read(globalAuthProvider).value?.canEditAgenda ?? false;
-    if (!canEdit) return;
+    if (!canEdit || _isUpdatingStatus) return;
+    _isUpdatingStatus = true;
+    final preservedSchedule = _item.eventDateTime;
 
     try {
-      final updated = await ref.read(agendaServiceProvider).updateEventStatus(_item.id, newStatus);
+      final updated = await DekorinLoadingDialog.run(
+        context,
+        message: 'Memperbarui status acara...',
+        task: () => ref.read(agendaServiceProvider).updateEventStatus(
+          _item.id,
+          newStatus,
+          fallbackEventDateTime: preservedSchedule,
+        ),
+      );
+      if (!mounted) return;
       setState(() {
-        _item = updated;
+        _item = preservedSchedule.year > 1970
+            ? updated.copyWith(eventDateTime: preservedSchedule)
+            : updated;
       });
       ref.invalidate(agendaViewModelProvider);
       ref.invalidate(dashboardViewModelProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              newStatus == 'completed' ? 'Acara berhasil ditandai SELESAI!' : 'Status acara berhasil diperbarui!',
-              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-            ),
-            backgroundColor: newStatus == 'completed' ? Colors.green : AppColors.primaryGold,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStatus == 'completed' ? 'Acara berhasil ditandai SELESAI!' : 'Status acara berhasil diperbarui!',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
-        );
-      }
+          backgroundColor: newStatus == 'completed' ? Colors.green : AppColors.primaryGold,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -106,6 +134,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
           ),
         );
       }
+    } finally {
+      _isUpdatingStatus = false;
     }
   }
 
@@ -488,38 +518,17 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final bool canEditAgenda = currentUser?.canEditAgenda ?? (!isCrew);
     final bool canDownloadInvoice = currentUser?.canDownloadInvoice ?? (!isCrew);
 
-    // Kalkulasi Harga Paket & Addon
-    double packagePrice = _item.packagePrice;
-    if (packagePrice <= 0 && form != null && form.packagePrice > 0) {
-      packagePrice = form.packagePrice;
-    }
-
-    double addonsPrice = form?.addonsPrice ?? 0.0;
-    if (addonsPrice == 0 && _item.notes.contains('[Item Tambahan / Addon]:')) {
-      final parts = _item.notes.split('[Item Tambahan / Addon]:');
-      if (parts.length > 1) {
-        final lines = parts[1].trim().split('\n');
-        for (var line in lines) {
-          if (line.contains('(') && line.contains(')')) {
-            final openIdx = line.indexOf('(');
-            final closeIdx = line.lastIndexOf(')');
-            final pStr = line.substring(openIdx + 1, closeIdx);
-            if (pStr.contains('=')) {
-              final val = double.tryParse(pStr.split('=')[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0.0;
-              addonsPrice += val;
-            } else {
-              final val = double.tryParse(pStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0.0;
-              addonsPrice += val;
-            }
-          }
-        }
-      }
-    }
-
+    // Kalkulasi Harga Paket, Addon, Diskon (hanya potong dekorasi) & Transport
+    final double packagePrice = _item.effectivePackagePrice;
+    final double addonsPrice = _item.effectiveAddonsPrice;
     final double subtotal = packagePrice + _item.modelAdditionalPrice + addonsPrice;
+    final double discountAmount = AgendaItem.calculateDiscountAmount(
+      decorSubtotal: subtotal,
+      discountType: _item.discountType,
+      discountValue: _item.discountValue,
+    );
     final double transportFee = _item.transportFee;
-    final double totalBiaya = subtotal + transportFee;
-    final double sisaPelunasan = (totalBiaya - _item.dpAmount) > 0 ? (totalBiaya - _item.dpAmount) : 0.0;
+    final double totalBiaya = (subtotal - discountAmount).clamp(0.0, double.infinity) + transportFee;
 
     final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
     final mainCompanyName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
@@ -620,7 +629,19 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                 ],
                               ),
                             ),
-                          if (_item.packageName.isNotEmpty)
+                          if (_item.isStandaloneModel)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.goldLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Model: ${_item.modelName}',
+                                style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
+                              ),
+                            )
+                          else if (_item.packageName.isNotEmpty)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
@@ -931,7 +952,9 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                     if (canViewPrice && _item.modelAdditionalPrice > 0) ...[
                                       const SizedBox(height: 3),
                                       Text(
-                                        '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
+                                        _item.isStandaloneModel
+                                            ? currencyFormatter.format(_item.modelAdditionalPrice)
+                                            : '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
                                         style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
                                       ),
                                     ],
@@ -1220,63 +1243,40 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Rincian Baris Biaya (Receipt style)
-                        _buildFeeRow('Paket: ${_item.packageName.isNotEmpty ? _item.packageName : "Default"}', packagePrice > 0 ? currencyFormatter.format(packagePrice) : 'Rp 0'),
-                        if (_item.modelAdditionalPrice > 0)
-                          _buildFeeRow('Tambahan Model (${_item.modelName})', '+${currencyFormatter.format(_item.modelAdditionalPrice)}'),
-                        if (addonsPrice > 0)
-                          _buildFeeRow('Add-on Tambahan', '+${currencyFormatter.format(addonsPrice)}'),
-                        if (transportFee > 0)
-                          _buildFeeRow('Ongkos Kirim / Transport', '+${currencyFormatter.format(transportFee)}'),
-
-                        const Divider(height: 20),
-
-                        // Total Biaya
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('TOTAL BIAYA', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                            Text(
-                              currencyFormatter.format(totalBiaya),
-                              style: AppTypography.h3.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Rincian DP & Sisa Pelunasan
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.borderLight),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('DP Diterima', style: AppTypography.bodySmall),
-                                  Text(
-                                    _item.dpAmount > 0 ? currencyFormatter.format(_item.dpAmount) : 'Rp 0',
-                                    style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold, color: Colors.green.shade700),
-                                  ),
-                                ],
+                        // Rincian Baris Biaya (Subtotal -> Diskon -> Blok Transport + Total + DP + Sisa)
+                        AgendaPricingSummaryBlock(
+                          showHeader: false,
+                          totalLabel: 'TOTAL BIAYA',
+                          lines: [
+                            if (_item.isStandaloneModel)
+                              AgendaSummaryLine(
+                                label: 'Model Dekorasi (${_item.modelName})',
+                                amountText: _item.modelAdditionalPrice > 0
+                                    ? currencyFormatter.format(_item.modelAdditionalPrice)
+                                    : 'Rp 0',
+                              )
+                            else ...[
+                              AgendaSummaryLine(
+                                label: 'Paket: ${_item.packageName.isNotEmpty ? _item.packageName : "Default"}',
+                                amountText: packagePrice > 0 ? currencyFormatter.format(packagePrice) : 'Rp 0',
                               ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Sisa Pelunasan', style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600)),
-                                  Text(
-                                    currencyFormatter.format(sisaPelunasan),
-                                    style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold, color: sisaPelunasan > 0 ? AppColors.primaryGold : Colors.green),
-                                  ),
-                                ],
-                              ),
+                              if (_item.modelAdditionalPrice > 0)
+                                AgendaSummaryLine(
+                                  label: 'Tambahan Model (${_item.modelName})',
+                                  amountText: '+${currencyFormatter.format(_item.modelAdditionalPrice)}',
+                                ),
                             ],
-                          ),
+                            if (addonsPrice > 0)
+                              AgendaSummaryLine(
+                                label: 'Add-on Tambahan',
+                                amountText: '+${currencyFormatter.format(addonsPrice)}',
+                              ),
+                          ],
+                          decorSubtotal: subtotal,
+                          discountType: _item.discountType,
+                          discountValue: _item.discountValue,
+                          transportFee: transportFee,
+                          dpAmount: _item.dpAmount,
                         ),
                         const SizedBox(height: 12),
 
@@ -1392,6 +1392,141 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                         ),
                       ],
                     ),
+
+                  // 7. Hasil Isian Form Link Client & Status Penguncian
+                  if (_item.formStatus.toLowerCase() == 'filled' || (form != null && form.customAnswers.isNotEmpty))
+                    _buildCleanCard(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: SvgPicture.asset(
+                                'assets/icons/lock.svg',
+                                width: 18,
+                                height: 18,
+                                colorFilter: ColorFilter.mode(Colors.green.shade700, BlendMode.srcIn),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Isian Form Client (${_item.formStatus == 'filled' ? 'Terkonfirmasi & Terkunci' : 'Menunggu'})',
+                                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    'Client tidak dapat mengubah data saat link terkunci.',
+                                    style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (form != null && form.customAnswers.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          ...form.customAnswers.map((ans) {
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundLight,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.borderLight),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    ans.label,
+                                    style: AppTypography.caption.copyWith(color: AppColors.textLight, fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (ans.type == 'image' && ans.value.isNotEmpty)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        ans.value,
+                                        height: 140,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Text(
+                                          ans.value,
+                                          style: AppTypography.caption.copyWith(color: AppColors.primaryGold),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      ans.value,
+                                      style: AppTypography.bodyMedium.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                        if (canEditAgenda && _item.formStatus.toLowerCase() == 'filled') ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                try {
+                                  final unlocked = await DekorinConfirmActionDialog.show(
+                                    context,
+                                    title: 'Buka Kunci Form Client?',
+                                    message: 'Link form akan kembali ke mode pengisian agar client bisa mengubah atau melengkapi data melalui link yang sama.',
+                                    confirmLabel: 'Buka Kunci',
+                                    confirmColor: AppColors.primaryGold,
+                                    onConfirm: () async {
+                                      final updated = await ref.read(agendaServiceProvider).unlockAgendaForm(_item.id);
+                                      if (mounted) {
+                                        setState(() => _item = updated);
+                                        ref.read(agendaViewModelProvider.notifier).refresh();
+                                      }
+                                    },
+                                  );
+                                  if (unlocked && mounted) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text('Form berhasil dibuka kembali untuk client!', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+                                        backgroundColor: AppColors.successGreen,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text('Gagal membuka kunci: $e', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+                                        backgroundColor: AppColors.errorRed,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.lock_open_rounded, size: 16, color: AppColors.secondaryGold),
+                              label: Text('Buka Kunci Form (Izinkan Client Isi Ulang)', style: AppTypography.labelMedium.copyWith(color: AppColors.secondaryGold, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.primaryGold),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -1456,19 +1591,6 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeeRow(String label, String amount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.textDark))),
-          Text(amount, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark)),
         ],
       ),
     );

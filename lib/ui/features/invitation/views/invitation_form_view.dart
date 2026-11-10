@@ -13,6 +13,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_preview_view.dart';
@@ -63,6 +64,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   bool get _isIllustrationTemplate => _isSakuraBlossom || _isOceanBlossom;
   bool get _isMonochrome => _selectedTemplate == InvitationTemplate.pn4;
   bool get _isJawa3 => _selectedTemplate == InvitationTemplate.jawa3;
+  bool get _isJawa2 => _selectedTemplate == InvitationTemplate.jawa2;
 
   late TextEditingController _titleController;
   late TextEditingController _slugController;
@@ -141,7 +143,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
             (inv!.template == InvitationTemplate.ta17 ||
                 inv.template == InvitationTemplate.ta3 ||
                 inv.template == InvitationTemplate.pn4 ||
-                inv.template == InvitationTemplate.jawa3))
+                inv.template == InvitationTemplate.jawa3 ||
+                inv.template == InvitationTemplate.jawa2))
         ? inv.template
         : InvitationTemplate.ta17;
     _selectedEventType = inv?.eventType.isNotEmpty == true ? inv!.eventType : 'wedding';
@@ -326,8 +329,15 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           fileToUpload = croppedFile;
         }
 
-        final uploadedUrl = await ApiClient.uploadImage(fileToUpload);
-        onUploaded(uploadedUrl);
+        if (!mounted) return;
+        final uploadedUrl = await DekorinLoadingDialog.run(
+          context,
+          message: 'Mengunggah foto...',
+          task: () => ApiClient.uploadImage(fileToUpload),
+        );
+        if (mounted) {
+          onUploaded(uploadedUrl);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -344,18 +354,23 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     try {
       final picker = ImagePicker();
       final pickedList = await picker.pickMultiImage(imageQuality: 75, maxWidth: 1080, maxHeight: 1080);
-      if (pickedList.isNotEmpty) {
-        setState(() => _isSubmitting = true);
-        for (final picked in pickedList) {
-          final uploadedUrl = await ApiClient.uploadImage(File(picked.path));
-          setState(() {
-            _galleryUrls.add(uploadedUrl);
-          });
-        }
-        setState(() => _isSubmitting = false);
+      if (pickedList.isNotEmpty && mounted) {
+        await DekorinLoadingDialog.run(
+          context,
+          message: 'Mengunggah foto galeri (${pickedList.length} foto)...',
+          task: () async {
+            for (final picked in pickedList) {
+              final uploadedUrl = await ApiClient.uploadImage(File(picked.path));
+              if (mounted) {
+                setState(() {
+                  _galleryUrls.add(uploadedUrl);
+                });
+              }
+            }
+          },
+        );
       }
     } catch (e) {
-      setState(() => _isSubmitting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1683,6 +1698,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         _selectedTemplate = result;
         if (_isJawa3) {
           _coverImageUrl = '/assets/templates/jawa3/bg-cover.jpg';
+        } else if (_isJawa2 && (_coverImageUrl.isEmpty || _coverImageUrl == '/assets/templates/jawa3/bg-cover.jpg' || _coverImageUrl == '/assets/templates/pn4/photos/LeniArdi2.jpeg')) {
+          _coverImageUrl = '/assets/templates/jawa2/photos/cover-default.jpg';
         }
         _generateDefaultSlugAndTitle();
       });

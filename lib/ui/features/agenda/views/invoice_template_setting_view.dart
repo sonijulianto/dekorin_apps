@@ -3,18 +3,124 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/invoice_template.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
-/// Halaman Pengaturan untuk Memilih Template Invoice yang akan digunakan aplikasi
-class InvoiceTemplateSettingView extends ConsumerWidget {
+/// Halaman Pengaturan untuk Memilih Template Invoice per Brand (disimpan di database).
+class InvoiceTemplateSettingView extends ConsumerStatefulWidget {
   const InvoiceTemplateSettingView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentTemplate = ref.watch(invoiceTemplateProvider);
+  ConsumerState<InvoiceTemplateSettingView> createState() => _InvoiceTemplateSettingViewState();
+}
+
+class _InvoiceTemplateSettingViewState extends ConsumerState<InvoiceTemplateSettingView> {
+  String _selectedBrandId = '';
+  String? _savingTemplateId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshFromServer();
+    });
+  }
+
+  Future<void> _refreshFromServer() async {
+    ref.invalidate(companyBrandsProvider);
+    await ref.read(invoiceTemplateProvider.notifier).syncFromServer(brandId: _selectedBrandId);
+  }
+
+  CompanyBrand? _findSelectedBrand(List<CompanyBrand> brands) {
+    if (_selectedBrandId.isEmpty) return null;
+    for (final b in brands) {
+      if (b.id == _selectedBrandId) return b;
+    }
+    return null;
+  }
+
+  String _selectedBrandDisplayName(List<CompanyBrand> brands) {
+    final brand = _findSelectedBrand(brands);
+    if (brand != null) return brand.name;
+    return 'Brand Utama';
+  }
+
+  Future<void> _selectTemplate(
+    InvoiceTemplate template,
+    List<CompanyBrand> brands,
+  ) async {
+    if (_savingTemplateId != null) return;
+    setState(() => _savingTemplateId = template.id);
+
+    try {
+      await ref.read(invoiceTemplateProvider.notifier).setTemplateForBrand(
+            brandId: _selectedBrandId,
+            template: template,
+          );
+      if (!mounted) return;
+      final brandLabel = _selectedBrandDisplayName(brands);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.successGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Template $brandLabel diubah ke ${template.name}',
+                  style: AppTypography.bodySmall.copyWith(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final errMsg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.errorRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Gagal menyimpan template: $errMsg',
+            style: AppTypography.bodySmall.copyWith(color: Colors.white),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingTemplateId = null);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final templateState = ref.watch(invoiceTemplateProvider);
+    final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
+    final user = ref.watch(globalAuthProvider).valueOrNull;
+    final mainBrandName = (user?.companyName.isNotEmpty ?? false) ? user!.companyName : 'Brand Utama';
+
+    final selectedBrand = _findSelectedBrand(brands);
+    final effectiveBrandId = selectedBrand?.id ?? '';
+    if (effectiveBrandId != _selectedBrandId && brands.isNotEmpty && _selectedBrandId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedBrandId = '');
+      });
+    }
+
+    final currentTemplate = templateState.templateForBrand(effectiveBrandId);
+    final isInherited = templateState.isBrandInherited(effectiveBrandId);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -30,29 +136,193 @@ class InvoiceTemplateSettingView extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textDark),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        children: [
-          Text(
-            'TEMPLATE TERSEDIA (${InvoiceTemplate.values.length})',
-            style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
+        actions: [
+          IconButton(
+            tooltip: 'Sinkronkan dari server',
+            icon: templateState.isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGold),
+                  )
+                : const Icon(Icons.refresh_rounded, color: AppColors.textDark),
+            onPressed: templateState.isLoading ? null : _refreshFromServer,
           ),
-          const SizedBox(height: 12),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Brand / Sub-Brand Selector Tabs (jika perusahaan memiliki Sub-Brand)
+          if (brands.isNotEmpty)
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pilih Brand / Sub-Brand:',
+                    style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: Text(
+                            '$mainBrandName (Utama)',
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: effectiveBrandId.isEmpty ? Colors.white : AppColors.textDark,
+                            ),
+                          ),
+                          selected: effectiveBrandId.isEmpty,
+                          selectedColor: AppColors.primaryGold,
+                          backgroundColor: AppColors.goldLight,
+                          onSelected: (_) {
+                            setState(() => _selectedBrandId = '');
+                          },
+                        ),
+                        ...brands.map((b) {
+                          final isSelectedBrand = effectiveBrandId == b.id;
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                b.name,
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelectedBrand ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: isSelectedBrand,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight,
+                              onSelected: (_) {
+                                setState(() => _selectedBrandId = b.id);
+                              },
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  if (effectiveBrandId.isNotEmpty && isInherited) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Text(
+                        'Sub-brand ini masih mengikuti Brand Utama (${templateState.defaultTemplate.name}). Pilih template di bawah untuk mengatur khusus brand ini.',
+                        style: AppTypography.caption.copyWith(color: Colors.amber.shade900, fontSize: 11.5),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
 
-          // Daftar Card Template
-          ...InvoiceTemplate.values.map((template) {
-            final isSelected = template == currentTemplate;
-            return _buildTemplateCard(context, ref, template, isSelected);
-          }),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primaryGold,
+              onRefresh: _refreshFromServer,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                children: [
+                  if (templateState.errorMessage != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.cloud_off_rounded, size: 18, color: Colors.red.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Gagal menyinkronkan ke server. Tarik ke bawah untuk coba lagi.',
+                              style: AppTypography.caption.copyWith(color: Colors.red.shade800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
-          const SizedBox(height: 20),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldLight.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cloud_done_outlined, size: 18, color: AppColors.primaryGold),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            brands.isNotEmpty
+                                ? 'Tersimpan terpusat di database untuk ${_selectedBrandDisplayName(brands)} & seragam bagi seluruh admin.'
+                                : 'Tersimpan terpusat di database & seragam bagi seluruh admin di usaha ini.',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textDark,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Text(
+                    'TEMPLATE TERSEDIA (${InvoiceTemplate.values.length})',
+                    style: AppTypography.caption.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Daftar Card Template
+                  ...InvoiceTemplate.values.map((template) {
+                    final isSelected = template == currentTemplate;
+                    return _buildTemplateCard(context, template, isSelected, selectedBrand, brands);
+                  }),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTemplateCard(BuildContext context, WidgetRef ref, InvoiceTemplate template, bool isSelected) {
+  Widget _buildTemplateCard(
+    BuildContext context,
+    InvoiceTemplate template,
+    bool isSelected,
+    CompanyBrand? selectedBrand,
+    List<CompanyBrand> brands,
+  ) {
+    final isSavingThis = _savingTemplateId == template.id;
+    final isAnySaving = _savingTemplateId != null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -145,7 +415,7 @@ class InvoiceTemplateSettingView extends ConsumerWidget {
                 // Tombol Pratinjau
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _openPreviewWithSample(context, template),
+                    onPressed: () => _openPreviewWithSample(context, template, selectedBrand),
                     icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.textDark),
                     label: Text(
                       'Pratinjau',
@@ -163,42 +433,26 @@ class InvoiceTemplateSettingView extends ConsumerWidget {
                 // Tombol Pilih Template
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: isSelected
-                        ? null
-                        : () async {
-                            await ref.read(invoiceTemplateProvider.notifier).setTemplate(template);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: AppColors.successGreen,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  content: Row(
-                                    children: [
-                                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Template diubah ke ${template.name}',
-                                          style: AppTypography.bodySmall.copyWith(color: Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                          },
+                    onPressed: (isSelected || isAnySaving) ? null : () => _selectTemplate(template, brands),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isSelected ? Colors.grey.shade300 : AppColors.primaryGold,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: Text(
-                      isSelected ? 'Aktif' : 'Pilih Template',
-                      style: AppTypography.labelMedium.copyWith(color: isSelected ? AppColors.textLight : Colors.white, fontWeight: FontWeight.bold),
-                    ),
+                    child: isSavingThis
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text(
+                            isSelected ? 'Aktif' : 'Pilih Template',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: isSelected ? AppColors.textLight : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -389,10 +643,20 @@ class InvoiceTemplateSettingView extends ConsumerWidget {
     );
   }
 
-  void _openPreviewWithSample(BuildContext context, InvoiceTemplate template) {
-    // Agenda contoh untuk pratinjau live PDF
+  void _openPreviewWithSample(
+    BuildContext context,
+    InvoiceTemplate template,
+    CompanyBrand? selectedBrand,
+  ) {
+    // Agenda contoh untuk pratinjau live PDF (menyesuaikan brand yang sedang dipilih)
     final sampleAgenda = AgendaItem(
       id: 'FB001',
+      brandId: selectedBrand?.id ?? '',
+      brandName: selectedBrand?.name ?? '',
+      brandLogo: selectedBrand?.logoUrl ?? '',
+      brandPhone: selectedBrand?.phone ?? '',
+      brandInstagram: selectedBrand?.instagram ?? '',
+      brandDescription: selectedBrand?.description ?? '',
       clientName: 'Juwita',
       clientPhone: '0895-1678-9565',
       eventDateTime: DateTime.now(),

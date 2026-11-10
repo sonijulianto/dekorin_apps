@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/domain/models/invoice_template.dart';
 
 final companyServiceProvider = Provider<CompanyService>((ref) {
   return CompanyService();
@@ -112,5 +113,29 @@ class CompanyService {
     );
     final data = response['data'] ?? response;
     return CompanyProfile.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Mengambil pengaturan template desain invoice dari database (Brand Utama & seluruh Sub-Brand)
+  Future<CompanyInvoiceTemplateConfig> getInvoiceTemplate({String brandId = ''}) async {
+    final query = brandId.trim().isNotEmpty ? '?brand_id=${Uri.encodeComponent(brandId.trim())}' : '';
+    final response = await ApiClient.get('${ApiEndpoint.invoiceTemplate}$query');
+    final data = response['data'] as Map<String, dynamic>? ?? response;
+    return CompanyInvoiceTemplateConfig.fromJson(data);
+  }
+
+  /// Menyimpan template desain invoice per brand ke database (Hanya Owner & Admin)
+  Future<CompanyInvoiceTemplateConfig> updateInvoiceTemplate({
+    String brandId = '',
+    required String templateId,
+  }) async {
+    final response = await ApiClient.put(
+      ApiEndpoint.invoiceTemplate,
+      body: {
+        'brand_id': brandId.trim(),
+        'invoice_template': templateId,
+      },
+    );
+    final data = response['data'] as Map<String, dynamic>? ?? response;
+    return CompanyInvoiceTemplateConfig.fromJson(data);
   }
 }

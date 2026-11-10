@@ -10,11 +10,13 @@ import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
+import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/place_search_modal.dart';
+import 'package:dekorin_apps/ui/features/agenda/widgets/agenda_pricing_widgets.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class CreateAgendaSheet extends ConsumerStatefulWidget {
@@ -22,12 +24,31 @@ class CreateAgendaSheet extends ConsumerStatefulWidget {
 
   final DateTime? initialDate;
 
+  /// Combines selected date and optional time without dropping selectedDate
+  /// when the user leaves the time picker untouched (defaults to 10:00).
+  static DateTime? resolveEventDateTime(
+    DateTime? selectedDate,
+    TimeOfDay? selectedTime,
+  ) {
+    if (selectedDate == null) return null;
+    final effectiveTime = selectedTime ?? const TimeOfDay(hour: 10, minute: 0);
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      effectiveTime.hour,
+      effectiveTime.minute,
+    );
+  }
+
   @override
   ConsumerState<CreateAgendaSheet> createState() => _CreateAgendaSheetState();
 }
 
 class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _clientNameFieldKey = GlobalKey<FormFieldState<String>>();
+  final _clientPhoneFieldKey = GlobalKey<FormFieldState<String>>();
 
   final _clientNameController = TextEditingController();
   final _clientPhoneController = TextEditingController();
@@ -35,7 +56,11 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   final _eventAddressController = TextEditingController();
   final _mapsUrlController = TextEditingController();
   final _notesController = TextEditingController();
+  final _discountController = TextEditingController();
+  final _transportFeeController = TextEditingController();
+  final _dpAmountController = TextEditingController();
 
+  String _discountType = 'amount';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _selectedBrandId = '';
@@ -44,6 +69,8 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   double _selectedModelAdditionalPrice = 0.0;
   List<SelectedAddonItem> _selectedAddons = [];
   bool _isLoading = false;
+  bool _isOpeningPicker = false;
+  bool _isPickingContact = false;
 
   @override
   void initState() {
@@ -51,12 +78,41 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     _selectedDate = widget.initialDate;
   }
 
+  double get _currentDecorSubtotal {
+    final packagePrice = _selectedPackage?.basePrice ?? 0.0;
+    final addonsPrice = _selectedAddons.fold<double>(0.0, (sum, item) => sum + item.totalPrice);
+    return packagePrice + _selectedModelAdditionalPrice + addonsPrice;
+  }
+
+  double get _currentDiscountValue => parseAgendaDiscountInput(_discountController.text, _discountType);
+  double get _currentTransportFee => parseAgendaCurrencyInput(_transportFeeController.text);
+  double get _currentDpAmount => parseAgendaCurrencyInput(_dpAmountController.text);
+
   String _resolveBrandLabel(List<CompanyBrand> brands, String mainCompanyName) {
     if (_selectedBrandId.isEmpty) {
       return mainCompanyName.isNotEmpty ? mainCompanyName : 'Brand Utama';
     }
     final found = brands.where((b) => b.id == _selectedBrandId);
     return found.isNotEmpty ? found.first.name : 'Brand Utama';
+  }
+
+  Future<void> _pickContactPhone() async {
+    if (_isPickingContact) return;
+    setState(() => _isPickingContact = true);
+    try {
+      await pickClientContactIntoFields(
+        context: context,
+        ref: ref,
+        phoneController: _clientPhoneController,
+        phoneFieldKey: _clientPhoneFieldKey,
+        nameController: _clientNameController,
+        nameFieldKey: _clientNameFieldKey,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingContact = false);
+      }
+    }
   }
 
   Future<void> _searchGoogleMaps() async {
@@ -85,29 +141,42 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     }
   }
 
+  void _syncSelectedModelPrice() {
+    if (_selectedModel == null) {
+      _selectedModelAdditionalPrice = 0.0;
+      return;
+    }
+    if (_selectedPackage == null) {
+      _selectedModelAdditionalPrice = _selectedModel!.price;
+    } else {
+      final matchingPm = _selectedPackage!.packageModels
+          .where((pm) => pm.decorationModelId == _selectedModel!.id)
+          .firstOrNull;
+      _selectedModelAdditionalPrice = matchingPm?.additionalPrice ?? 0.0;
+    }
+  }
+
   Future<void> _openPackagePicker(String brandLabel) async {
-    final result = await Navigator.of(context).push<DecorationPackage>(
-      MaterialPageRoute(
-        builder: (_) => PackagePickerScreen(
-          selectedPackageId: _selectedPackage?.id,
-          brandId: _selectedBrandId,
-          brandName: brandLabel,
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      final result = await Navigator.of(context).push<DecorationPackage>(
+        MaterialPageRoute(
+          builder: (_) => PackagePickerScreen(
+            selectedPackageId: _selectedPackage?.id,
+            brandId: _selectedBrandId,
+            brandName: brandLabel,
+          ),
         ),
-      ),
-    );
-    if (result != null) {
-      setState(() {
-        _selectedPackage = result;
-        // Sinkronkan harga tambahan jika model sudah pernah dipilih
-        if (_selectedModel != null) {
-          final matchingPm = result.packageModels.where((pm) => pm.decorationModelId == _selectedModel!.id).firstOrNull;
-          if (matchingPm != null) {
-            _selectedModelAdditionalPrice = matchingPm.additionalPrice;
-          } else {
-            _selectedModelAdditionalPrice = 0.0;
-          }
-        }
-      });
+      );
+      if (result != null && mounted) {
+        setState(() {
+          _selectedPackage = result;
+          _syncSelectedModelPrice();
+        });
+      }
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
@@ -190,42 +259,54 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   }
 
   Future<void> _openModelPicker(String brandLabel) async {
-    final result = await Navigator.of(context).push<SelectedModelResult>(
-      MaterialPageRoute(
-        builder: (_) => ModelPickerScreen(
-          package: _selectedPackage,
-          selectedModelId: _selectedModel?.id,
-          canClearModel: _selectedModel != null,
-          brandId: _selectedBrandId,
-          brandName: brandLabel,
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      final result = await Navigator.of(context).push<SelectedModelResult>(
+        MaterialPageRoute(
+          builder: (_) => ModelPickerScreen(
+            package: _selectedPackage,
+            selectedModelId: _selectedModel?.id,
+            canClearModel: _selectedModel != null,
+            brandId: _selectedBrandId,
+            brandName: brandLabel,
+          ),
         ),
-      ),
-    );
-    if (result != null) {
-      setState(() {
-        if (result.isCleared) {
-          _selectedModel = null;
-          _selectedModelAdditionalPrice = 0.0;
-          _modelStockWarnings = [];
-        } else {
-          _selectedModel = result.model;
-          _selectedModelAdditionalPrice = result.additionalPrice;
-          _modelStockWarnings = [];
-        }
-      });
+      );
+      if (result != null && mounted) {
+        setState(() {
+          if (result.isCleared) {
+            _selectedModel = null;
+            _selectedModelAdditionalPrice = 0.0;
+            _modelStockWarnings = [];
+          } else {
+            _selectedModel = result.model;
+            _selectedModelAdditionalPrice = result.additionalPrice;
+            _modelStockWarnings = [];
+          }
+        });
 
-      if (_selectedModel != null && _selectedDate != null) {
-        _checkStockAvailabilityForModel(_selectedModel!, _selectedDate!);
+        if (_selectedModel != null && _selectedDate != null) {
+          _checkStockAvailabilityForModel(_selectedModel!, _selectedDate!);
+        }
       }
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
   Future<void> _openAddonPicker() async {
-    final result = await Navigator.of(context).push<List<SelectedAddonItem>>(
-      MaterialPageRoute(builder: (_) => AddonPickerScreen(initiallySelectedAddons: _selectedAddons)),
-    );
-    if (result != null) {
-      setState(() => _selectedAddons = result);
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      final result = await Navigator.of(context).push<List<SelectedAddonItem>>(
+        MaterialPageRoute(builder: (_) => AddonPickerScreen(initiallySelectedAddons: _selectedAddons)),
+      );
+      if (result != null && mounted) {
+        setState(() => _selectedAddons = result);
+      }
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
@@ -237,6 +318,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     _eventAddressController.dispose();
     _mapsUrlController.dispose();
     _notesController.dispose();
+    _discountController.dispose();
+    _transportFeeController.dispose();
+    _dpAmountController.dispose();
     super.dispose();
   }
 
@@ -301,7 +385,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Mohon isi Nama Client dan Nomor HP terlebih dahulu',
+            'Mohon lengkapi data wajib dan periksa kembali isian formulir',
             style: AppTypography.bodyMedium.copyWith(color: Colors.white),
           ),
           backgroundColor: AppTheme.errorRed,
@@ -315,16 +399,10 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
       _isLoading = true;
     });
 
-    DateTime? eventDateTime;
-    if (_selectedDate != null && _selectedTime != null) {
-      eventDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-    }
+    final DateTime? eventDateTime = CreateAgendaSheet.resolveEventDateTime(
+      _selectedDate,
+      _selectedTime,
+    );
 
     try {
       final agendaService = ref.read(agendaServiceProvider);
@@ -333,9 +411,17 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
       // Tambahkan info Model Dekorasi ke Catatan
       if (_selectedModel != null) {
-        final extraText = _selectedModelAdditionalPrice > 0
-            ? ' (+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)})'
-            : ' (Termasuk Paket)';
+        final formattedModelPrice = NumberFormat.currency(
+          locale: 'id_ID',
+          symbol: 'Rp ',
+          decimalDigits: 0,
+        ).format(_selectedModelAdditionalPrice);
+        final String extraText;
+        if (_selectedPackage == null) {
+          extraText = _selectedModelAdditionalPrice > 0 ? ' ($formattedModelPrice)' : '';
+        } else {
+          extraText = _selectedModelAdditionalPrice > 0 ? ' (+$formattedModelPrice)' : ' (Termasuk Paket)';
+        }
         final modelText =
             '[Model Dekorasi]: ${_selectedModel!.name}${_selectedModel!.width.isNotEmpty ? ' (Lebar: ${_selectedModel!.width})' : ''}$extraText';
         if (combinedNotes.isNotEmpty) {
@@ -375,7 +461,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         }
       }
 
-      final effectivePackagePrice = (_selectedPackage?.basePrice ?? 0.0) + _selectedModelAdditionalPrice;
+      final packageBasePrice = _selectedPackage?.basePrice ?? 0.0;
 
       String mapsUrl = _mapsUrlController.text.trim();
       if (mapsUrl.isNotEmpty && !mapsUrl.startsWith('http://') && !mapsUrl.startsWith('https://')) {
@@ -391,12 +477,16 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         eventAddress: _eventAddressController.text.trim(),
         mapsUrl: mapsUrl,
         packageId: _selectedPackage?.id ?? '',
-        packagePrice: effectivePackagePrice,
+        packagePrice: packageBasePrice,
         modelId: _selectedModel?.id ?? '',
         modelName: _selectedModel?.name ?? '',
         modelWidth: _selectedModel?.width ?? '',
         modelImageUrl: _selectedModel?.imageUrl ?? '',
         modelAdditionalPrice: _selectedModelAdditionalPrice,
+        discountType: _discountType,
+        discountValue: _currentDiscountValue,
+        transportFee: _currentTransportFee,
+        dpAmount: _currentDpAmount,
         notes: combinedNotes,
       );
 
@@ -437,7 +527,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   Widget build(BuildContext context) {
     final brandsAsync = ref.watch(companyBrandsProvider);
     final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
-    final mainCompanyName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
+    final currentUser = ref.watch(globalAuthProvider).value;
+    final mainCompanyName = currentUser?.companyName ?? 'Brand Utama';
+    final bool canViewPrice = currentUser?.canViewPrice ?? !(currentUser?.isCrew ?? false);
     final selectedBrandLabel = _resolveBrandLabel(brands, mainCompanyName);
 
     return Container(
@@ -480,22 +572,24 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Buat Agenda Baru',
-                        style: AppTypography.titleLarge.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textDark,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Buat Agenda Baru',
+                          style: AppTypography.titleLarge.copyWith(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textDark,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Wajib isi Nama Client. Detail lain dapat diisi oleh client via Web Form.',
-                        style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppTheme.textLight),
-                      ),
-                    ],
+                        Text(
+                          'Wajib isi Nama Client. Detail lain dapat diisi oleh client via Web Form.',
+                          style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppTheme.textLight),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -541,6 +635,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                           if (_selectedModel != null && _selectedModel!.brandId.isNotEmpty) {
                             _selectedModel = null;
                             _selectedModelAdditionalPrice = 0.0;
+                            _modelStockWarnings = [];
+                          } else {
+                            _syncSelectedModelPrice();
                           }
                         });
                       },
@@ -567,6 +664,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                             if (_selectedModel != null && _selectedModel!.brandId != b.id) {
                               _selectedModel = null;
                               _selectedModelAdditionalPrice = 0.0;
+                              _modelStockWarnings = [];
+                            } else {
+                              _syncSelectedModelPrice();
                             }
                           });
                         },
@@ -588,7 +688,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 6),
               TextFormField(
+                key: _clientNameFieldKey,
                 controller: _clientNameController,
+                style: AppTypography.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Contoh: Rian & Nisa / Ibu Rina',
                   prefixIcon: const Icon(Icons.person_outline),
@@ -605,21 +707,48 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               const SizedBox(height: 14),
 
               // 2. Nomor HP Client (WhatsApp)
-              Text(
-                'Nomor HP / WA Client *',
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textDark,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Nomor HP / WA Client *',
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ContactPickerChip(
+                    onTap: _pickContactPhone,
+                    isLoading: _isPickingContact,
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               TextFormField(
+                key: _clientPhoneFieldKey,
                 controller: _clientPhoneController,
                 keyboardType: TextInputType.phone,
+                style: AppTypography.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Contoh: 08123456789',
-                  prefixIcon: const Icon(Icons.phone_outlined),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SvgPicture.asset(
+                      'assets/icons/mobile-notch.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
+                    ),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.contacts_outlined, color: AppTheme.primaryGold, size: 20),
+                    tooltip: 'Ambil dari Kontak',
+                    onPressed: _isPickingContact ? null : _pickContactPhone,
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),
@@ -780,14 +909,17 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Link Google Maps Lokasi (Opsional)',
-                    style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: AppTheme.textDark,
+                  Flexible(
+                    child: Text(
+                      'Link Google Maps Lokasi (Opsional)',
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppTheme.textDark,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   InkWell(
                     onTap: _searchGoogleMaps,
                     borderRadius: BorderRadius.circular(8),
@@ -902,49 +1034,25 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                                 ],
                               ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: _selectedPackage != null ? AppTheme.primaryGold : AppTheme.textLight,
-                      ),
+                      if (_selectedPackage != null)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
+                          onPressed: () {
+                            setState(() {
+                              _selectedPackage = null;
+                              _syncSelectedModelPrice();
+                            });
+                          },
+                        )
+                      else
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppTheme.textLight,
+                        ),
                     ],
                   ),
                 ),
               ),
-              if (_selectedModel != null) ...[
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
-                        size: 16,
-                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _modelStockWarnings.isNotEmpty
-                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
-                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
-                          style: AppTypography.caption.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 14),
 
               // 6. Model Dekorasi yang dipilih (Master Model Dekorasi)
@@ -1042,16 +1150,21 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                                         ),
                                         const SizedBox(width: 6),
                                       ],
-                                      Text(
-                                        _selectedModelAdditionalPrice > 0
-                                            ? '+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)}'
-                                            : 'Tanpa Biaya Tambahan',
-                                        style: AppTypography.caption.copyWith(
-                                          fontSize: 11,
-                                          color: _selectedModelAdditionalPrice > 0
-                                              ? AppTheme.primaryGold
-                                              : AppTheme.successGreen,
-                                          fontWeight: FontWeight.w600,
+                                      Flexible(
+                                        child: Text(
+                                          _selectedPackage == null
+                                              ? 'Harga Model: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)}'
+                                              : (_selectedModelAdditionalPrice > 0
+                                                  ? '+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedModelAdditionalPrice)}'
+                                                  : 'Tanpa Biaya Tambahan'),
+                                          style: AppTypography.caption.copyWith(
+                                            fontSize: 11,
+                                            color: (_selectedPackage == null || _selectedModelAdditionalPrice > 0)
+                                                ? AppTheme.primaryGold
+                                                : AppTheme.successGreen,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
@@ -1066,6 +1179,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                             setState(() {
                               _selectedModel = null;
                               _selectedModelAdditionalPrice = 0.0;
+                              _modelStockWarnings = [];
                             });
                           },
                         )
@@ -1078,34 +1192,32 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   ),
                 ),
               ),
-              if (_selectedModel != null) ...[
+              if (_selectedModel != null && _modelStockWarnings.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
+                    color: Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
+                      color: Colors.amber.shade300,
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
+                        Icons.warning_amber_rounded,
                         size: 16,
-                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                        color: Colors.amber.shade900,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _modelStockWarnings.isNotEmpty
-                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
-                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
+                          '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini',
                           style: AppTypography.caption.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
+                            color: Colors.amber.shade900,
                           ),
                         ),
                       ),
@@ -1194,42 +1306,65 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   ),
                 ),
               ),
-              if (_selectedModel != null) ...[
-                const SizedBox(height: 6),
+              const SizedBox(height: 14),
+
+              // Penyesuaian Harga & Pembayaran (Diskon, Transport & DP)
+              if (canViewPrice) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade50 : AppTheme.primaryGold.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade300 : AppTheme.primaryGold.withValues(alpha: 0.25),
-                    ),
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        _modelStockWarnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.checklist_rtl_rounded,
-                        size: 16,
-                        color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _modelStockWarnings.isNotEmpty
-                              ? '${_modelStockWarnings.length} properti stoknya terbatas di tanggal ini'
-                              : 'Daftar barang & alat model ini otomatis masuk ke Pick List',
-                          style: AppTypography.caption.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _modelStockWarnings.isNotEmpty ? Colors.amber.shade900 : AppTheme.primaryGold,
-                          ),
+                      Text(
+                        'Diskon, Transport & DP (Opsional)',
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.textDark,
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      AgendaDiscountInputField(
+                        discountType: _discountType,
+                        controller: _discountController,
+                        decorSubtotal: _currentDecorSubtotal,
+                        fillColor: Colors.white,
+                        onTypeChanged: (nextType) {
+                          setState(() {
+                            if (_discountType != nextType) {
+                              _discountType = nextType;
+                              _discountController.clear();
+                            }
+                          });
+                        },
+                        onValueChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 12),
+                      AgendaCurrencyInputField(
+                        label: 'Ongkos Kirim / Uang Transport',
+                        controller: _transportFeeController,
+                        svgIconPath: 'assets/icons/shipping-fast.svg',
+                        fillColor: Colors.white,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 12),
+                      AgendaCurrencyInputField(
+                        label: 'Nominal DP Masuk',
+                        controller: _dpAmountController,
+                        svgIconPath: 'assets/icons/wallet-income.svg',
+                        fillColor: Colors.white,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 14),
               ],
-              const SizedBox(height: 14),
 
               // Catatan tambahan
               Text(
@@ -1259,6 +1394,16 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                   fillColor: Colors.grey.shade50,
                 ),
               ),
+              if (canViewPrice &&
+                  (_selectedPackage != null ||
+                      _selectedModel != null ||
+                      _selectedAddons.isNotEmpty ||
+                      _currentTransportFee > 0 ||
+                      _currentDiscountValue > 0 ||
+                      _currentDpAmount > 0)) ...[
+                const SizedBox(height: 16),
+                _buildEstimatedCostSummary(),
+              ],
               const SizedBox(height: 24),
 
               // Tombol Simpan
@@ -1299,6 +1444,45 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEstimatedCostSummary() {
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final packagePrice = _selectedPackage?.basePrice ?? 0.0;
+    final addonsPrice = _selectedAddons.fold<double>(0.0, (sum, item) => sum + item.totalPrice);
+    final lines = <AgendaSummaryLine>[
+      if (_selectedPackage != null)
+        AgendaSummaryLine(
+          label: 'Paket: ${_selectedPackage!.name}',
+          amountText: currencyFormatter.format(packagePrice),
+        ),
+      if (_selectedModel != null && (_selectedPackage == null || _selectedModelAdditionalPrice > 0))
+        AgendaSummaryLine(
+          label: _selectedPackage == null
+              ? 'Model: ${_selectedModel!.name}'
+              : 'Tambahan Model (${_selectedModel!.name})',
+          amountText: _selectedPackage == null
+              ? currencyFormatter.format(_selectedModelAdditionalPrice)
+              : '+${currencyFormatter.format(_selectedModelAdditionalPrice)}',
+        ),
+      if (addonsPrice > 0)
+        AgendaSummaryLine(
+          label: 'Item Tambahan (${_selectedAddons.length} jenis)',
+          amountText: '+${currencyFormatter.format(addonsPrice)}',
+        ),
+    ];
+
+    return AgendaPricingSummaryBlock(
+      title: 'Estimasi Biaya & Pembayaran',
+      totalLabel: 'TOTAL TAGIHAN',
+      lines: lines,
+      decorSubtotal: _currentDecorSubtotal,
+      discountType: _discountType,
+      discountValue: _currentDiscountValue,
+      transportFee: _currentTransportFee,
+      dpAmount: _currentDpAmount,
+      showPaymentDetails: _currentDpAmount > 0,
     );
   }
 }

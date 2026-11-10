@@ -35,6 +35,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
     String? description,
     String? instagram,
     String? bankInfo,
+    String? invoiceTemplate,
   }) async {
     final currentUser = state.value;
     if (currentUser == null) return;
@@ -48,6 +49,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
       companyDescription: description ?? currentUser.companyDescription,
       companyInstagram: instagram ?? currentUser.companyInstagram,
       companyBankInfo: bankInfo ?? currentUser.companyBankInfo,
+      companyInvoiceTemplate: invoiceTemplate ?? currentUser.companyInvoiceTemplate,
     );
 
     state = AsyncData(updatedUser);
@@ -68,9 +70,23 @@ class AuthNotifier extends AsyncNotifier<User?> {
       companyDescription: updatedUser.companyDescription,
       companyInstagram: updatedUser.companyInstagram,
       companyBankInfo: updatedUser.companyBankInfo,
+      companyInvoiceTemplate: updatedUser.companyInvoiceTemplate,
       permissions: updatedUser.permissions,
     );
     await DataPreferences.setUser(jsonEncode(userModel.toJson()));
+  }
+
+  /// Menyinkronkan pilihan template invoice Brand Utama ke session pengguna aktif
+  Future<void> updateCompanyInvoiceTemplate(String templateId) async {
+    final currentUser = state.value;
+    if (currentUser == null || currentUser.companyInvoiceTemplate == templateId) return;
+
+    await updateCompanyData(
+      name: currentUser.companyName,
+      address: currentUser.companyAddress,
+      phone: currentUser.companyPhone,
+      invoiceTemplate: templateId,
+    );
   }
 
   /// Merefresh profil dan permissions pengguna dari server

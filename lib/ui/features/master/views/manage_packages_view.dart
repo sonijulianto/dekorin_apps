@@ -17,6 +17,7 @@ import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class _PackageModelItemEntry {
@@ -38,738 +39,50 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
   final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   List<DecorationPackage>? _localPackages;
   String? _selectedFilterBrandId; // null = Semua, '' = Brand Utama, 'brd_...' = Sub-Brand
+  bool _isFormSheetOpen = false;
 
-  Future<void> _showModelSelectorDialog({
-    required String brandId,
-    required String brandLabel,
-    required List<_PackageModelItemEntry> currentSelected,
-    required Function(List<_PackageModelItemEntry>) onUpdated,
-  }) async {
-    final allModels = await ref.read(masterServiceProvider).getDecorationModels();
-    final masterModels = allModels.where((m) => m.brandId == brandId).toList();
-    if (!mounted) return;
-
-    if (masterModels.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Belum ada master model dekorasi untuk brand "$brandLabel". Silakan buat model untuk brand tersebut terlebih dahulu.',
-            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-          ),
-          backgroundColor: AppColors.primaryGold,
-        ),
-      );
-      return;
-    }
-
-    final selectedMap = <String, _PackageModelItemEntry>{for (final item in currentSelected) item.model.id: item};
-
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (dlgContext) {
-        return StatefulBuilder(
-          builder: (ctx, setDlgState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
-                children: [
-                  const Icon(Icons.view_carousel, color: AppColors.primaryGold),
-                  const SizedBox(width: 8),
-                  Text('Pilih Model Dekorasi', style: AppTypography.titleMedium),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Material(
-                  color: Colors.transparent,
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: masterModels.length,
-                    separatorBuilder: (_, unused) => const Divider(height: 1),
-                    itemBuilder: (context, idx) {
-                      final m = masterModels[idx];
-                      final isChecked = selectedMap.containsKey(m.id);
-
-                      return CheckboxListTile(
-                        value: isChecked,
-                        activeColor: AppColors.primaryGold,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(m.name, style: AppTypography.titleSmall),
-                        subtitle: Text(
-                          '${m.width.isNotEmpty ? 'Lebar: ${m.width} • ' : ''}${currencyFormatter.format(m.price)}',
-                          style: AppTypography.caption,
-                        ),
-                        secondary: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: m.imageUrl.isNotEmpty
-                              ? Image.network(
-                                  m.imageUrl,
-                                  width: 44,
-                                  height: 44,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
-                                    width: 44,
-                                    height: 44,
-                                    color: AppColors.goldLight,
-                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                                  ),
-                                )
-                              : Container(
-                                  width: 44,
-                                  height: 44,
-                                  color: AppColors.goldLight,
-                                  child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                                ),
-                        ),
-                        onChanged: (val) {
-                          setDlgState(() {
-                            if (val == true) {
-                              selectedMap[m.id] = _PackageModelItemEntry(
-                                model: m,
-                                additionalPrice: 0,
-                                controller: TextEditingController(text: '0'),
-                              );
-                            } else {
-                              selectedMap.remove(m.id);
-                            }
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dlgContext),
-                  child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
-                  onPressed: () {
-                    onUpdated(selectedMap.values.toList());
-                    Navigator.pop(dlgContext);
-                  },
-                  child: Text('Simpan Pilihan', style: AppTypography.button),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showPackageFormSheet([DecorationPackage? package]) async {
-    final isEdit = package != null;
-    final thousandFormatter = NumberFormat('#,###', 'id_ID');
-    final nameController = TextEditingController(text: package?.name ?? '');
-    final priceController = TextEditingController(
-      text: package != null && package.basePrice > 0 ? thousandFormatter.format(package.basePrice.toInt()).replaceAll(',', '.') : '',
-    );
-    final descController = TextEditingController(text: package?.description ?? '');
-    final formKey = GlobalKey<FormState>();
-
-    // Ambil master models untuk mapping existing package_models jika ada
-    final masterModels = await ref.read(masterServiceProvider).getDecorationModels();
-    final modelMap = {for (final m in masterModels) m.id: m};
-
-    final List<_PackageModelItemEntry> selectedModels = [];
-    if (package != null && package.packageModels.isNotEmpty) {
-      for (final pm in package.packageModels) {
-        final model = pm.decorationModel ?? modelMap[pm.decorationModelId];
-        if (model != null) {
-          final addPrice = pm.additionalPrice;
-          final txt = addPrice > 0 ? thousandFormatter.format(addPrice.toInt()).replaceAll(',', '.') : '0';
-          selectedModels.add(
-            _PackageModelItemEntry(
-              model: model,
-              additionalPrice: addPrice,
-              controller: TextEditingController(text: txt),
-            ),
-          );
-        }
-      }
-    }
-
-    File? selectedImageFile;
-    String existingImageUrl = package?.imageUrl ?? '';
-    String selectedBrandId = package?.brandId ?? (_selectedFilterBrandId ?? '');
-    bool isSubmitting = false;
-
-    final brands = await ref.read(companyServiceProvider).getCompanyBrands();
-    final mainBrandName = ref.read(globalAuthProvider).value?.companyName ?? 'Brand Utama';
-    String resolveBrandLabel(String bId) {
-      if (bId.isEmpty) return mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama';
-      final found = brands.where((b) => b.id == bId);
-      return found.isNotEmpty ? found.first.name : 'Brand Utama';
-    }
-
-    Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
-      try {
-        final picker = ImagePicker();
-        final XFile? pickedFile = await picker.pickImage(source: source, imageQuality: 70, maxWidth: 1080, maxHeight: 1080);
-
-        if (pickedFile != null) {
-          setModalState(() {
-            selectedImageFile = File(pickedFile.path);
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-            ),
-          );
-        }
-      }
-    }
-
-    if (!mounted) return;
+  void _showPackageFormSheet([DecorationPackage? package]) {
+    if (_isFormSheetOpen) return;
+    _isFormSheetOpen = true;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return SafeArea(
-              top: true,
-              child: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(child: Text(isEdit ? 'Edit Paket Dekorasi' : 'Tambah Paket Baru', style: AppTypography.titleLarge)),
-                          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Label Upload Foto
-                      Text('Foto Paket Dekorasi', style: AppTypography.labelLarge),
-                      const SizedBox(height: 8),
-
-                      // Box Preview Foto & Button Upload
-                      GestureDetector(
-                        onTap: () => pickImage(ImageSource.gallery, setModalState),
-                        child: Container(
-                          height: 150,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppColors.goldLight.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: selectedImageFile != null
-                                ? Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      Image.file(selectedImageFile!, fit: BoxFit.cover),
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withValues(alpha: 0.6),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            '✓ Terkompresi',
-                                            style: AppTypography.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : existingImageUrl.isNotEmpty
-                                ? Image.network(
-                                    existingImageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight)),
-                                  )
-                                : Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
-                                        const SizedBox(height: 8),
-                                        Text('Ketuk untuk memilih foto paket', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Tombol pilihan Galeri / Kamera
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.gallery, setModalState),
-                              icon: const Icon(Icons.photo_library, size: 18),
-                              label: Text('Galeri', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primaryGold,
-                                side: const BorderSide(color: AppColors.primaryGold),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.camera, setModalState),
-                              icon: const Icon(Icons.camera_alt, size: 18),
-                              label: Text('Kamera', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primaryGold,
-                                side: const BorderSide(color: AppColors.primaryGold),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      DekorinTextField(
-                        controller: nameController,
-                        label: 'Nama Paket',
-                        hint: 'Contoh: Paket Lamaran Modern Rustic',
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama paket wajib diisi' : null,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Pilihan Brand Paket
-                      Text('Brand Usaha untuk Paket Ini', style: AppTypography.labelLarge),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(
-                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
-                              style: AppTypography.caption.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
-                              ),
-                            ),
-                            selected: selectedBrandId.isEmpty,
-                            selectedColor: AppColors.primaryGold,
-                            backgroundColor: AppColors.goldLight,
-                            onSelected: (_) {
-                              setModalState(() {
-                                selectedBrandId = '';
-                                selectedModels.removeWhere((item) => item.model.brandId.isNotEmpty);
-                              });
-                            },
-                          ),
-                          ...brands.map((b) {
-                            final isSelected = selectedBrandId == b.id;
-                            return ChoiceChip(
-                              label: Text(
-                                b.name,
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : AppColors.textDark,
-                                ),
-                              ),
-                              selected: isSelected,
-                              selectedColor: AppColors.primaryGold,
-                              backgroundColor: AppColors.goldLight,
-                              onSelected: (_) {
-                                setModalState(() {
-                                  selectedBrandId = b.id;
-                                  selectedModels.removeWhere((item) => item.model.brandId != b.id);
-                                });
-                              },
-                            );
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      DekorinTextField(
-                        controller: priceController,
-                        label: 'Harga Dasar',
-                        hint: 'Contoh: 4.000.000',
-                        prefixText: 'Rp ',
-                        prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
-                          final clean = v.replaceAll(RegExp(r'\D'), '');
-                          if (double.tryParse(clean) == null || double.parse(clean) <= 0) {
-                            return 'Harga harus berupa angka valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DekorinTextField(
-                        controller: descController,
-                        label: 'Deskripsi / Kelengkapan Paket',
-                        hint: 'Rincian item kelengkapan...',
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Bagian Model Dekorasi dalam Paket ──────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
-                                const SizedBox(height: 2),
-                                Text('Pilihan model & biaya tambahan (surcharge)', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primaryGold,
-                              backgroundColor: AppColors.goldLight.withValues(alpha: 0.5),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: const Icon(Icons.add, size: 16),
-                            label: Text(
-                              'Pilih Model',
-                              style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryGold),
-                            ),
-                            onPressed: () {
-                              _showModelSelectorDialog(
-                                brandId: selectedBrandId,
-                                brandLabel: resolveBrandLabel(selectedBrandId),
-                                currentSelected: selectedModels,
-                                onUpdated: (newSelected) {
-                                  setModalState(() {
-                                    selectedModels.clear();
-                                    selectedModels.addAll(newSelected);
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-
-                      if (selectedModels.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline, size: 18, color: Colors.grey.shade400),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Belum ada model khusus yang dipilih. Client dapat memilih model dekorasi bebas tanpa surcharge.',
-                                  style: AppTypography.caption.copyWith(color: Colors.grey.shade600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: selectedModels.length,
-                          itemBuilder: (ctx, idx) {
-                            final item = selectedModels[idx];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: item.model.imageUrl.isNotEmpty
-                                            ? Image.network(
-                                                item.model.imageUrl,
-                                                width: 40,
-                                                height: 40,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, _, _) => Container(
-                                                  width: 40,
-                                                  height: 40,
-                                                  color: AppColors.goldLight,
-                                                  child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                                                ),
-                                              )
-                                            : Container(
-                                                width: 40,
-                                                height: 40,
-                                                color: AppColors.goldLight,
-                                                child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                                              ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(item.model.name, style: AppTypography.titleSmall),
-                                            Text(
-                                              item.model.width.isNotEmpty ? 'Lebar: ${item.model.width}' : 'Lebar Standar',
-                                              style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
-                                        onPressed: () {
-                                          setModalState(() {
-                                            selectedModels.removeAt(idx);
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Biaya Tambahan: ',
-                                        style: AppTypography.labelMedium.copyWith(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textDark,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: TextField(
-                                          controller: item.controller,
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                                          decoration: InputDecoration(
-                                            prefixText: '+ Rp ',
-                                            prefixStyle: AppTypography.labelMedium.copyWith(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primaryGold,
-                                            ),
-                                            hintText: '0',
-                                            isDense: true,
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                            filled: true,
-                                            fillColor: AppColors.backgroundLight,
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: AppColors.borderLight),
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: AppColors.primaryGold),
-                                            ),
-                                          ),
-                                          onChanged: (val) {
-                                            final clean = val.replaceAll(RegExp(r'\D'), '');
-                                            item.additionalPrice = double.tryParse(clean) ?? 0.0;
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  // Quick chips untuk input cepat 0, 100k, 200k, 500k
-                                  Wrap(
-                                    spacing: 6,
-                                    children: [
-                                      ChoiceChip(
-                                        label: Text(
-                                          'Rp 0 (Termasuk)',
-                                          style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark),
-                                        ),
-                                        selected: item.additionalPrice == 0,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setModalState(() {
-                                            item.additionalPrice = 0;
-                                            item.controller.text = '0';
-                                          });
-                                        },
-                                      ),
-                                      ChoiceChip(
-                                        label: Text('+ 200.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
-                                        selected: item.additionalPrice == 200000,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setModalState(() {
-                                            item.additionalPrice = 200000;
-                                            item.controller.text = '200.000';
-                                          });
-                                        },
-                                      ),
-                                      ChoiceChip(
-                                        label: Text('+ 500.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
-                                        selected: item.additionalPrice == 500000,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setModalState(() {
-                                            item.additionalPrice = 500000;
-                                            item.controller.text = '500.000';
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGold,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: isSubmitting
-                              ? null
-                              : () async {
-                                  if (!formKey.currentState!.validate()) return;
-                                  setModalState(() => isSubmitting = true);
-
-                                  try {
-                                    final service = ref.read(masterServiceProvider);
-                                    final cleanPrice = priceController.text.replaceAll(RegExp(r'\D'), '');
-                                    final price = double.parse(cleanPrice);
-                                    String finalImageUrl = existingImageUrl;
-
-                                    if (selectedImageFile != null) {
-                                      finalImageUrl = await ApiClient.uploadImage(selectedImageFile!);
-                                    }
-
-                                    final packageModelsPayload = selectedModels.map((item) {
-                                      final clean = item.controller.text.replaceAll(RegExp(r'\D'), '');
-                                      final addPrice = double.tryParse(clean) ?? 0.0;
-                                      return {'model_id': item.model.id, 'additional_price': addPrice};
-                                    }).toList();
-
-                                    if (isEdit) {
-                                      await service.updatePackage(
-                                        package.id,
-                                        brandId: selectedBrandId,
-                                        name: nameController.text.trim(),
-                                        description: descController.text.trim(),
-                                        basePrice: price,
-                                        imageUrl: finalImageUrl,
-                                        packageModels: packageModelsPayload,
-                                      );
-                                    } else {
-                                      await service.createPackage(
-                                        brandId: selectedBrandId,
-                                        name: nameController.text.trim(),
-                                        description: descController.text.trim(),
-                                        basePrice: price,
-                                        imageUrl: finalImageUrl,
-                                        packageModels: packageModelsPayload,
-                                      );
-                                    }
-                                    ref.invalidate(packagesProvider);
-                                    if (context.mounted) Navigator.pop(context);
-                                  } catch (e) {
-                                    setModalState(() => isSubmitting = false);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Gagal menyimpan paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : Text(isEdit ? 'Simpan Perubahan' : 'Tambah Paket', style: AppTypography.button),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+      builder: (_) => _PackageFormSheet(
+        package: package,
+        initialFilterBrandId: _selectedFilterBrandId,
+        currencyFormatter: currencyFormatter,
+      ),
+    ).whenComplete(() {
+      if (mounted) {
+        _isFormSheetOpen = false;
+      }
+    });
   }
 
-  void _confirmDelete(DecorationPackage package) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Hapus Paket', style: AppTypography.titleMedium),
-        content: Text('Apakah Anda yakin ingin menghapus paket "${package.name}"?', style: AppTypography.bodyMedium),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelMedium.copyWith(color: AppColors.textLight)),
+  Future<void> _confirmDelete(DecorationPackage package) async {
+    try {
+      await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Paket',
+        message: 'Apakah Anda yakin ingin menghapus paket "${package.name}"?',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(masterServiceProvider).deletePackage(package.id);
+          ref.invalidate(packagesProvider);
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(masterServiceProvider).deletePackage(package.id);
-                ref.invalidate(packagesProvider);
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Gagal menghapus paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.labelMedium.copyWith(color: AppColors.errorRed)),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   @override
@@ -1145,6 +458,813 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
           child: Text('Gagal memuat paket: $err', style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet form tambah/edit paket dekorasi yang langsung terbuka
+/// dan menampilkan status loading saat mengambil data model & brand.
+class _PackageFormSheet extends ConsumerStatefulWidget {
+  const _PackageFormSheet({
+    this.package,
+    this.initialFilterBrandId,
+    required this.currencyFormatter,
+  });
+
+  final DecorationPackage? package;
+  final String? initialFilterBrandId;
+  final NumberFormat currencyFormatter;
+
+  @override
+  ConsumerState<_PackageFormSheet> createState() => _PackageFormSheetState();
+}
+
+class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _thousandFormatter = NumberFormat('#,###', 'id_ID');
+
+  late final TextEditingController _nameController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _descController;
+
+  File? _selectedImageFile;
+  late String _existingImageUrl;
+  late String _selectedBrandId;
+  final List<_PackageModelItemEntry> _selectedModels = [];
+
+  List<DecorationModel> _masterModels = const [];
+  List<CompanyBrand> _brands = const [];
+  bool _isLoadingData = true;
+  String? _loadError;
+  bool _isSubmitting = false;
+
+  bool get _isEdit => widget.package != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final package = widget.package;
+    _nameController = TextEditingController(text: package?.name ?? '');
+    _priceController = TextEditingController(
+      text: package != null && package.basePrice > 0
+          ? _thousandFormatter.format(package.basePrice.toInt()).replaceAll(',', '.')
+          : '',
+    );
+    _descController = TextEditingController(text: package?.description ?? '');
+    _existingImageUrl = package?.imageUrl ?? '';
+    _selectedBrandId = package?.brandId ?? (widget.initialFilterBrandId ?? '');
+
+    _loadDependencies();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _descController.dispose();
+    for (final item in _selectedModels) {
+      item.controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadDependencies() async {
+    setState(() {
+      _isLoadingData = true;
+      _loadError = null;
+    });
+
+    try {
+      final modelsFuture = ref.read(masterServiceProvider).getDecorationModels();
+      final brandsFuture = ref.read(companyServiceProvider).getCompanyBrands();
+      await Future.wait([modelsFuture, brandsFuture]);
+      final masterModels = await modelsFuture;
+      final brands = await brandsFuture;
+      if (!mounted) return;
+
+      final modelMap = {for (final m in masterModels) m.id: m};
+      for (final item in _selectedModels) {
+        item.controller.dispose();
+      }
+      _selectedModels.clear();
+
+      final package = widget.package;
+      if (package != null && package.packageModels.isNotEmpty) {
+        for (final pm in package.packageModels) {
+          final model = pm.decorationModel ?? modelMap[pm.decorationModelId];
+          if (model != null) {
+            final addPrice = pm.additionalPrice;
+            final txt = addPrice > 0 ? _thousandFormatter.format(addPrice.toInt()).replaceAll(',', '.') : '0';
+            _selectedModels.add(
+              _PackageModelItemEntry(
+                model: model,
+                additionalPrice: addPrice,
+                controller: TextEditingController(text: txt),
+              ),
+            );
+          }
+        }
+      }
+
+      setState(() {
+        _masterModels = masterModels;
+        _brands = brands;
+        _isLoadingData = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _isLoadingData = false;
+      });
+    }
+  }
+
+  String _resolveBrandLabel(String bId, String mainBrandName) {
+    if (bId.isEmpty) return mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama';
+    final found = _brands.where((b) => b.id == bId);
+    return found.isNotEmpty ? found.first.name : 'Brand Utama';
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(source: source, imageQuality: 70, maxWidth: 1080, maxHeight: 1080);
+
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _selectedImageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showModelSelectorDialog(String brandLabel) async {
+    final brandModels = _masterModels.where((m) => m.brandId == _selectedBrandId).toList();
+    if (brandModels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Belum ada master model dekorasi untuk brand "$brandLabel". Silakan buat model untuk brand tersebut terlebih dahulu.',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+          backgroundColor: AppColors.primaryGold,
+        ),
+      );
+      return;
+    }
+
+    final selectedMap = <String, _PackageModelItemEntry>{for (final item in _selectedModels) item.model.id: item};
+
+    await showDialog(
+      context: context,
+      builder: (dlgContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  const Icon(Icons.view_carousel, color: AppColors.primaryGold),
+                  const SizedBox(width: 8),
+                  Text('Pilih Model Dekorasi', style: AppTypography.titleMedium),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: brandModels.length,
+                    separatorBuilder: (_, unused) => const Divider(height: 1),
+                    itemBuilder: (context, idx) {
+                      final m = brandModels[idx];
+                      final isChecked = selectedMap.containsKey(m.id);
+
+                      return CheckboxListTile(
+                        value: isChecked,
+                        activeColor: AppColors.primaryGold,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(m.name, style: AppTypography.titleSmall),
+                        subtitle: Text(
+                          '${m.width.isNotEmpty ? 'Lebar: ${m.width} • ' : ''}${widget.currencyFormatter.format(m.price)}',
+                          style: AppTypography.caption,
+                        ),
+                        secondary: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: m.imageUrl.isNotEmpty
+                              ? Image.network(
+                                  m.imageUrl,
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    width: 44,
+                                    height: 44,
+                                    color: AppColors.goldLight,
+                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                  ),
+                                )
+                              : Container(
+                                  width: 44,
+                                  height: 44,
+                                  color: AppColors.goldLight,
+                                  child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                ),
+                        ),
+                        onChanged: (val) {
+                          setDlgState(() {
+                            if (val == true) {
+                              selectedMap[m.id] = _PackageModelItemEntry(
+                                model: m,
+                                additionalPrice: 0,
+                                controller: TextEditingController(text: '0'),
+                              );
+                            } else {
+                              selectedMap.remove(m.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dlgContext),
+                  child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
+                  onPressed: () {
+                    setState(() {
+                      _selectedModels.clear();
+                      _selectedModels.addAll(selectedMap.values);
+                    });
+                    Navigator.pop(dlgContext);
+                  },
+                  child: Text('Simpan Pilihan', style: AppTypography.button),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final service = ref.read(masterServiceProvider);
+      final cleanPrice = _priceController.text.replaceAll(RegExp(r'\D'), '');
+      final price = double.parse(cleanPrice);
+      String finalImageUrl = _existingImageUrl;
+
+      if (_selectedImageFile != null) {
+        finalImageUrl = await ApiClient.uploadImage(_selectedImageFile!);
+      }
+
+      final packageModelsPayload = _selectedModels.map((item) {
+        final clean = item.controller.text.replaceAll(RegExp(r'\D'), '');
+        final addPrice = double.tryParse(clean) ?? 0.0;
+        return {'model_id': item.model.id, 'additional_price': addPrice};
+      }).toList();
+
+      if (_isEdit) {
+        await service.updatePackage(
+          widget.package!.id,
+          brandId: _selectedBrandId,
+          name: _nameController.text.trim(),
+          description: _descController.text.trim(),
+          basePrice: price,
+          imageUrl: finalImageUrl,
+          packageModels: packageModelsPayload,
+        );
+      } else {
+        await service.createPackage(
+          brandId: _selectedBrandId,
+          name: _nameController.text.trim(),
+          description: _descController.text.trim(),
+          basePrice: price,
+          imageUrl: finalImageUrl,
+          packageModels: packageModelsPayload,
+        );
+      }
+      ref.invalidate(packagesProvider);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan paket: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: SafeArea(
+        top: true,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: Text(_isEdit ? 'Edit Paket Dekorasi' : 'Tambah Paket Baru', style: AppTypography.titleLarge)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_isLoadingData)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppColors.primaryGold),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Memuat data paket...',
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_loadError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, size: 42, color: AppColors.errorRed),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Gagal memuat data:\n$_loadError',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodySmall.copyWith(color: AppColors.textLight),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
+                          onPressed: _loadDependencies,
+                          child: Text('Coba Lagi', style: AppTypography.button),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Label Upload Foto
+                      Text('Foto Paket Dekorasi', style: AppTypography.labelLarge),
+                      const SizedBox(height: 8),
+
+                      // Box Preview Foto & Button Upload
+                      GestureDetector(
+                        onTap: _isSubmitting ? null : () => _pickImage(ImageSource.gallery),
+                        child: Container(
+                          height: 150,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.goldLight.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: _selectedImageFile != null
+                                ? Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.file(_selectedImageFile!, fit: BoxFit.cover),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.6),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '✓ Terkompresi',
+                                            style: AppTypography.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : _existingImageUrl.isNotEmpty
+                                ? Image.network(
+                                    _existingImageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight)),
+                                  )
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
+                                        const SizedBox(height: 8),
+                                        Text('Ketuk untuk memilih foto paket', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                                      ],
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Tombol pilihan Galeri / Kamera
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.gallery),
+                              icon: const Icon(Icons.photo_library, size: 18),
+                              label: Text('Galeri', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primaryGold,
+                                side: const BorderSide(color: AppColors.primaryGold),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.camera),
+                              icon: const Icon(Icons.camera_alt, size: 18),
+                              label: Text('Kamera', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primaryGold,
+                                side: const BorderSide(color: AppColors.primaryGold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      DekorinTextField(
+                        controller: _nameController,
+                        label: 'Nama Paket',
+                        hint: 'Contoh: Paket Lamaran Modern Rustic',
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama paket wajib diisi' : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Pilihan Brand Paket
+                      Text('Brand Usaha untuk Paket Ini', style: AppTypography.labelLarge),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(
+                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                              style: AppTypography.caption.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: _selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
+                              ),
+                            ),
+                            selected: _selectedBrandId.isEmpty,
+                            selectedColor: AppColors.primaryGold,
+                            backgroundColor: AppColors.goldLight,
+                            onSelected: _isSubmitting
+                                ? null
+                                : (_) {
+                                    setState(() {
+                                      _selectedBrandId = '';
+                                      _selectedModels.removeWhere((item) => item.model.brandId.isNotEmpty);
+                                    });
+                                  },
+                          ),
+                          ..._brands.map((b) {
+                            final isSelected = _selectedBrandId == b.id;
+                            return ChoiceChip(
+                              label: Text(
+                                b.name,
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight,
+                              onSelected: _isSubmitting
+                                  ? null
+                                  : (_) {
+                                      setState(() {
+                                        _selectedBrandId = b.id;
+                                        _selectedModels.removeWhere((item) => item.model.brandId != b.id);
+                                      });
+                                    },
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      DekorinTextField(
+                        controller: _priceController,
+                        label: 'Harga Dasar',
+                        hint: 'Contoh: 4.000.000',
+                        prefixText: 'Rp ',
+                        prefixStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
+                          final clean = v.replaceAll(RegExp(r'\D'), '');
+                          if (double.tryParse(clean) == null || double.parse(clean) <= 0) {
+                            return 'Harga harus berupa angka valid';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DekorinTextField(
+                        controller: _descController,
+                        label: 'Deskripsi / Kelengkapan Paket',
+                        hint: 'Rincian item kelengkapan...',
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Bagian Model Dekorasi dalam Paket ──────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
+                                const SizedBox(height: 2),
+                                Text('Pilihan model & biaya tambahan (surcharge)', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight.withValues(alpha: 0.5),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: Text(
+                              'Pilih Model',
+                              style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryGold),
+                            ),
+                            onPressed: _isSubmitting ? null : () => _showModelSelectorDialog(_resolveBrandLabel(_selectedBrandId, mainBrandName)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (_selectedModels.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 18, color: Colors.grey.shade400),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Belum ada model khusus yang dipilih. Client dapat memilih model dekorasi bebas tanpa surcharge.',
+                                  style: AppTypography.caption.copyWith(color: Colors.grey.shade600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _selectedModels.length,
+                          itemBuilder: (ctx, idx) {
+                            final item = _selectedModels[idx];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: item.model.imageUrl.isNotEmpty
+                                            ? Image.network(
+                                                item.model.imageUrl,
+                                                width: 40,
+                                                height: 40,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) => Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  color: AppColors.goldLight,
+                                                  child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                                ),
+                                              )
+                                            : Container(
+                                                width: 40,
+                                                height: 40,
+                                                color: AppColors.goldLight,
+                                                child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                              ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(item.model.name, style: AppTypography.titleSmall),
+                                            Text(
+                                              item.model.width.isNotEmpty ? 'Lebar: ${item.model.width}' : 'Lebar Standar',
+                                              style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
+                                        onPressed: () {
+                                          setState(() {
+                                            _selectedModels.removeAt(idx);
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Biaya Tambahan: ',
+                                        style: AppTypography.labelMedium.copyWith(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: item.controller,
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                                          decoration: InputDecoration(
+                                            prefixText: '+ Rp ',
+                                            prefixStyle: AppTypography.labelMedium.copyWith(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primaryGold,
+                                            ),
+                                            hintText: '0',
+                                            isDense: true,
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            filled: true,
+                                            fillColor: AppColors.backgroundLight,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: AppColors.borderLight),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: AppColors.primaryGold),
+                                            ),
+                                          ),
+                                          onChanged: (val) {
+                                            final clean = val.replaceAll(RegExp(r'\D'), '');
+                                            item.additionalPrice = double.tryParse(clean) ?? 0.0;
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  // Quick chips untuk input cepat 0, 100k, 200k, 500k
+                                  Wrap(
+                                    spacing: 6,
+                                    children: [
+                                      ChoiceChip(
+                                        label: Text(
+                                          'Rp 0 (Termasuk)',
+                                          style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark),
+                                        ),
+                                        selected: item.additionalPrice == 0,
+                                        selectedColor: AppColors.goldLight,
+                                        onSelected: (_) {
+                                          setState(() {
+                                            item.additionalPrice = 0;
+                                            item.controller.text = '0';
+                                          });
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: Text('+ 200.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
+                                        selected: item.additionalPrice == 200000,
+                                        selectedColor: AppColors.goldLight,
+                                        onSelected: (_) {
+                                          setState(() {
+                                            item.additionalPrice = 200000;
+                                            item.controller.text = '200.000';
+                                          });
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: Text('+ 500.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
+                                        selected: item.additionalPrice == 500000,
+                                        selectedColor: AppColors.goldLight,
+                                        onSelected: (_) {
+                                          setState(() {
+                                            item.additionalPrice = 500000;
+                                            item.controller.text = '500.000';
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGold,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _isSubmitting ? null : _submit,
+                          child: _isSubmitting
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(_isEdit ? 'Simpan Perubahan' : 'Tambah Paket', style: AppTypography.button),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

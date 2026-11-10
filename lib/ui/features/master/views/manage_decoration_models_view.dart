@@ -18,6 +18,7 @@ import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/property.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/master/widgets/multi_select_property_sheet.dart';
 
@@ -33,792 +34,63 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
   List<DecorationModel>? _localModels;
   String _searchQuery = '';
   String? _selectedFilterBrandId; // null = Semua, '' = Brand Utama, 'brd_...' = Sub-Brand
+  bool _isFormSheetOpen = false;
 
-  void _showModelFormSheet([DecorationModel? model]) async {
-    final isEdit = model != null;
-    final thousandFormatter = NumberFormat('#,###', 'id_ID');
-    final nameController = TextEditingController(text: model?.name ?? '');
-    final widthController = TextEditingController(text: model?.width ?? '');
-    final priceController = TextEditingController(
-      text: model != null && model.price > 0 ? thousandFormatter.format(model.price.toInt()).replaceAll(',', '.') : '',
-    );
-    final descController = TextEditingController(text: model?.description ?? '');
-    final formKey = GlobalKey<FormState>();
-
-    File? selectedImageFile;
-    String existingImageUrl = model?.imageUrl ?? '';
-    String selectedBrandId = model?.brandId ?? (_selectedFilterBrandId ?? '');
-    bool isSubmitting = false;
-
-    final brands = await ref.read(companyServiceProvider).getCompanyBrands();
-    final allProperties = await ref.read(propertyServiceProvider).getProperties();
-    final mainBrandName = ref.read(globalAuthProvider).value?.companyName ?? 'Brand Utama';
-    List<DecorationModelProperty> selectedProps = List.from(model?.modelProperties ?? []);
-    if (!mounted) return;
-
-    Future<void> pickImage(ImageSource source, StateSetter setModalState) async {
-      try {
-        final picker = ImagePicker();
-        final XFile? pickedFile = await picker.pickImage(
-          source: source,
-          imageQuality: 70,
-          maxWidth: 1080,
-          maxHeight: 1080,
-        );
-
-        if (pickedFile != null) {
-          setModalState(() {
-            selectedImageFile = File(pickedFile.path);
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-            ),
-          );
-        }
-      }
-    }
+  void _showModelFormSheet([DecorationModel? model]) {
+    if (_isFormSheetOpen) return;
+    _isFormSheetOpen = true;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return SafeArea(
-              top: true,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 20,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                ),
-                child: Form(
-                  key: formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                isEdit ? 'Edit Model Dekorasi' : 'Tambah Model Baru',
-                                style: AppTypography.titleLarge,
-                              ),
-                            ),
-                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-
-                      // Label Upload Foto
-                      Text('Foto Model Dekorasi', style: AppTypography.labelLarge),
-                      const SizedBox(height: 8),
-
-                      // Box Preview Foto & Button Upload
-                      GestureDetector(
-                        onTap: () => pickImage(ImageSource.gallery, setModalState),
-                        child: Container(
-                          height: 150,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppColors.goldLight.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: selectedImageFile != null
-                                ? Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      Image.file(selectedImageFile!, fit: BoxFit.cover),
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withValues(alpha: 0.6),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            '✓ Terkompresi',
-                                            style: AppTypography.caption.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : existingImageUrl.isNotEmpty
-                                ? Image.network(
-                                    existingImageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const Center(
-                                      child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight),
-                                    ),
-                                  )
-                                : Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Ketuk untuk memilih foto model dekorasi',
-                                          style: AppTypography.caption.copyWith(color: AppColors.textLight),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Tombol pilihan Galeri / Kamera
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.gallery, setModalState),
-                              icon: const Icon(Icons.photo_library, size: 18),
-                              label: Text(
-                                'Galeri',
-                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primaryGold,
-                                side: const BorderSide(color: AppColors.primaryGold),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.camera, setModalState),
-                              icon: const Icon(Icons.camera_alt, size: 18),
-                              label: Text(
-                                'Kamera',
-                                style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primaryGold,
-                                side: const BorderSide(color: AppColors.primaryGold),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      DekorinTextField(
-                        controller: nameController,
-                        label: 'Nama Model Dekorasi',
-                        hint: 'Contoh: Model Rustic Arch Wood / Modern Hexagon',
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama model wajib diisi' : null,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Pilihan Brand Model
-                      Text('Brand Usaha untuk Model Ini', style: AppTypography.labelLarge),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(
-                              mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
-                              style: AppTypography.caption.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
-                              ),
-                            ),
-                            selected: selectedBrandId.isEmpty,
-                            selectedColor: AppColors.primaryGold,
-                            backgroundColor: AppColors.goldLight,
-                            onSelected: (_) => setModalState(() => selectedBrandId = ''),
-                          ),
-                          ...brands.map((b) {
-                            final isSelected = selectedBrandId == b.id;
-                            return ChoiceChip(
-                              label: Text(
-                                b.name,
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : AppColors.textDark,
-                                ),
-                              ),
-                              selected: isSelected,
-                              selectedColor: AppColors.primaryGold,
-                              backgroundColor: AppColors.goldLight,
-                              onSelected: (_) => setModalState(() => selectedBrandId = b.id),
-                            );
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      DekorinTextField(
-                        controller: widthController,
-                        label: 'Lebar Model Dekorasi',
-                        hint: 'Contoh: 3 Meter, 4 Meter, atau 6x3m',
-                        prefixIcon: Icons.straighten,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Lebar dekorasi wajib diisi' : null,
-                      ),
-                      const SizedBox(height: 12),
-
-                      DekorinTextField(
-                        controller: priceController,
-                        label: 'Harga Dasar / Acuan Model',
-                        hint: 'Contoh: 2.000.000',
-                        prefixText: 'Rp ',
-                        prefixStyle: AppTypography.labelLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Harga acuan wajib diisi';
-                          final clean = v.replaceAll(RegExp(r'\D'), '');
-                          if (double.tryParse(clean) == null || double.parse(clean) < 0) {
-                            return 'Harga harus berupa angka valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-
-                      DekorinTextField(
-                        controller: descController,
-                        label: 'Deskripsi / Detail Model',
-                        hint: 'Contoh: Rangkaian arch kayu jati belanda, pampas kering, kursi pelaminan...',
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Section Template Properti & Alat Bawaan
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.backgroundLight,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.borderLight),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.playlist_add_check_circle, size: 20, color: AppColors.primaryGold),
-                                    const SizedBox(width: 8),
-                                    Text('Barang & Alat Bawaan', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                if (selectedProps.isNotEmpty)
-                                  InkWell(
-                                    onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (clearCtx) => AlertDialog(
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                          title: Text('Kosongkan Daftar?', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                          content: Text('Semua barang bawaan untuk model ini akan dihapus dari daftar.', style: AppTypography.bodySmall),
-                                          actions: [
-                                            TextButton(onPressed: () => Navigator.pop(clearCtx), child: Text('Batal', style: AppTypography.caption)),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                setModalState(() => selectedProps.clear());
-                                                Navigator.pop(clearCtx);
-                                              },
-                                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                                              child: Text('Kosongkan', style: AppTypography.button),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.red),
-                                          const SizedBox(width: 2),
-                                          Text('Kosongkan', style: AppTypography.caption.copyWith(color: Colors.red, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Barang di bawah akan otomatis terisi saat model ini dipilih pada agenda.',
-                              style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight),
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Action Buttons: Salin dari Model Lain & Pilih Sekaligus
-                            Row(
-                              children: [
-                                // Tombol 1: Salin dari Model Lain
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      final otherModels = (_localModels ?? ref.read(decorationModelsProvider).valueOrNull ?? [])
-                                          .where((m) => m.id != model?.id && m.modelProperties.isNotEmpty)
-                                          .toList();
-
-                                      if (otherModels.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Belum ada model lain yang memiliki barang bawaan untuk disalin.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
-                                        return;
-                                      }
-
-                                      showDialog(
-                                        context: context,
-                                        builder: (dialogCtx) {
-                                          return AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                            title: Row(
-                                              children: [
-                                                const Icon(Icons.copy_rounded, color: AppColors.primaryGold, size: 20),
-                                                const SizedBox(width: 8),
-                                                Text('Salin dari Model Lain', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                              ],
-                                            ),
-                                            content: SizedBox(
-                                              width: double.maxFinite,
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text('Pilih model yang ingin disalin seluruh barang & alatnya:', style: AppTypography.bodySmall),
-                                                  const SizedBox(height: 12),
-                                                  Flexible(
-                                                    child: ListView.separated(
-                                                      shrinkWrap: true,
-                                                      itemCount: otherModels.length,
-                                                      separatorBuilder: (_, _) => const Divider(height: 1),
-                                                      itemBuilder: (ctx, idx) {
-                                                        final om = otherModels[idx];
-                                                        return ListTile(
-                                                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                          leading: Container(
-                                                            padding: const EdgeInsets.all(6),
-                                                            decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(8)),
-                                                            child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
-                                                          ),
-                                                          title: Text(om.name, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
-                                                          subtitle: Text('${om.modelProperties.length} Barang & Alat', style: AppTypography.caption),
-                                                          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textLight),
-                                                          onTap: () {
-                                                            Navigator.pop(dialogCtx);
-                                                            void applyClone(bool replace) {
-                                                              setModalState(() {
-                                                                if (replace) {
-                                                                  selectedProps.clear();
-                                                                }
-                                                                for (final mp in om.modelProperties) {
-                                                                  if (!selectedProps.any((sp) => sp.propertyId == mp.propertyId)) {
-                                                                    selectedProps.add(
-                                                                      DecorationModelProperty(
-                                                                        id: '',
-                                                                        decorationModelId: model?.id ?? '',
-                                                                        propertyId: mp.propertyId,
-                                                                        defaultQty: mp.defaultQty,
-                                                                        property: mp.property,
-                                                                      ),
-                                                                    );
-                                                                  }
-                                                                }
-                                                              });
-                                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text('✓ ${om.modelProperties.length} barang berhasil disalin dari "${om.name}"!', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                                                                  backgroundColor: AppColors.primaryGold,
-                                                                ),
-                                                              );
-                                                            }
-
-                                                            if (selectedProps.isNotEmpty) {
-                                                              showDialog(
-                                                                context: context,
-                                                                builder: (confirmCtx) => AlertDialog(
-                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                                                  title: Text('Metode Salin', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
-                                                                  content: Text('Daftar saat ini sudah berisi ${selectedProps.length} barang. Apakah ingin mengganti semua atau menggabungkannya?', style: AppTypography.bodySmall),
-                                                                  actions: [
-                                                                    TextButton(
-                                                                      onPressed: () {
-                                                                        Navigator.pop(confirmCtx);
-                                                                        applyClone(false);
-                                                                      },
-                                                                      child: Text('Gabungkan', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGold)),
-                                                                    ),
-                                                                    ElevatedButton(
-                                                                      onPressed: () {
-                                                                        Navigator.pop(confirmCtx);
-                                                                        applyClone(true);
-                                                                      },
-                                                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.white),
-                                                                      child: Text('Ganti Semua', style: AppTypography.button),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              );
-                                                            } else {
-                                                              applyClone(true);
-                                                            }
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text('Tutup', style: AppTypography.caption)),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    },
-                                    icon: const Icon(Icons.copy_rounded, size: 15),
-                                    label: Text('Salin dari Model', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold)),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.primaryGold,
-                                      side: const BorderSide(color: AppColors.primaryGold),
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // Tombol 2: Pilih Sekaligus (Multi-Select)
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      final selectedIds = selectedProps.map((p) => p.propertyId).toSet();
-                                      final currentQtys = {for (var p in selectedProps) p.propertyId: p.defaultQty};
-
-                                      final result = await MultiSelectPropertySheet.show(
-                                        context,
-                                        allProperties: allProperties,
-                                        initiallySelectedPropertyIds: selectedIds,
-                                        initialQuantities: currentQtys,
-                                      );
-
-                                      if (result != null) {
-                                        setModalState(() {
-                                          selectedProps = result.map((item) {
-                                            return DecorationModelProperty(
-                                              id: '',
-                                              decorationModelId: model?.id ?? '',
-                                              propertyId: item.property.id,
-                                              defaultQty: item.qty,
-                                              property: item.property,
-                                            );
-                                          }).toList();
-                                        });
-                                      }
-                                    },
-                                    icon: const Icon(Icons.checklist_rounded, size: 16),
-                                    label: Text('Pilih Sekaligus', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primaryGold,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // List of items currently selected
-                            if (selectedProps.isEmpty)
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                alignment: Alignment.center,
-                                child: Text('Belum ada barang bawaan yang diatur', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
-                              )
-                            else
-                              ...selectedProps.map((sp) {
-                                final propName = sp.property?.name ?? allProperties.firstWhere((p) => p.id == sp.propertyId, orElse: () => Property(id: sp.propertyId, name: 'Barang #${sp.propertyId}')).name;
-                                final isTool = sp.property?.isTool ?? allProperties.firstWhere((p) => p.id == sp.propertyId, orElse: () => const Property(id: '', name: '')).isTool;
-                                final unit = sp.property?.unit ?? allProperties.firstWhere((p) => p.id == sp.propertyId, orElse: () => const Property(id: '', name: '', unit: 'pcs')).unit;
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.borderLight)),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: isTool ? Colors.blue.shade50 : AppColors.goldLight,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(isTool ? '🛠️' : '📦', style: const TextStyle(fontSize: 12)),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(propName, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                            Text(unit, style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 10)),
-                                          ],
-                                        ),
-                                      ),
-                                      // Stepper Qty (- dan +) langsung di kartu
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.backgroundLight,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: AppColors.borderLight),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            InkWell(
-                                              onTap: () {
-                                                if (sp.defaultQty > 1) {
-                                                  setModalState(() {
-                                                    final idx = selectedProps.indexOf(sp);
-                                                    if (idx != -1) {
-                                                      selectedProps[idx] = DecorationModelProperty(
-                                                        id: sp.id,
-                                                        decorationModelId: sp.decorationModelId,
-                                                        propertyId: sp.propertyId,
-                                                        defaultQty: sp.defaultQty - 1,
-                                                        property: sp.property,
-                                                      );
-                                                    }
-                                                  });
-                                                }
-                                              },
-                                              child: const Padding(
-                                                padding: EdgeInsets.all(4),
-                                                child: Icon(Icons.remove, size: 14, color: AppColors.primaryGold),
-                                              ),
-                                            ),
-                                            Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6),
-                                              child: Text(
-                                                '${sp.defaultQty}',
-                                                style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold),
-                                              ),
-                                            ),
-                                            InkWell(
-                                              onTap: () {
-                                                setModalState(() {
-                                                  final idx = selectedProps.indexOf(sp);
-                                                  if (idx != -1) {
-                                                    selectedProps[idx] = DecorationModelProperty(
-                                                      id: sp.id,
-                                                      decorationModelId: sp.decorationModelId,
-                                                      propertyId: sp.propertyId,
-                                                      defaultQty: sp.defaultQty + 1,
-                                                      property: sp.property,
-                                                    );
-                                                  }
-                                                });
-                                              },
-                                              child: const Padding(
-                                                padding: EdgeInsets.all(4),
-                                                child: Icon(Icons.add, size: 14, color: AppColors.primaryGold),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                                        onPressed: () {
-                                          setModalState(() {
-                                            selectedProps.removeWhere((p) => p.propertyId == sp.propertyId);
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGold,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: isSubmitting
-                              ? null
-                              : () async {
-                                  if (!formKey.currentState!.validate()) return;
-                                  setModalState(() => isSubmitting = true);
-
-                                  try {
-                                    final service = ref.read(masterServiceProvider);
-                                    final cleanPrice = priceController.text.replaceAll(RegExp(r'\D'), '');
-                                    final price = double.parse(cleanPrice);
-                                    String finalImageUrl = existingImageUrl;
-
-                                    if (selectedImageFile != null) {
-                                      finalImageUrl = await ApiClient.uploadImage(selectedImageFile!);
-                                    }
-
-                                    final modelPropsPayload = selectedProps.map((sp) {
-                                      return {
-                                        'property_id': sp.propertyId,
-                                        'default_qty': sp.defaultQty,
-                                        'notes': sp.notes,
-                                      };
-                                    }).toList();
-
-                                    if (isEdit) {
-                                      await service.updateDecorationModel(
-                                        model.id,
-                                        brandId: selectedBrandId,
-                                        name: nameController.text.trim(),
-                                        width: widthController.text.trim(),
-                                        price: price,
-                                        description: descController.text.trim(),
-                                        imageUrl: finalImageUrl,
-                                        modelProperties: modelPropsPayload,
-                                      );
-                                    } else {
-                                      await service.createDecorationModel(
-                                        brandId: selectedBrandId,
-                                        name: nameController.text.trim(),
-                                        width: widthController.text.trim(),
-                                        price: price,
-                                        description: descController.text.trim(),
-                                        imageUrl: finalImageUrl,
-                                        modelProperties: modelPropsPayload,
-                                      );
-                                    }
-                                    ref.invalidate(decorationModelsProvider);
-                                    if (context.mounted) Navigator.pop(context);
-                                  } catch (e) {
-                                    setModalState(() => isSubmitting = false);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Gagal menyimpan model dekorasi: $e',
-                                            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : Text(
-                                  isEdit ? 'Simpan Perubahan' : 'Tambahkan Model',
-                                  style: AppTypography.button.copyWith(color: Colors.white),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
+      builder: (_) => _DecorationModelFormSheet(
+        model: model,
+        initialFilterBrandId: _selectedFilterBrandId,
+        localModels: _localModels,
+      ),
+    ).whenComplete(() {
+      if (mounted) {
+        _isFormSheetOpen = false;
+      }
+    });
   }
 
-  void _confirmDelete(DecorationModel model) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus Model Dekorasi', style: AppTypography.h3),
-        content: Text('Apakah Anda yakin ingin menghapus model "${model.name}"?', style: AppTypography.bodyMedium),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+  Future<void> _confirmDelete(DecorationModel model) async {
+    try {
+      final deleted = await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Model Dekorasi',
+        message: 'Apakah Anda yakin ingin menghapus model "${model.name}"?',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(masterServiceProvider).deleteDecorationModel(model.id);
+          ref.invalidate(decorationModelsProvider);
+        },
+      );
+      if (deleted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Model dekorasi berhasil dihapus',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(masterServiceProvider).deleteDecorationModel(model.id);
-                ref.invalidate(decorationModelsProvider);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Model dekorasi berhasil dihapus',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Gagal menghapus model dekorasi: $e',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menghapus model dekorasi: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   @override
@@ -1104,7 +376,10 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                 ],
                                 Text(model.name, style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Row(
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1117,18 +392,20 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
                                         children: [
                                           const Icon(Icons.straighten, size: 12, color: AppColors.primaryGold),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            model.width.isNotEmpty ? model.width : 'Lebar standar',
-                                            style: AppTypography.caption.copyWith(
-                                              color: AppColors.primaryGold,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 10,
+                                          Flexible(
+                                            child: Text(
+                                              model.width.isNotEmpty ? model.width : 'Lebar standar',
+                                              style: AppTypography.caption.copyWith(
+                                                color: AppColors.primaryGold,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 10,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
                                     Text(
                                       currencyFormatter.format(model.price),
                                       style: AppTypography.labelMedium.copyWith(
@@ -1196,6 +473,889 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Bottom sheet form tambah/edit model dekorasi yang langsung terbuka
+/// dan menampilkan status loading saat mengambil data brand & properti.
+class _DecorationModelFormSheet extends ConsumerStatefulWidget {
+  const _DecorationModelFormSheet({
+    this.model,
+    this.initialFilterBrandId,
+    this.localModels,
+  });
+
+  final DecorationModel? model;
+  final String? initialFilterBrandId;
+  final List<DecorationModel>? localModels;
+
+  @override
+  ConsumerState<_DecorationModelFormSheet> createState() => _DecorationModelFormSheetState();
+}
+
+class _DecorationModelFormSheetState extends ConsumerState<_DecorationModelFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _widthController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _descController;
+
+  File? _selectedImageFile;
+  late String _existingImageUrl;
+  late String _selectedBrandId;
+  late List<DecorationModelProperty> _selectedProps;
+
+  List<CompanyBrand> _brands = const [];
+  List<Property> _allProperties = const [];
+  bool _isLoadingData = true;
+  String? _loadError;
+  bool _isSubmitting = false;
+
+  bool get _isEdit => widget.model != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final model = widget.model;
+    final thousandFormatter = NumberFormat('#,###', 'id_ID');
+    _nameController = TextEditingController(text: model?.name ?? '');
+    _widthController = TextEditingController(text: model?.width ?? '');
+    _priceController = TextEditingController(
+      text: model != null && model.price > 0
+          ? thousandFormatter.format(model.price.toInt()).replaceAll(',', '.')
+          : '',
+    );
+    _descController = TextEditingController(text: model?.description ?? '');
+    _existingImageUrl = model?.imageUrl ?? '';
+    _selectedBrandId = model?.brandId ?? (widget.initialFilterBrandId ?? '');
+    _selectedProps = List.from(model?.modelProperties ?? []);
+
+    _loadDependencies();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _widthController.dispose();
+    _priceController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDependencies() async {
+    setState(() {
+      _isLoadingData = true;
+      _loadError = null;
+    });
+
+    try {
+      final brandsFuture = ref.read(companyServiceProvider).getCompanyBrands();
+      final propsFuture = ref.read(propertyServiceProvider).getProperties();
+      await Future.wait([brandsFuture, propsFuture]);
+      final brands = await brandsFuture;
+      final props = await propsFuture;
+      if (!mounted) return;
+      setState(() {
+        _brands = brands;
+        _allProperties = props;
+        _isLoadingData = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _isLoadingData = false;
+      });
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _selectedImageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih foto: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final service = ref.read(masterServiceProvider);
+      final cleanPrice = _priceController.text.replaceAll(RegExp(r'\D'), '');
+      final price = double.parse(cleanPrice);
+      String finalImageUrl = _existingImageUrl;
+
+      if (_selectedImageFile != null) {
+        finalImageUrl = await ApiClient.uploadImage(_selectedImageFile!);
+      }
+
+      final modelPropsPayload = _selectedProps.map((sp) {
+        return {
+          'property_id': sp.propertyId,
+          'default_qty': sp.defaultQty,
+          'notes': sp.notes,
+        };
+      }).toList();
+
+      if (_isEdit) {
+        await service.updateDecorationModel(
+          widget.model!.id,
+          brandId: _selectedBrandId,
+          name: _nameController.text.trim(),
+          width: _widthController.text.trim(),
+          price: price,
+          description: _descController.text.trim(),
+          imageUrl: finalImageUrl,
+          modelProperties: modelPropsPayload,
+        );
+      } else {
+        await service.createDecorationModel(
+          brandId: _selectedBrandId,
+          name: _nameController.text.trim(),
+          width: _widthController.text.trim(),
+          price: price,
+          description: _descController.text.trim(),
+          imageUrl: finalImageUrl,
+          modelProperties: modelPropsPayload,
+        );
+      }
+      ref.invalidate(decorationModelsProvider);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menyimpan model dekorasi: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: SafeArea(
+        top: true,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _isEdit ? 'Edit Model Dekorasi' : 'Tambah Model Baru',
+                        style: AppTypography.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_isLoadingData)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(color: AppColors.primaryGold),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Memuat data model...',
+                            style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_loadError != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 42, color: AppColors.errorRed),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Gagal memuat data:\n$_loadError',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.textLight),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
+                            onPressed: _loadDependencies,
+                            child: Text('Coba Lagi', style: AppTypography.button),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Label Upload Foto
+                        Text('Foto Model Dekorasi', style: AppTypography.labelLarge),
+                        const SizedBox(height: 8),
+
+                        // Box Preview Foto & Button Upload
+                        GestureDetector(
+                          onTap: _isSubmitting ? null : () => _pickImage(ImageSource.gallery),
+                          child: Container(
+                            height: 150,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.goldLight.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: _selectedImageFile != null
+                                  ? Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Image.file(_selectedImageFile!, fit: BoxFit.cover),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.6),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              '✓ Terkompresi',
+                                              style: AppTypography.caption.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : _existingImageUrl.isNotEmpty
+                                  ? Image.network(
+                                      _existingImageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Center(
+                                        child: Icon(Icons.broken_image, size: 40, color: AppColors.textLight),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.primaryGold),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Ketuk untuk memilih foto model dekorasi',
+                                            style: AppTypography.caption.copyWith(color: AppColors.textLight),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Tombol pilihan Galeri / Kamera
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.gallery),
+                                icon: const Icon(Icons.photo_library, size: 18),
+                                label: Text(
+                                  'Galeri',
+                                  style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primaryGold,
+                                  side: const BorderSide(color: AppColors.primaryGold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isSubmitting ? null : () => _pickImage(ImageSource.camera),
+                                icon: const Icon(Icons.camera_alt, size: 18),
+                                label: Text(
+                                  'Kamera',
+                                  style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primaryGold,
+                                  side: const BorderSide(color: AppColors.primaryGold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        DekorinTextField(
+                          controller: _nameController,
+                          label: 'Nama Model Dekorasi',
+                          hint: 'Contoh: Model Rustic Arch Wood / Modern Hexagon',
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama model wajib diisi' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Pilihan Brand Model
+                        Text('Brand Usaha untuk Model Ini', style: AppTypography.labelLarge),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(
+                                mainBrandName.isNotEmpty ? '$mainBrandName (Utama)' : 'Brand Utama',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: _selectedBrandId.isEmpty ? Colors.white : AppColors.textDark,
+                                ),
+                              ),
+                              selected: _selectedBrandId.isEmpty,
+                              selectedColor: AppColors.primaryGold,
+                              backgroundColor: AppColors.goldLight,
+                              onSelected: _isSubmitting ? null : (_) => setState(() => _selectedBrandId = ''),
+                            ),
+                            ..._brands.map((b) {
+                              final isSelected = _selectedBrandId == b.id;
+                              return ChoiceChip(
+                                label: Text(
+                                  b.name,
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white : AppColors.textDark,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                selectedColor: AppColors.primaryGold,
+                                backgroundColor: AppColors.goldLight,
+                                onSelected: _isSubmitting ? null : (_) => setState(() => _selectedBrandId = b.id),
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        DekorinTextField(
+                          controller: _widthController,
+                          label: 'Lebar Model Dekorasi',
+                          hint: 'Contoh: 3 Meter, 4 Meter, atau 6x3m',
+                          prefixIcon: Icons.straighten,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Lebar dekorasi wajib diisi' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        DekorinTextField(
+                          controller: _priceController,
+                          label: 'Harga Dasar / Acuan Model',
+                          hint: 'Contoh: 2.000.000',
+                          prefixText: 'Rp ',
+                          prefixStyle: AppTypography.labelLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Harga acuan wajib diisi';
+                            final clean = v.replaceAll(RegExp(r'\D'), '');
+                            if (double.tryParse(clean) == null || double.parse(clean) < 0) {
+                              return 'Harga harus berupa angka valid';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        DekorinTextField(
+                          controller: _descController,
+                          label: 'Deskripsi / Detail Model',
+                          hint: 'Contoh: Rangkaian arch kayu jati belanda, pampas kering, kursi pelaminan...',
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section Template Properti & Alat Bawaan
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundLight,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.playlist_add_check_circle, size: 20, color: AppColors.primaryGold),
+                                      const SizedBox(width: 8),
+                                      Text('Barang & Alat Bawaan', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  if (_selectedProps.isNotEmpty)
+                                    InkWell(
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (clearCtx) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                            title: Text('Kosongkan Daftar?', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                            content: Text('Semua barang bawaan untuk model ini akan dihapus dari daftar.', style: AppTypography.bodySmall),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(clearCtx), child: Text('Batal', style: AppTypography.caption)),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  setState(() => _selectedProps.clear());
+                                                  Navigator.pop(clearCtx);
+                                                },
+                                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                                child: Text('Kosongkan', style: AppTypography.button),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.red),
+                                            const SizedBox(width: 2),
+                                            Text('Kosongkan', style: AppTypography.caption.copyWith(color: Colors.red, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Barang di bawah akan otomatis terisi saat model ini dipilih pada agenda.',
+                                style: AppTypography.caption.copyWith(fontSize: 11, color: AppColors.textLight),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Action Buttons: Salin dari Model Lain & Pilih Sekaligus
+                              Row(
+                                children: [
+                                  // Tombol 1: Salin dari Model Lain
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _isSubmitting
+                                          ? null
+                                          : () {
+                                              final otherModels = (widget.localModels ?? ref.read(decorationModelsProvider).valueOrNull ?? [])
+                                                  .where((m) => m.id != widget.model?.id && m.modelProperties.isNotEmpty)
+                                                  .toList();
+
+                                              if (otherModels.isEmpty) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Belum ada model lain yang memiliki barang bawaan untuk disalin.',
+                                                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                                    ),
+                                                    backgroundColor: Colors.orange,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              showDialog(
+                                                context: context,
+                                                builder: (dialogCtx) {
+                                                  return AlertDialog(
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                                    title: Row(
+                                                      children: [
+                                                        const Icon(Icons.copy_rounded, color: AppColors.primaryGold, size: 20),
+                                                        const SizedBox(width: 8),
+                                                        Text('Salin dari Model Lain', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                                      ],
+                                                    ),
+                                                    content: SizedBox(
+                                                      width: double.maxFinite,
+                                                      child: Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text('Pilih model yang ingin disalin seluruh barang & alatnya:', style: AppTypography.bodySmall),
+                                                          const SizedBox(height: 12),
+                                                          Flexible(
+                                                            child: ListView.separated(
+                                                              shrinkWrap: true,
+                                                              itemCount: otherModels.length,
+                                                              separatorBuilder: (_, _) => const Divider(height: 1),
+                                                              itemBuilder: (ctx, idx) {
+                                                                final om = otherModels[idx];
+                                                                return ListTile(
+                                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                                  leading: Container(
+                                                                    padding: const EdgeInsets.all(6),
+                                                                    decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(8)),
+                                                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                                                  ),
+                                                                  title: Text(om.name, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+                                                                  subtitle: Text('${om.modelProperties.length} Barang & Alat', style: AppTypography.caption),
+                                                                  trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textLight),
+                                                                  onTap: () {
+                                                                    Navigator.pop(dialogCtx);
+                                                                    void applyClone(bool replace) {
+                                                                      setState(() {
+                                                                        if (replace) {
+                                                                          _selectedProps.clear();
+                                                                        }
+                                                                        for (final mp in om.modelProperties) {
+                                                                          if (!_selectedProps.any((sp) => sp.propertyId == mp.propertyId)) {
+                                                                            _selectedProps.add(
+                                                                              DecorationModelProperty(
+                                                                                id: '',
+                                                                                decorationModelId: widget.model?.id ?? '',
+                                                                                propertyId: mp.propertyId,
+                                                                                defaultQty: mp.defaultQty,
+                                                                                property: mp.property,
+                                                                              ),
+                                                                            );
+                                                                          }
+                                                                        }
+                                                                      });
+                                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                                        SnackBar(
+                                                                          content: Text(
+                                                                            '✓ ${om.modelProperties.length} barang berhasil disalin dari "${om.name}"!',
+                                                                            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                                                          ),
+                                                                          backgroundColor: AppColors.primaryGold,
+                                                                        ),
+                                                                      );
+                                                                    }
+
+                                                                    if (_selectedProps.isNotEmpty) {
+                                                                      showDialog(
+                                                                        context: context,
+                                                                        builder: (confirmCtx) => AlertDialog(
+                                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                                                          title: Text('Metode Salin', style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold)),
+                                                                          content: Text(
+                                                                            'Daftar saat ini sudah berisi ${_selectedProps.length} barang. Apakah ingin mengganti semua atau menggabungkannya?',
+                                                                            style: AppTypography.bodySmall,
+                                                                          ),
+                                                                          actions: [
+                                                                            TextButton(
+                                                                              onPressed: () {
+                                                                                Navigator.pop(confirmCtx);
+                                                                                applyClone(false);
+                                                                              },
+                                                                              child: Text(
+                                                                                'Gabungkan',
+                                                                                style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.primaryGold),
+                                                                              ),
+                                                                            ),
+                                                                            ElevatedButton(
+                                                                              onPressed: () {
+                                                                                Navigator.pop(confirmCtx);
+                                                                                applyClone(true);
+                                                                              },
+                                                                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.white),
+                                                                              child: Text('Ganti Semua', style: AppTypography.button),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      );
+                                                                    } else {
+                                                                      applyClone(true);
+                                                                    }
+                                                                  },
+                                                                );
+                                                              },
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(onPressed: () => Navigator.pop(dialogCtx), child: Text('Tutup', style: AppTypography.caption)),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                      icon: const Icon(Icons.copy_rounded, size: 15),
+                                      label: Text('Salin dari Model', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold)),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primaryGold,
+                                        side: const BorderSide(color: AppColors.primaryGold),
+                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Tombol 2: Pilih Sekaligus (Multi-Select)
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _isSubmitting
+                                          ? null
+                                          : () async {
+                                              final selectedIds = _selectedProps.map((p) => p.propertyId).toSet();
+                                              final currentQtys = {for (var p in _selectedProps) p.propertyId: p.defaultQty};
+
+                                              final result = await MultiSelectPropertySheet.show(
+                                                context,
+                                                allProperties: _allProperties,
+                                                initiallySelectedPropertyIds: selectedIds,
+                                                initialQuantities: currentQtys,
+                                              );
+
+                                              if (result != null && mounted) {
+                                                setState(() {
+                                                  _selectedProps = result.map((item) {
+                                                    return DecorationModelProperty(
+                                                      id: '',
+                                                      decorationModelId: widget.model?.id ?? '',
+                                                      propertyId: item.property.id,
+                                                      defaultQty: item.qty,
+                                                      property: item.property,
+                                                    );
+                                                  }).toList();
+                                                });
+                                              }
+                                            },
+                                      icon: const Icon(Icons.checklist_rounded, size: 16),
+                                      label: Text('Pilih Sekaligus', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primaryGold,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // List of items currently selected
+                              if (_selectedProps.isEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  alignment: Alignment.center,
+                                  child: Text('Belum ada barang bawaan yang diatur', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                                )
+                              else
+                                ..._selectedProps.map((sp) {
+                                  final propName = sp.property?.name ??
+                                      _allProperties.firstWhere(
+                                        (p) => p.id == sp.propertyId,
+                                        orElse: () => Property(id: sp.propertyId, name: 'Barang #${sp.propertyId}'),
+                                      ).name;
+                                  final isTool = sp.property?.isTool ??
+                                      _allProperties.firstWhere(
+                                        (p) => p.id == sp.propertyId,
+                                        orElse: () => const Property(id: '', name: ''),
+                                      ).isTool;
+                                  final unit = sp.property?.unit ??
+                                      _allProperties.firstWhere(
+                                        (p) => p.id == sp.propertyId,
+                                        orElse: () => const Property(id: '', name: '', unit: 'pcs'),
+                                      ).unit;
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.borderLight)),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: isTool ? Colors.blue.shade50 : AppColors.goldLight,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(isTool ? '🛠️' : '📦', style: const TextStyle(fontSize: 12)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(propName, style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                              Text(unit, style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 10)),
+                                            ],
+                                          ),
+                                        ),
+                                        // Stepper Qty (- dan +) langsung di kartu
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.backgroundLight,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: AppColors.borderLight),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              InkWell(
+                                                onTap: () {
+                                                  if (sp.defaultQty > 1) {
+                                                    setState(() {
+                                                      final idx = _selectedProps.indexOf(sp);
+                                                      if (idx != -1) {
+                                                        _selectedProps[idx] = DecorationModelProperty(
+                                                          id: sp.id,
+                                                          decorationModelId: sp.decorationModelId,
+                                                          propertyId: sp.propertyId,
+                                                          defaultQty: sp.defaultQty - 1,
+                                                          property: sp.property,
+                                                        );
+                                                      }
+                                                    });
+                                                  }
+                                                },
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(4),
+                                                  child: Icon(Icons.remove, size: 14, color: AppColors.primaryGold),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                                child: Text(
+                                                  '${sp.defaultQty}',
+                                                  style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold),
+                                                ),
+                                              ),
+                                              InkWell(
+                                                onTap: () {
+                                                  setState(() {
+                                                    final idx = _selectedProps.indexOf(sp);
+                                                    if (idx != -1) {
+                                                      _selectedProps[idx] = DecorationModelProperty(
+                                                        id: sp.id,
+                                                        decorationModelId: sp.decorationModelId,
+                                                        propertyId: sp.propertyId,
+                                                        defaultQty: sp.defaultQty + 1,
+                                                        property: sp.property,
+                                                      );
+                                                    }
+                                                  });
+                                                },
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(4),
+                                                  child: Icon(Icons.add, size: 14, color: AppColors.primaryGold),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedProps.removeWhere((p) => p.propertyId == sp.propertyId);
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGold,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: _isSubmitting ? null : _submit,
+                            child: _isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Text(
+                                    _isEdit ? 'Simpan Perubahan' : 'Tambahkan Model',
+                                    style: AppTypography.button.copyWith(color: Colors.white),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

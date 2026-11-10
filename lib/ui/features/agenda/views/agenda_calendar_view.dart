@@ -626,9 +626,9 @@ class _TimelineScheduleCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // Nama Klien & Paket Dekorasi
+                  // Nama Klien & Paket / Model Dekorasi
                   Text(
-                    '${item.clientName} • ${item.packageName.isNotEmpty ? item.packageName : 'Paket Custom'}',
+                    '${item.clientName} • ${item.displayPackageOrModelTitle}',
                     style: AppTypography.bodySmall.copyWith(
                       color: colors.textPrimary.withValues(alpha: 0.9),
                       fontWeight: FontWeight.w500,

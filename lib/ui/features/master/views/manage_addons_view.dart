@@ -14,6 +14,7 @@ import 'package:dekorin_apps/domain/models/decoration_addon.dart';
 import 'package:flutter/services.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 
 class ManageAddonsView extends ConsumerStatefulWidget {
   const ManageAddonsView({super.key});
@@ -75,7 +76,9 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return SafeArea(
+            return PopScope(
+              canPop: !isSubmitting,
+              child: SafeArea(
               top: true,
               child: Padding(
                 padding: EdgeInsets.only(
@@ -100,7 +103,10 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                 style: AppTypography.titleLarge,
                               ),
                             ),
-                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                            ),
                           ],
                         ),
                       const SizedBox(height: 16),
@@ -315,6 +321,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                 ),
               ),
             ),
+            ),
           );
         },
       );
@@ -322,41 +329,30 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
   );
   }
 
-  void _confirmDelete(DecorationAddon addon) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Hapus Addon', style: AppTypography.titleMedium),
-        content: Text('Apakah Anda yakin ingin menghapus addon "${addon.name}"?', style: AppTypography.bodyMedium),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelMedium.copyWith(color: AppColors.textLight)),
+  Future<void> _confirmDelete(DecorationAddon addon) async {
+    try {
+      await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Addon',
+        message: 'Apakah Anda yakin ingin menghapus addon "${addon.name}"?',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(masterServiceProvider).deleteAddon(addon.id);
+          ref.invalidate(addonsProvider);
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menghapus addon: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(masterServiceProvider).deleteAddon(addon.id);
-                ref.invalidate(addonsProvider);
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Gagal menghapus addon: $e',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.labelMedium.copyWith(color: AppColors.errorRed)),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   @override

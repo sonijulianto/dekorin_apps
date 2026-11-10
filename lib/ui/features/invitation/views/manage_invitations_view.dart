@@ -8,6 +8,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/client_portal_access_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/guest_manager_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_form_view.dart';
@@ -48,38 +49,27 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
     );
   }
 
-  void _confirmDelete(InvitationItem invitation) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Hapus Undangan', style: AppTypography.titleMedium),
-        content: Text('Apakah Anda yakin ingin menghapus undangan "${invitation.title}"?', style: AppTypography.bodyMedium),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelMedium.copyWith(color: AppColors.textLight)),
+  Future<void> _confirmDelete(InvitationItem invitation) async {
+    try {
+      await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Undangan',
+        message: 'Apakah Anda yakin ingin menghapus undangan "${invitation.title}"?',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(invitationServiceProvider).deleteInvitation(invitation.id);
+          ref.invalidate(invitationsProvider);
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(invitationServiceProvider).deleteInvitation(invitation.id);
-                ref.invalidate(invitationsProvider);
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Gagal menghapus: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.labelMedium.copyWith(color: AppColors.errorRed)),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   @override

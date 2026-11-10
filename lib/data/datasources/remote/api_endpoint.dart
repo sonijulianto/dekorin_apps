@@ -26,8 +26,11 @@ class ApiEndpoint {
   static const String users = '/users';
   static const String companyProfile = '/company/profile';
   static const String companyBrands = '/company/brands';
+  static const String invoiceTemplate = '/company/invoice-template';
   static const String rolePermissions = '/company/role-permissions';
   static const String resetRolePermissions = '/company/role-permissions/reset';
+  static const String formConfig = '/company/form-config';
+  static const String resetFormConfig = '/company/form-config/reset';
 
   // ── Dashboard & Expenses ──────────────────────────────────
   static const String dashboardSummary = '/dashboard/summary';
@@ -38,6 +41,8 @@ class ApiEndpoint {
 
   // ── Agendas, Packages, Models & Addons ────────────────────
   static const String agendas = '/agendas';
+  static const String generateAgendaLink = '/agendas/generate-link';
+  static const String pendingAgendaLinks = '/agendas/pending-links';
   static const String packages = '/packages';
   static const String reorderPackages = '/packages/reorder';
   static const String decorationModels = '/decoration-models';

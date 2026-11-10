@@ -97,6 +97,11 @@ class AgendaService {
     String modelWidth = '',
     String modelImageUrl = '',
     double modelAdditionalPrice = 0.0,
+    String discountType = 'amount',
+    double discountValue = 0.0,
+    double transportFee = 0.0,
+    double dpAmount = 0.0,
+    String paymentStatus = '',
     String notes = '',
   }) async {
     final formattedDate = eventDateTime != null
@@ -118,6 +123,11 @@ class AgendaService {
       if (modelWidth.isNotEmpty) 'model_width': modelWidth,
       if (modelImageUrl.isNotEmpty) 'model_image_url': modelImageUrl,
       if (modelAdditionalPrice > 0) 'model_additional_price': modelAdditionalPrice,
+      if (discountValue > 0) 'discount_type': AgendaItem.normalizeDiscountType(discountType),
+      if (discountValue > 0) 'discount_value': discountValue,
+      if (transportFee > 0) 'transport_fee': transportFee,
+      if (dpAmount > 0) 'dp_amount': dpAmount,
+      if (paymentStatus.isNotEmpty) 'payment_status': paymentStatus,
       if (notes.isNotEmpty) 'notes': notes,
     };
 
@@ -278,17 +288,31 @@ class AgendaService {
   }
 
   /// Mengupdate status pembayaran agenda (unpaid, dp, paid)
-  Future<AgendaItem> updatePaymentStatus(String agendaId, String paymentStatus) async {
+  Future<AgendaItem> updatePaymentStatus(
+    String agendaId,
+    String paymentStatus, {
+    DateTime? fallbackEventDateTime,
+  }) async {
     final payload = {'payment_status': paymentStatus};
     final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/payment-status', body: payload);
-    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    return AgendaItem.fromJson(
+      responseData['data'] as Map<String, dynamic>,
+      fallbackEventDateTime: fallbackEventDateTime,
+    );
   }
 
   /// Mengupdate status acara agenda (upcoming, completed, cancelled)
-  Future<AgendaItem> updateEventStatus(String agendaId, String status) async {
+  Future<AgendaItem> updateEventStatus(
+    String agendaId,
+    String status, {
+    DateTime? fallbackEventDateTime,
+  }) async {
     final payload = {'status': status};
     final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId/status', body: payload);
-    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+    return AgendaItem.fromJson(
+      responseData['data'] as Map<String, dynamic>,
+      fallbackEventDateTime: fallbackEventDateTime,
+    );
   }
 
   /// Mengupdate jadwal acara (tanggal dan jam) untuk agenda aktif
@@ -363,6 +387,8 @@ class AgendaService {
     String modelWidth = '',
     String modelImageUrl = '',
     double modelAdditionalPrice = 0.0,
+    String discountType = 'amount',
+    double discountValue = 0.0,
     double transportFee = 0.0,
     double dpAmount = 0.0,
     String paymentStatus = '',
@@ -389,6 +415,8 @@ class AgendaService {
       'model_width': modelWidth,
       'model_image_url': modelImageUrl,
       'model_additional_price': modelAdditionalPrice,
+      'discount_type': AgendaItem.normalizeDiscountType(discountType),
+      'discount_value': discountValue,
       'transport_fee': transportFee,
       'dp_amount': dpAmount,
       if (paymentStatus.isNotEmpty) 'payment_status': paymentStatus,
@@ -398,6 +426,40 @@ class AgendaService {
 
     final responseData = await ApiClient.put('${ApiEndpoint.agendas}/$agendaId', body: payload);
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Membuat link form kosong untuk diisi client (tidak masuk agenda utama sebelum client mengisi)
+  Future<AgendaItem> generateClientFormLink({
+    String brandId = '',
+    String label = '',
+  }) async {
+    final responseData = await ApiClient.post(
+      ApiEndpoint.generateAgendaLink,
+      body: {
+        'brand_id': brandId,
+        if (label.trim().isNotEmpty) 'label': label.trim(),
+      },
+    );
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Mengambil daftar link form client yang masih menunggu isian (is_form_draft = true)
+  Future<List<AgendaItem>> getPendingClientLinks({String brandId = ''}) async {
+    final query = brandId.isNotEmpty ? '?brand_id=${Uri.encodeComponent(brandId)}' : '';
+    final responseData = await ApiClient.get('${ApiEndpoint.pendingAgendaLinks}$query');
+    final List<dynamic> list = responseData['data'] as List<dynamic>? ?? [];
+    return list.map((json) => AgendaItem.fromJson(json as Map<String, dynamic>)).toList();
+  }
+
+  /// Membuka kembali kunci form client agar client bisa mengisi ulang lewat link
+  Future<AgendaItem> unlockAgendaForm(String agendaId) async {
+    final responseData = await ApiClient.post('${ApiEndpoint.agendas}/$agendaId/unlock-form');
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Menghapus agenda atau draft link form client
+  Future<void> deleteAgenda(String agendaId) async {
+    await ApiClient.delete('${ApiEndpoint.agendas}/$agendaId');
   }
 }
 

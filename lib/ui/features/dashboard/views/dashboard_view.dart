@@ -1139,7 +1139,7 @@ class DashboardView extends ConsumerWidget {
                                 child: Text(
                                   agendas[index].backdropTitle.isNotEmpty
                                       ? agendas[index].backdropTitle
-                                      : agendas[index].packageName,
+                                      : agendas[index].displayPackageOrModelTitle,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: const Color(0xFF3A3A3A),
                                     fontSize: 12.5,

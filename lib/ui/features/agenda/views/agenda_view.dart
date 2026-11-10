@@ -10,6 +10,7 @@ import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.da
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_calendar_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/pending_links_sheet.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class AgendaView extends ConsumerWidget {
@@ -22,6 +23,17 @@ class AgendaView extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => const CreateAgendaSheet(),
     );
+  }
+
+  void _openPendingLinksSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PendingLinksSheet(),
+    ).then((_) {
+      ref.read(agendaViewModelProvider.notifier).refresh();
+    });
   }
 
   Future<void> _pickCustomDateRange(BuildContext context, WidgetRef ref) async {
@@ -64,6 +76,17 @@ class AgendaView extends ConsumerWidget {
           style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         actions: [
+          if (user?.canCreateAgenda ?? true)
+            IconButton(
+              tooltip: 'Link Form Client',
+              icon: SvgPicture.asset(
+                'assets/icons/share.svg',
+                width: 21,
+                height: 21,
+                colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+              ),
+              onPressed: () => _openPendingLinksSheet(context, ref),
+            ),
           IconButton(
             tooltip: 'Kalender Agenda',
             icon: SvgPicture.asset(

@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/models/user_model.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/team/view_models/team_view_model.dart';
 
@@ -408,6 +409,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
     final passCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     String selectedRole = isOwner ? 'admin' : 'crew';
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -417,7 +419,9 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            return Padding(
+            return PopScope(
+              canPop: !isSubmitting,
+              child: Padding(
               padding: EdgeInsets.only(left: 20, right: 20, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
               child: SingleChildScrollView(
                 child: Column(
@@ -428,7 +432,10 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Tambah Anggota Tim', style: AppTypography.titleMedium),
-                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -545,78 +552,91 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                           backgroundColor: AppColors.primaryGold,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: () async {
-                          final name = nameCtrl.text.trim();
-                          final phone = phoneCtrl.text.trim();
-                          final pass = passCtrl.text.trim();
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final name = nameCtrl.text.trim();
+                                final phone = phoneCtrl.text.trim();
+                                final pass = passCtrl.text.trim();
 
-                          if (name.isEmpty || phone.isEmpty || pass.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Harap lengkapi semua kolom wajib',
-                                  style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                ),
+                                if (name.isEmpty || phone.isEmpty || pass.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Harap lengkapi semua kolom wajib',
+                                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                if (pass.length < 6) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Password minimal 6 karakter',
+                                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  await ref
+                                      .read(teamViewModelProvider.notifier)
+                                      .createMember(
+                                        fullName: name,
+                                        phone: phone,
+                                        password: pass,
+                                        role: selectedRole,
+                                        email: emailCtrl.text.trim(),
+                                      );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Anggota $name berhasil ditambahkan!',
+                                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setModalState(() => isSubmitting = false);
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Gagal: $e',
+                                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                        ),
+                                        backgroundColor: AppColors.errorRed,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                'Simpan Anggota Baru',
+                                style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                               ),
-                            );
-                            return;
-                          }
-
-                          if (pass.length < 6) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Password minimal 6 karakter',
-                                  style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-
-                          try {
-                            await ref
-                                .read(teamViewModelProvider.notifier)
-                                .createMember(
-                                  fullName: name,
-                                  phone: phone,
-                                  password: pass,
-                                  role: selectedRole,
-                                  email: emailCtrl.text.trim(),
-                                );
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Anggota $name berhasil ditambahkan!',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Gagal: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
-                                  backgroundColor: AppColors.errorRed,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Text(
-                          'Simpan Anggota Baru',
-                          style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
                       ),
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },
@@ -671,6 +691,7 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
     final phoneCtrl = TextEditingController(text: member.phone);
     final passCtrl = TextEditingController();
     String selectedRole = member.role.toLowerCase();
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -680,7 +701,9 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            return Padding(
+            return PopScope(
+              canPop: !isSubmitting,
+              child: Padding(
               padding: EdgeInsets.only(left: 20, right: 20, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
               child: SingleChildScrollView(
                 child: Column(
@@ -691,7 +714,10 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Edit Anggota Tim', style: AppTypography.titleMedium),
-                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -773,50 +799,63 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
                           backgroundColor: AppColors.primaryGold,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: () async {
-                          try {
-                            await ref
-                                .read(teamViewModelProvider.notifier)
-                                .updateMember(
-                                  id: member.id,
-                                  fullName: nameCtrl.text.trim(),
-                                  phone: phoneCtrl.text.trim(),
-                                  password: passCtrl.text.trim().isNotEmpty ? passCtrl.text.trim() : null,
-                                  role: selectedRole,
-                                );
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Data anggota berhasil diperbarui!',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Gagal: $e',
-                                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                  ),
-                                  backgroundColor: AppColors.errorRed,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Text(
-                          'Simpan Perubahan',
-                          style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                setModalState(() => isSubmitting = true);
+                                try {
+                                  await ref
+                                      .read(teamViewModelProvider.notifier)
+                                      .updateMember(
+                                        id: member.id,
+                                        fullName: nameCtrl.text.trim(),
+                                        phone: phoneCtrl.text.trim(),
+                                        password: passCtrl.text.trim().isNotEmpty ? passCtrl.text.trim() : null,
+                                        role: selectedRole,
+                                      );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Data anggota berhasil diperbarui!',
+                                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setModalState(() => isSubmitting = false);
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Gagal: $e',
+                                          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                        ),
+                                        backgroundColor: AppColors.errorRed,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                'Simpan Perubahan',
+                                style: AppTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
                       ),
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },
@@ -827,55 +866,39 @@ class _ManageTeamViewState extends ConsumerState<ManageTeamView> {
 
   // ── Konfirmasi Hapus Anggota ───────────────────────────────────────
 
-  void _confirmDeleteMember(BuildContext context, UserModel member) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus Anggota Tim?', style: AppTypography.h3),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus akun "${member.fullName}"? Tindakan ini tidak dapat dibatalkan.',
-          style: AppTypography.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold)),
+  Future<void> _confirmDeleteMember(BuildContext context, UserModel member) async {
+    try {
+      final deleted = await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Anggota Tim?',
+        message: 'Apakah Anda yakin ingin menghapus akun "${member.fullName}"? Tindakan ini tidak dapat dibatalkan.',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(teamViewModelProvider.notifier).deleteMember(member.id);
+        },
+      );
+      if (deleted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Akun ${member.fullName} berhasil dihapus',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(teamViewModelProvider.notifier).deleteMember(member.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Akun ${member.fullName} berhasil dihapus',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Gagal menghapus: $e',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: AppColors.errorRed,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menghapus: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+            backgroundColor: AppColors.errorRed,
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 }

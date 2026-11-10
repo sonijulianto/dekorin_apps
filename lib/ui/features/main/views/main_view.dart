@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_view.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/views/ai_decor_studio_view.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/dashboard_view.dart';
@@ -25,6 +26,7 @@ class _MainViewState extends ConsumerState<MainView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateChecker.check(context);
+      ref.read(invoiceTemplateProvider.notifier).syncFromServer();
     });
   }
 

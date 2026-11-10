@@ -5,6 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/app_update_service.dart';
+import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
@@ -18,6 +20,7 @@ import 'package:dekorin_apps/ui/features/master/views/manage_decoration_models_v
 import 'package:dekorin_apps/ui/features/master/views/manage_packages_view.dart';
 import 'package:dekorin_apps/ui/features/master/views/manage_properties_view.dart';
 import 'package:dekorin_apps/ui/features/profile/views/change_password_view.dart';
+import 'package:dekorin_apps/ui/features/profile/views/form_config_view.dart';
 import 'package:dekorin_apps/ui/features/team/views/manage_team_view.dart';
 import 'package:dekorin_apps/ui/features/team/views/role_permissions_view.dart';
 
@@ -140,9 +143,13 @@ class ProfileView extends ConsumerWidget {
                       title: Text('Template Desain Invoice', style: AppTypography.titleSmall),
                       subtitle: Consumer(
                         builder: (context, ref, _) {
-                          final current = ref.watch(invoiceTemplateProvider);
+                          final templateState = ref.watch(invoiceTemplateProvider);
+                          final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
+                          final subtitleText = brands.isEmpty
+                              ? '${templateState.defaultTemplate.name} (Aktif)'
+                              : 'Utama: ${templateState.defaultTemplate.name} • Atur per Brand';
                           return Text(
-                            '${current.name} (Aktif)',
+                            subtitleText,
                             style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
                           );
                         },
@@ -150,6 +157,25 @@ class ProfileView extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const InvoiceTemplateSettingView()));
+                      },
+                    ),
+                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                        child: SvgPicture.asset(
+                          'assets/icons/edit.svg',
+                          width: 22,
+                          height: 22,
+                          colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                        ),
+                      ),
+                      title: Text('Pengaturan Form Link Client', style: AppTypography.titleSmall),
+                      subtitle: Text('Atur daftar isian wajib/opsional & urutan per Sub-Brand', style: AppTypography.caption),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const FormConfigView()));
                       },
                     ),
                   ],

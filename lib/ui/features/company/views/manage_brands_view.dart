@@ -11,6 +11,7 @@ import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/company/views/edit_company_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -400,63 +401,43 @@ class ManageBrandsView extends ConsumerWidget {
     );
   }
 
-  void _confirmDeleteBrand(BuildContext context, WidgetRef ref, CompanyBrand brand) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus Sub-Brand?', style: AppTypography.h3),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus brand "${brand.name}"? Paket, model, dan agenda yang menggunakan brand ini akan dikembalikan ke Brand Utama.',
-          style: AppTypography.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.textLight)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
+  Future<void> _confirmDeleteBrand(BuildContext context, WidgetRef ref, CompanyBrand brand) async {
+    try {
+      final deleted = await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Sub-Brand?',
+        message: 'Apakah Anda yakin ingin menghapus brand "${brand.name}"? Paket, model, dan agenda yang menggunakan brand ini akan dikembalikan ke Brand Utama.',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(companyServiceProvider).deleteCompanyBrand(brand.id);
+          ref.invalidate(companyBrandsProvider);
+          ref.invalidate(packagesProvider);
+          ref.invalidate(decorationModelsProvider);
+        },
+      );
+      if (deleted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Sub-brand berhasil dihapus',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(companyServiceProvider).deleteCompanyBrand(brand.id);
-                ref.invalidate(companyBrandsProvider);
-                ref.invalidate(packagesProvider);
-                ref.invalidate(decorationModelsProvider);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Sub-brand berhasil dihapus',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Gagal menghapus brand: $e',
-                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: AppColors.errorRed,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('Hapus', style: AppTypography.labelLarge.copyWith(color: Colors.white)),
           ),
-        ],
-      ),
-    );
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menghapus brand: $e',
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -584,7 +565,9 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
     final isEdit = widget.existing != null;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
+    return PopScope(
+      canPop: !_isSaving,
+      child: Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 24),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -716,6 +699,7 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

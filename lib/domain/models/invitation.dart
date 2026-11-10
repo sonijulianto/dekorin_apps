@@ -94,12 +94,13 @@ class InvitationEventCategory {
   }
 }
 
-/// Pilihan Template Desain Undangan Digital (Monochrome PN4, Sakura Blossom TA3, Ocean Blossom TA17, Art Jawa Coklat 3)
+/// Pilihan Template Desain Undangan Digital (Monochrome PN4, Sakura Blossom TA3, Ocean Blossom TA17, Art Jawa Coklat 3, Art Jawa Biru 2)
 class InvitationTemplate {
   static const String ta17 = 'ta17';
   static const String ta3 = 'ta3';
   static const String pn4 = 'pn4';
   static const String jawa3 = 'jawa3';
+  static const String jawa2 = 'jawa2';
 
   static const List<Map<String, dynamic>> all = [
     {
@@ -128,6 +129,20 @@ class InvitationTemplate {
       'secondaryColor': Color(0xFF4F2323),
       'backgroundColor': Color(0xFFFFFCF3),
       'accentColor': Color(0xFFD7BB83),
+      'eventType': 'wedding',
+    },
+    {
+      'id': jawa2,
+      'name': 'Art Jawa Biru 2',
+      'tag': 'Javanese Royal Blue & Wayang',
+      'category': 'wedding',
+      'categoryName': 'Pernikahan',
+      'supportedCategories': ['wedding', 'khitan'],
+      'description': 'Desain adat Jawa biru keraton elegan dengan gunungan wayang biru, animasi air, bingkai lengkung (arch), dan kisah cinta.',
+      'primaryColor': Color(0xFF284B73),
+      'secondaryColor': Color(0xFF1B3554),
+      'backgroundColor': Color(0xFFF6F8FB),
+      'accentColor': Color(0xFF6EC1E4),
       'eventType': 'wedding',
     },
     {

@@ -9,6 +9,7 @@ class CompanyProfile {
   final String description;
   final String instagram;
   final String bankInfo;
+  final String invoiceTemplate;
   final String updatedBy;
   final String updatedByName;
   final DateTime? createdAt;
@@ -24,6 +25,7 @@ class CompanyProfile {
     this.description = '',
     this.instagram = '',
     this.bankInfo = '',
+    this.invoiceTemplate = 'template_modern_navy',
     this.updatedBy = '',
     this.updatedByName = '',
     this.createdAt,
@@ -31,6 +33,7 @@ class CompanyProfile {
   });
 
   factory CompanyProfile.fromJson(Map<String, dynamic> json) {
+    final rawTmpl = (json['invoice_template'] as String? ?? '').trim();
     return CompanyProfile(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -41,6 +44,7 @@ class CompanyProfile {
       description: json['description'] as String? ?? '',
       instagram: json['instagram'] as String? ?? '',
       bankInfo: json['bank_info'] as String? ?? '',
+      invoiceTemplate: rawTmpl.isNotEmpty ? rawTmpl : 'template_modern_navy',
       updatedBy: json['updated_by'] as String? ?? '',
       updatedByName: json['updated_by_name'] as String? ?? '',
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
@@ -59,6 +63,7 @@ class CompanyProfile {
       'description': description,
       'instagram': instagram,
       'bank_info': bankInfo,
+      'invoice_template': invoiceTemplate,
       'updated_by': updatedBy,
       'updated_by_name': updatedByName,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
@@ -76,6 +81,7 @@ class CompanyProfile {
     String? description,
     String? instagram,
     String? bankInfo,
+    String? invoiceTemplate,
     String? updatedBy,
     String? updatedByName,
     DateTime? createdAt,
@@ -91,6 +97,7 @@ class CompanyProfile {
       description: description ?? this.description,
       instagram: instagram ?? this.instagram,
       bankInfo: bankInfo ?? this.bankInfo,
+      invoiceTemplate: invoiceTemplate ?? this.invoiceTemplate,
       updatedBy: updatedBy ?? this.updatedBy,
       updatedByName: updatedByName ?? this.updatedByName,
       createdAt: createdAt ?? this.createdAt,
@@ -101,7 +108,7 @@ class CompanyProfile {
 
 /// Model domain untuk Sub-Brand / Multi-Brand di bawah satu badan usaha (Company).
 /// Rekening bank & alamat tetap mengikuti Company utama, sedangkan nama, logo,
-/// deskripsi, WhatsApp, dan Instagram dapat berbeda untuk tiap brand.
+/// deskripsi, WhatsApp, Instagram, dan template invoice dapat berbeda untuk tiap brand.
 class CompanyBrand {
   final String id;
   final String companyId;
@@ -110,6 +117,7 @@ class CompanyBrand {
   final String description;
   final String phone;
   final String instagram;
+  final String invoiceTemplate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -121,6 +129,7 @@ class CompanyBrand {
     this.description = '',
     this.phone = '',
     this.instagram = '',
+    this.invoiceTemplate = '',
     this.createdAt,
     this.updatedAt,
   });
@@ -134,6 +143,7 @@ class CompanyBrand {
       description: json['description'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       instagram: json['instagram'] as String? ?? '',
+      invoiceTemplate: json['invoice_template'] as String? ?? '',
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'].toString()) : null,
     );
@@ -148,6 +158,7 @@ class CompanyBrand {
       'description': description,
       'phone': phone,
       'instagram': instagram,
+      'invoice_template': invoiceTemplate,
     };
   }
 
@@ -159,6 +170,7 @@ class CompanyBrand {
     String? description,
     String? phone,
     String? instagram,
+    String? invoiceTemplate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -170,6 +182,7 @@ class CompanyBrand {
       description: description ?? this.description,
       phone: phone ?? this.phone,
       instagram: instagram ?? this.instagram,
+      invoiceTemplate: invoiceTemplate ?? this.invoiceTemplate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

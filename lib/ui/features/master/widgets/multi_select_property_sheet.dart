@@ -115,6 +115,24 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
     });
   }
 
+  Widget _buildFilterChip({required String value, required String label}) {
+    final isSelected = _selectedFilter == value;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: AppTypography.caption.copyWith(
+          color: isSelected ? AppColors.primaryGold : AppColors.textDark,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (_) => setState(() => _selectedFilter = value),
+      selectedColor: AppColors.goldLight,
+      visualDensity: VisualDensity.compact,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = widget.allProperties.where((p) {
@@ -146,13 +164,15 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Pilih Barang Sekaligus', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text('Centang cepat semua barang & alat yang dibawa', style: AppTypography.caption),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Pilih Barang Sekaligus', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('Centang cepat semua barang & alat yang dibawa', style: AppTypography.caption),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -201,39 +221,21 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                 // Filter Chips & Quick Select All
                 Row(
                   children: [
-                    ChoiceChip(
-                      label: Text('Semua (${widget.allProperties.length})', style: AppTypography.caption),
-                      selected: _selectedFilter == 'all',
-                      onSelected: (_) => setState(() => _selectedFilter = 'all'),
-                      selectedColor: AppColors.goldLight,
-                      labelStyle: AppTypography.caption.copyWith(
-                        color: _selectedFilter == 'all' ? AppColors.primaryGold : AppColors.textDark,
-                        fontWeight: _selectedFilter == 'all' ? FontWeight.bold : FontWeight.normal,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildFilterChip(value: 'all', label: 'Semua (${widget.allProperties.length})'),
+                            const SizedBox(width: 6),
+                            _buildFilterChip(value: 'property', label: '📦 Properti'),
+                            const SizedBox(width: 6),
+                            _buildFilterChip(value: 'tool', label: '🛠️ Alat'),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    ChoiceChip(
-                      label: Text('📦 Properti', style: AppTypography.caption),
-                      selected: _selectedFilter == 'property',
-                      onSelected: (_) => setState(() => _selectedFilter = 'property'),
-                      selectedColor: AppColors.goldLight,
-                      labelStyle: AppTypography.caption.copyWith(
-                        color: _selectedFilter == 'property' ? AppColors.primaryGold : AppColors.textDark,
-                        fontWeight: _selectedFilter == 'property' ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    ChoiceChip(
-                      label: Text('🛠️ Alat', style: AppTypography.caption),
-                      selected: _selectedFilter == 'tool',
-                      onSelected: (_) => setState(() => _selectedFilter = 'tool'),
-                      selectedColor: AppColors.goldLight,
-                      labelStyle: AppTypography.caption.copyWith(
-                        color: _selectedFilter == 'tool' ? AppColors.primaryGold : AppColors.textDark,
-                        fontWeight: _selectedFilter == 'tool' ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: () {
                         if (isAllFilteredSelected) {
@@ -242,6 +244,11 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                           _selectAllFiltered(filtered);
                         }
                       },
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                       child: Text(
                         isAllFilteredSelected ? 'Batal Semua' : 'Pilih Semua',
                         style: AppTypography.caption.copyWith(
@@ -303,7 +310,7 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                                 color: item.isTool ? Colors.blue.shade50 : AppColors.goldLight,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(item.isTool ? '🛠️' : '📦', style: const TextStyle(fontSize: 14)),
+                              child: Text(item.isTool ? '🛠️' : '📦', style: AppTypography.bodyMedium),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -314,6 +321,8 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                                   children: [
                                     Text(
                                       item.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: AppTypography.bodyMedium.copyWith(
                                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                                         color: AppColors.textDark,
@@ -322,16 +331,24 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                                     const SizedBox(height: 2),
                                     Row(
                                       children: [
-                                        Text(
-                                          item.category,
-                                          style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
+                                        Flexible(
+                                          child: Text(
+                                            item.category,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
+                                          ),
                                         ),
                                         const SizedBox(width: 6),
                                         Text('•', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
                                         const SizedBox(width: 6),
-                                        Text(
-                                          'Stok: ${item.totalStock} ${item.unit}',
-                                          style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
+                                        Flexible(
+                                          child: Text(
+                                            'Stok: ${item.totalStock} ${item.unit}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTypography.caption.copyWith(color: AppColors.textLight, fontSize: 11),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -340,6 +357,7 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                               ),
                             ),
                             if (isSelected) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                 decoration: BoxDecoration(
@@ -409,15 +427,20 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                     children: [
                       Text(
                         '$selectedCount Barang Dipilih',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         selectedCount > 0 ? 'Siap dimasukkan ke daftar bawaan' : 'Centang barang di atas',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption.copyWith(color: AppColors.textLight),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: () {
                     final selectedList = _selectedMap.values.toList();
@@ -426,6 +449,7 @@ class _MultiSelectPropertySheetState extends State<MultiSelectPropertySheet> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryGold,
                     foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 48),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),

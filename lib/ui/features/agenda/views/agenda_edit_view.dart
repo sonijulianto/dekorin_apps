@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
@@ -13,12 +14,15 @@ import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
+import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_calendar_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/package_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/place_search_modal.dart';
+import 'package:dekorin_apps/ui/features/agenda/widgets/agenda_pricing_widgets.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
@@ -34,6 +38,8 @@ class AgendaEditView extends ConsumerStatefulWidget {
 
 class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
   final _formKey = GlobalKey<FormState>();
+  final _clientNameFieldKey = GlobalKey<FormFieldState<String>>();
+  final _clientPhoneFieldKey = GlobalKey<FormFieldState<String>>();
 
   late String _brandId;
   late TextEditingController _clientNameController;
@@ -52,16 +58,20 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
   late String _modelName;
   late String _modelWidth;
   late String _modelImageUrl;
-  late double _modelAdditionalPrice;
+  late TextEditingController _modelPriceController;
 
   List<SelectedAddonItem> _selectedAddons = [];
 
+  late String _discountType;
+  late TextEditingController _discountController;
   late TextEditingController _transportFeeController;
   late TextEditingController _dpAmountController;
   late String _paymentStatus;
   late String _status;
 
   bool _isSaving = false;
+  bool _isOpeningPicker = false;
+  bool _isPickingContact = false;
 
   final _currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   final _thousandFormatter = NumberFormat('#,###', 'id_ID');
@@ -139,7 +149,17 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
     _modelName = item.modelName;
     _modelWidth = item.modelWidth;
     _modelImageUrl = item.modelImageUrl;
-    _modelAdditionalPrice = item.modelAdditionalPrice;
+    final initialModelPrice = item.modelAdditionalPrice > 0
+        ? _thousandFormatter.format(item.modelAdditionalPrice.toInt()).replaceAll(',', '.')
+        : '';
+    _modelPriceController = TextEditingController(text: initialModelPrice);
+
+    _discountType = AgendaItem.normalizeDiscountType(item.discountType);
+    final initialDiscount = formatAgendaPricingInput(
+      item.discountValue,
+      isPercent: _discountType == 'percent',
+    );
+    _discountController = TextEditingController(text: initialDiscount);
 
     final initialTransport = item.transportFee > 0 ? _thousandFormatter.format(item.transportFee.toInt()).replaceAll(',', '.') : '';
     _transportFeeController = TextEditingController(text: initialTransport);
@@ -160,9 +180,21 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
     _mapsUrlController.dispose();
     _notesController.dispose();
     _packagePriceController.dispose();
+    _modelPriceController.dispose();
+    _discountController.dispose();
     _transportFeeController.dispose();
     _dpAmountController.dispose();
     super.dispose();
+  }
+
+  double get _modelAdditionalPrice => _parseFormattedNumber(_modelPriceController.text);
+
+  bool get _hasActivePackage =>
+      _packageId.trim().isNotEmpty || _parseFormattedNumber(_packagePriceController.text) > 0;
+
+  void _setModelPrice(double price) {
+    _modelPriceController.text =
+        price > 0 ? _thousandFormatter.format(price.toInt()).replaceAll(',', '.') : '';
   }
 
   double _parseFormattedNumber(String text) {
@@ -235,6 +267,25 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
     }
   }
 
+  Future<void> _pickContactPhone() async {
+    if (_isPickingContact) return;
+    setState(() => _isPickingContact = true);
+    try {
+      await pickClientContactIntoFields(
+        context: context,
+        ref: ref,
+        phoneController: _clientPhoneController,
+        phoneFieldKey: _clientPhoneFieldKey,
+        nameController: _clientNameController,
+        nameFieldKey: _clientNameFieldKey,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingContact = false);
+      }
+    }
+  }
+
   Future<void> _searchGoogleMaps() async {
     final initial = _mapsUrlController.text.trim().isNotEmpty
         ? _mapsUrlController.text.trim()
@@ -262,96 +313,151 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
   }
 
   Future<void> _openPackagePicker(String brandLabel) async {
-    final result = await Navigator.of(context).push<DecorationPackage>(
-      MaterialPageRoute(
-        builder: (_) => PackagePickerScreen(
-          selectedPackageId: _packageId.isNotEmpty ? _packageId : null,
-          brandId: _brandId,
-          brandName: brandLabel,
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      final result = await Navigator.of(context).push<DecorationPackage>(
+        MaterialPageRoute(
+          builder: (_) => PackagePickerScreen(
+            selectedPackageId: _packageId.isNotEmpty ? _packageId : null,
+            brandId: _brandId,
+            brandName: brandLabel,
+          ),
         ),
-      ),
-    );
+      );
 
-    if (result != null) {
-      setState(() {
-        _packageId = result.id;
-        _packageName = result.name;
-        if (result.basePrice > 0) {
-          _packagePriceController.text = _thousandFormatter.format(result.basePrice.toInt()).replaceAll(',', '.');
-        }
+      if (result != null && mounted) {
+        setState(() {
+          _packageId = result.id;
+          _packageName = result.name;
+          _packagePriceController.text = result.basePrice > 0
+              ? _thousandFormatter.format(result.basePrice.toInt()).replaceAll(',', '.')
+              : '';
 
-        // Sinkronisasi harga model jika sudah ada model yang dipilih
-        if (_modelId.isNotEmpty) {
-          final matchingPm = result.packageModels.where((pm) => pm.decorationModelId == _modelId).firstOrNull;
-          if (matchingPm != null) {
-            _modelAdditionalPrice = matchingPm.additionalPrice;
-          } else {
-            _modelAdditionalPrice = 0.0;
+          // Sinkronisasi harga model jika sudah ada model yang dipilih
+          if (_modelId.isNotEmpty) {
+            final matchingPm = result.packageModels.where((pm) => pm.decorationModelId == _modelId).firstOrNull;
+            _setModelPrice(matchingPm?.additionalPrice ?? 0.0);
           }
+        });
+      }
+    } finally {
+      _isOpeningPicker = false;
+    }
+  }
+
+  Future<void> _clearPackage() async {
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      double nextModelPrice = 0.0;
+      if (_modelId.isNotEmpty) {
+        var models = ref.read(decorationModelsProvider).valueOrNull;
+        if (models == null) {
+          try {
+            models = await DekorinLoadingDialog.run(
+              context,
+              message: 'Memuat data model...',
+              task: () => ref.read(decorationModelsProvider.future),
+            );
+          } catch (_) {}
         }
+        final matchedModel = models?.where((m) => m.id == _modelId).firstOrNull;
+        nextModelPrice = matchedModel?.price ?? _modelAdditionalPrice;
+      }
+      if (!mounted) return;
+      setState(() {
+        _packageId = '';
+        _packageName = 'Belum Dipilih';
+        _packagePriceController.text = '';
+        _setModelPrice(nextModelPrice);
       });
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
   Future<void> _openModelPicker(String brandLabel) async {
-    final packages = ref.read(packagesProvider).valueOrNull ?? const <DecorationPackage>[];
-    DecorationPackage? currentPackage;
-    if (_packageId.isNotEmpty) {
-      currentPackage = packages.where((p) => p.id == _packageId).firstOrNull;
-    }
-
-    final result = await Navigator.of(context).push<SelectedModelResult>(
-      MaterialPageRoute(
-        builder: (_) => ModelPickerScreen(
-          package: currentPackage,
-          selectedModelId: _modelId.isNotEmpty ? _modelId : null,
-          canClearModel: true,
-          brandId: _brandId,
-          brandName: brandLabel,
-        ),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        if (result.isCleared || result.model == null) {
-          _modelId = '';
-          _modelName = '';
-          _modelWidth = '';
-          _modelImageUrl = '';
-          _modelAdditionalPrice = 0.0;
-        } else {
-          _modelId = result.model!.id;
-          _modelName = result.model!.name;
-          _modelWidth = result.model!.width;
-          _modelImageUrl = result.model!.imageUrl;
-          _modelAdditionalPrice = result.additionalPrice;
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      DecorationPackage? currentPackage;
+      if (_packageId.isNotEmpty) {
+        var packages = ref.read(packagesProvider).valueOrNull;
+        if (packages == null) {
+          try {
+            packages = await DekorinLoadingDialog.run(
+              context,
+              message: 'Memuat data paket...',
+              task: () => ref.read(packagesProvider.future),
+            );
+          } catch (_) {}
         }
-      });
+        currentPackage = packages?.where((p) => p.id == _packageId).firstOrNull;
+      }
+      if (!mounted) return;
+
+      final result = await Navigator.of(context).push<SelectedModelResult>(
+        MaterialPageRoute(
+          builder: (_) => ModelPickerScreen(
+            package: currentPackage,
+            selectedModelId: _modelId.isNotEmpty ? _modelId : null,
+            canClearModel: true,
+            brandId: _brandId,
+            brandName: brandLabel,
+          ),
+        ),
+      );
+
+      if (result != null && mounted) {
+        setState(() {
+          if (result.isCleared || result.model == null) {
+            _modelId = '';
+            _modelName = '';
+            _modelWidth = '';
+            _modelImageUrl = '';
+            _setModelPrice(0.0);
+          } else {
+            _modelId = result.model!.id;
+            _modelName = result.model!.name;
+            _modelWidth = result.model!.width;
+            _modelImageUrl = result.model!.imageUrl;
+            _setModelPrice(result.additionalPrice);
+          }
+        });
+      }
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
   Future<void> _openAddonPicker() async {
-    final masterAddons = ref.read(addonsProvider).valueOrNull ?? [];
-    // Rekonsiliasi addon yang sudah ada agar objek cocok dengan master data
-    final reconciledAddons = _selectedAddons.map((sel) {
-      final found = masterAddons.where((m) => m.name.toLowerCase() == sel.addon.name.toLowerCase()).firstOrNull;
-      if (found != null) {
-        return SelectedAddonItem(addon: found, quantity: sel.quantity);
+    if (_isOpeningPicker) return;
+    _isOpeningPicker = true;
+    try {
+      final masterAddons = ref.read(addonsProvider).valueOrNull ?? [];
+      // Rekonsiliasi addon yang sudah ada agar objek cocok dengan master data
+      final reconciledAddons = _selectedAddons.map((sel) {
+        final found = masterAddons.where((m) => m.name.toLowerCase() == sel.addon.name.toLowerCase()).firstOrNull;
+        if (found != null) {
+          return SelectedAddonItem(addon: found, quantity: sel.quantity);
+        }
+        return sel;
+      }).toList();
+
+      final result = await Navigator.of(context).push<List<SelectedAddonItem>>(
+        MaterialPageRoute(
+          builder: (_) => AddonPickerScreen(initiallySelectedAddons: reconciledAddons),
+        ),
+      );
+
+      if (result != null && mounted) {
+        setState(() {
+          _selectedAddons = result;
+        });
       }
-      return sel;
-    }).toList();
-
-    final result = await Navigator.of(context).push<List<SelectedAddonItem>>(
-      MaterialPageRoute(
-        builder: (_) => AddonPickerScreen(initiallySelectedAddons: reconciledAddons),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _selectedAddons = result;
-      });
+    } finally {
+      _isOpeningPicker = false;
     }
   }
 
@@ -364,6 +470,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
 
     try {
       final double packagePrice = _parseFormattedNumber(_packagePriceController.text);
+      final double discountValue = parseAgendaDiscountInput(_discountController.text, _discountType);
       final double transportFee = _parseFormattedNumber(_transportFeeController.text);
       final double dpAmount = _parseFormattedNumber(_dpAmountController.text);
 
@@ -404,6 +511,8 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
         modelWidth: _modelWidth,
         modelImageUrl: _modelImageUrl,
         modelAdditionalPrice: _modelAdditionalPrice,
+        discountType: _discountType,
+        discountValue: discountValue,
         transportFee: transportFee,
         dpAmount: dpAmount,
         paymentStatus: _paymentStatus,
@@ -586,6 +695,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                         Text('Nama Klien *', style: AppTypography.caption),
                         const SizedBox(height: 6),
                         TextFormField(
+                          key: _clientNameFieldKey,
                           controller: _clientNameController,
                           style: AppTypography.bodyMedium,
                           decoration: InputDecoration(
@@ -609,9 +719,22 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                         const SizedBox(height: 12),
 
                         // Nomor HP / WhatsApp
-                        Text('Nomor WhatsApp / HP', style: AppTypography.caption),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text('Nomor WhatsApp / HP', style: AppTypography.caption),
+                            ),
+                            const SizedBox(width: 8),
+                            ContactPickerChip(
+                              onTap: _pickContactPhone,
+                              isLoading: _isPickingContact,
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
+                          key: _clientPhoneFieldKey,
                           controller: _clientPhoneController,
                           keyboardType: TextInputType.phone,
                           style: AppTypography.bodyMedium,
@@ -620,7 +743,20 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                             hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
                             filled: true,
                             fillColor: AppColors.backgroundLight,
-                            prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.primaryGold, size: 20),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: SvgPicture.asset(
+                                'assets/icons/mobile-notch.svg',
+                                width: 20,
+                                height: 20,
+                                colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
+                              ),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.contacts_outlined, color: AppColors.primaryGold, size: 20),
+                              tooltip: 'Ambil dari Kontak',
+                              onPressed: _isPickingContact ? null : _pickContactPhone,
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
@@ -818,10 +954,12 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    _packageName.isNotEmpty ? _packageName : 'Belum Memilih Paket (Ketuk untuk memilih)',
+                                    _hasActivePackage && _packageName.isNotEmpty
+                                        ? _packageName
+                                        : 'Belum Memilih Paket (Ketuk untuk memilih)',
                                     style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: _packageName.isNotEmpty ? FontWeight.bold : FontWeight.normal,
-                                      color: _packageName.isNotEmpty ? AppColors.textDark : AppColors.textLight,
+                                      fontWeight: _hasActivePackage ? FontWeight.bold : FontWeight.normal,
+                                      color: _hasActivePackage ? AppColors.textDark : AppColors.textLight,
                                     ),
                                   ),
                                 ),
@@ -830,6 +968,17 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                             ),
                           ),
                         ),
+                        if (_hasActivePackage) ...[
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: _clearPackage,
+                              icon: const Icon(Icons.clear, size: 14, color: Colors.red),
+                              label: Text('Hapus Paket Terpilih', style: AppTypography.caption.copyWith(color: Colors.red)),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
 
                         // Model Dekorasi
@@ -892,10 +1041,12 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                             if (_modelWidth.isNotEmpty)
                                               Text('Lebar: $_modelWidth', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
                                             if (_modelWidth.isNotEmpty && _modelAdditionalPrice > 0)
-                                              const Text(' • ', style: TextStyle(color: Colors.grey)),
+                                              Text(' • ', style: AppTypography.caption.copyWith(color: Colors.grey)),
                                             if (_modelAdditionalPrice > 0)
                                               Text(
-                                                '+${_currencyFormatter.format(_modelAdditionalPrice)}',
+                                                _hasActivePackage
+                                                    ? '+${_currencyFormatter.format(_modelAdditionalPrice)}'
+                                                    : _currencyFormatter.format(_modelAdditionalPrice),
                                                 style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
                                               ),
                                           ],
@@ -920,7 +1071,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                   _modelName = '';
                                   _modelWidth = '';
                                   _modelImageUrl = '';
-                                  _modelAdditionalPrice = 0.0;
+                                  _setModelPrice(0.0);
                                 });
                               },
                               icon: const Icon(Icons.clear, size: 14, color: Colors.red),
@@ -1064,6 +1215,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                             controller: _packagePriceController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                            onChanged: (_) => setState(() {}),
                             style: AppTypography.bodyMedium,
                             decoration: InputDecoration(
                               prefixText: 'Rp ',
@@ -1079,13 +1231,17 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Biaya Transport
-                          Text('Ongkos Kirim / Uang Transport', style: AppTypography.caption),
+                          // Harga Model Dekorasi (atau Tambahan Biaya Model jika memakai paket)
+                          Text(
+                            _hasActivePackage ? 'Biaya Tambahan Model' : 'Harga Model Dekorasi',
+                            style: AppTypography.caption,
+                          ),
                           const SizedBox(height: 6),
                           TextFormField(
-                            controller: _transportFeeController,
+                            controller: _modelPriceController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                            onChanged: (_) => setState(() {}),
                             style: AppTypography.bodyMedium,
                             decoration: InputDecoration(
                               prefixText: 'Rp ',
@@ -1098,28 +1254,99 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
                             ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Diskon (Hanya memotong harga dekorasi, di luar transport)
+                          Builder(
+                            builder: (_) {
+                              final currentPkgPrice = _parseFormattedNumber(_packagePriceController.text);
+                              final currentDecorSubtotal =
+                                  currentPkgPrice + _modelAdditionalPrice + totalAddonsPrice;
+                              return AgendaDiscountInputField(
+                                discountType: _discountType,
+                                controller: _discountController,
+                                decorSubtotal: currentDecorSubtotal,
+                                onTypeChanged: (nextType) {
+                                  setState(() {
+                                    if (_discountType != nextType) {
+                                      _discountType = nextType;
+                                      _discountController.clear();
+                                    }
+                                  });
+                                },
+                                onValueChanged: (_) => setState(() {}),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Biaya Transport (Sejajar blok pembayaran DP)
+                          AgendaCurrencyInputField(
+                            label: 'Ongkos Kirim / Uang Transport',
+                            controller: _transportFeeController,
+                            svgIconPath: 'assets/icons/shipping-fast.svg',
+                            onChanged: (_) => setState(() {}),
                           ),
                           const SizedBox(height: 12),
 
                           // DP Masuk
-                          Text('Nominal DP Masuk', style: AppTypography.caption),
-                          const SizedBox(height: 6),
-                          TextFormField(
+                          AgendaCurrencyInputField(
+                            label: 'Nominal DP Masuk',
                             controller: _dpAmountController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                            style: AppTypography.bodyMedium,
-                            decoration: InputDecoration(
-                              prefixText: 'Rp ',
-                              prefixStyle: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-                              hintText: '0',
-                              filled: true,
-                              fillColor: AppColors.backgroundLight,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
-                            ),
+                            svgIconPath: 'assets/icons/wallet-income.svg',
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Ringkasan Biaya & Pembayaran Live
+                          Builder(
+                            builder: (_) {
+                              final currentPkgPrice = _parseFormattedNumber(_packagePriceController.text);
+                              final currentDecorSubtotal =
+                                  currentPkgPrice + _modelAdditionalPrice + totalAddonsPrice;
+                              final currentDiscountValue = parseAgendaDiscountInput(
+                                _discountController.text,
+                                _discountType,
+                              );
+                              final currentTransportFee = _parseFormattedNumber(_transportFeeController.text);
+                              final currentDpAmount = _parseFormattedNumber(_dpAmountController.text);
+
+                              final summaryLines = <AgendaSummaryLine>[
+                                if (!_hasActivePackage && _modelName.trim().isNotEmpty)
+                                  AgendaSummaryLine(
+                                    label: 'Model Dekorasi ($_modelName)',
+                                    amountText: _currencyFormatter.format(_modelAdditionalPrice),
+                                  )
+                                else ...[
+                                  AgendaSummaryLine(
+                                    label: 'Paket: ${_packageName.isNotEmpty ? _packageName : "Default"}',
+                                    amountText: _currencyFormatter.format(currentPkgPrice),
+                                  ),
+                                  if (_modelAdditionalPrice > 0)
+                                    AgendaSummaryLine(
+                                      label: 'Tambahan Model ($_modelName)',
+                                      amountText: '+${_currencyFormatter.format(_modelAdditionalPrice)}',
+                                    ),
+                                ],
+                                if (totalAddonsPrice > 0)
+                                  AgendaSummaryLine(
+                                    label: 'Add-on Tambahan',
+                                    amountText: '+${_currencyFormatter.format(totalAddonsPrice)}',
+                                  ),
+                              ];
+
+                              return AgendaPricingSummaryBlock(
+                                title: 'Ringkasan Tagihan & Pembayaran',
+                                totalLabel: 'TOTAL TAGIHAN',
+                                lines: summaryLines,
+                                decorSubtotal: currentDecorSubtotal,
+                                discountType: _discountType,
+                                discountValue: currentDiscountValue,
+                                transportFee: currentTransportFee,
+                                dpAmount: currentDpAmount,
+                              );
+                            },
                           ),
                           const SizedBox(height: 14),
 

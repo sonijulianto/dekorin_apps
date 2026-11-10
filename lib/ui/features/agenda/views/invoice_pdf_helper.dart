@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/invoice_template.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
@@ -27,6 +26,37 @@ class InvoiceItemData {
   });
 }
 
+/// Ringkasan kalkulasi standar untuk seluruh template invoice PDF (aturan baku Template 2):
+/// 1. Subtotal hanya berisi item dekorasi (Paket + Model + Add-on). Transport TIDAK masuk tabel item.
+/// 2. Diskon (% atau Rp) hanya memotong Subtotal dekorasi.
+/// 3. Transport ditambahkan di blok bawah sejajar DP (tidak terkena diskon %).
+/// 4. Grand Total = max(0, (Subtotal - Diskon) + Transport - DP).
+class InvoicePricingSummary {
+  const InvoicePricingSummary({
+    required this.packagePrice,
+    required this.modelAdditionalPrice,
+    required this.addonsTotal,
+    required this.subtotal,
+    required this.discountAmount,
+    required this.discountLabel,
+    required this.transportFee,
+    required this.totalTagihan,
+    required this.dpAmount,
+    required this.grandTotal,
+  });
+
+  final double packagePrice;
+  final double modelAdditionalPrice;
+  final double addonsTotal;
+  final double subtotal;
+  final double discountAmount;
+  final String discountLabel;
+  final double transportFee;
+  final double totalTagihan;
+  final double dpAmount;
+  final double grandTotal;
+}
+
 class InvoicePdfHelper {
   // Fallback harga default master paket jika belum tersimpan di DB
   static const Map<String, double> _fallbackPackagePrices = {
@@ -36,14 +66,95 @@ class InvoicePdfHelper {
     'pkg_04': 18000000.0,
   };
 
-  /// Generate PDF Invoice berdasarkan template pilihan (atau preferensi tersimpan)
+  /// Menyusun seluruh baris item tabel invoice (khusus item dekorasi, tanpa Transport).
+  static List<InvoiceItemData> buildAllInvoiceItems(
+    AgendaItem agenda, {
+    bool uppercase = false,
+  }) {
+    final form = agenda.clientForm;
+    final double packagePrice = _calculatePackagePrice(agenda);
+    final List<InvoiceItemData> items = buildPrimaryDecorationItems(
+      agenda,
+      packagePrice,
+      uppercase: uppercase,
+    );
+
+    final addonList = _extractAddonItems(
+      form?.selectedAddons ?? '',
+      agenda.notes,
+      startNo: items.length + 1,
+    );
+    for (final a in addonList) {
+      items.add(
+        InvoiceItemData(
+          no: a.no,
+          name: uppercase ? a.name.toUpperCase() : a.name,
+          subtitle: a.subtitle,
+          quantity: a.quantity,
+          unitPrice: a.unitPrice,
+          totalPrice: a.totalPrice,
+        ),
+      );
+    }
+    return items;
+  }
+
+  /// Menghitung ringkasan biaya invoice sesuai standar Template 2 untuk semua template PDF.
+  static InvoicePricingSummary calculatePricingSummary(AgendaItem agenda) {
+    final form = agenda.clientForm;
+    final double packagePrice = _calculatePackagePrice(agenda);
+    final addonList = _extractAddonItems(
+      form?.selectedAddons ?? '',
+      agenda.notes,
+      startNo: 1,
+    );
+    double addonsTotal = 0.0;
+    for (final addon in addonList) {
+      addonsTotal += addon.totalPrice;
+    }
+    if (addonsTotal == 0 && form != null && form.addonsPrice > 0) {
+      addonsTotal = form.addonsPrice;
+    }
+
+    final double subtotal = packagePrice + agenda.modelAdditionalPrice + addonsTotal;
+    final double discountAmount = AgendaItem.calculateDiscountAmount(
+      decorSubtotal: subtotal,
+      discountType: agenda.discountType,
+      discountValue: agenda.discountValue,
+    );
+    final String discountLabel = AgendaItem.formatDiscountLabel(
+      discountType: agenda.discountType,
+      discountValue: agenda.discountValue,
+      prefix: 'Discount',
+    );
+    final double transportFee = agenda.transportFee;
+    final double netDecor = (subtotal - discountAmount).clamp(0.0, double.infinity);
+    final double totalTagihan = netDecor + transportFee;
+    final double dpAmount = agenda.dpAmount;
+    final double grandTotal = (totalTagihan - dpAmount).clamp(0.0, double.infinity);
+
+    return InvoicePricingSummary(
+      packagePrice: packagePrice,
+      modelAdditionalPrice: agenda.modelAdditionalPrice,
+      addonsTotal: addonsTotal,
+      subtotal: subtotal,
+      discountAmount: discountAmount,
+      discountLabel: discountLabel,
+      transportFee: transportFee,
+      totalTagihan: totalTagihan,
+      dpAmount: dpAmount,
+      grandTotal: grandTotal,
+    );
+  }
+
+  /// Generate PDF Invoice berdasarkan template pilihan (atau template perusahaan tersimpan di DB)
   static Future<Uint8List> generateInvoicePdf(
     AgendaItem agenda, {
     User? companyUser,
     InvoiceTemplate? template,
   }) async {
     final activeTemplate = template ??
-        InvoiceTemplate.fromId(DataPreferences.getInvoiceTemplate());
+        InvoiceTemplate.fromId(companyUser?.companyInvoiceTemplate);
 
     if (activeTemplate == InvoiceTemplate.minimalistGrey) {
       return _generateMinimalistGreyPdf(agenda, companyUser: companyUser);
@@ -120,59 +231,15 @@ class InvoicePdfHelper {
     );
     final form = agenda.clientForm;
 
-    // 1. Penentuan Harga Paket
-    final double packagePrice = _calculatePackagePrice(agenda);
-
-    // 2. Ekstraksi Item Addon & Kalkulasi
-    final List<InvoiceItemData> items = [];
-    
-    // Item 1: Paket Dekorasi
-    items.add(
-      InvoiceItemData(
-        no: 1,
-        name: agenda.packageName.isNotEmpty ? agenda.packageName : 'Paket Dekorasi',
-        subtitle: [
-          if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
-          if (agenda.modelName.isNotEmpty) 'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
-        ].join(' | '),
-        quantity: 1,
-        unitPrice: packagePrice,
-        totalPrice: packagePrice,
-      ),
-    );
-
-    // Item 2: Model Dekorasi Tambahan (jika ada biaya tambahan)
-    if (agenda.modelAdditionalPrice > 0) {
-      items.add(
-        InvoiceItemData(
-          no: items.length + 1,
-          name: 'Upgrade Model: ${agenda.modelName}',
-          subtitle: agenda.modelWidth.isNotEmpty ? 'Lebar Backdrop: ${agenda.modelWidth}' : '',
-          quantity: 1,
-          unitPrice: agenda.modelAdditionalPrice,
-          totalPrice: agenda.modelAdditionalPrice,
-        ),
-      );
-    }
-
-    // Item Addon
-    final addonList = _extractAddonItems(form?.selectedAddons ?? '', agenda.notes, startNo: items.length + 1);
-    items.addAll(addonList);
-
-    double addonsTotal = 0.0;
-    for (final addon in addonList) {
-      addonsTotal += addon.totalPrice;
-    }
-    if (addonsTotal == 0 && form != null && form.addonsPrice > 0) {
-      addonsTotal = form.addonsPrice;
-    }
-
-    // Kalkulasi Total
-    final double subtotal = packagePrice + agenda.modelAdditionalPrice + addonsTotal;
-    final double transportFee = agenda.transportFee;
-    final double totalTagihan = subtotal + transportFee;
-    final double dpAmount = agenda.dpAmount;
-    final double grandTotal = (totalTagihan - dpAmount) > 0 ? (totalTagihan - dpAmount) : 0.0;
+    // 1. Item Tabel (Khusus item dekorasi tanpa Transport) & Ringkasan Standar Template 2
+    final List<InvoiceItemData> items = buildAllInvoiceItems(agenda, uppercase: false);
+    final InvoicePricingSummary summary = calculatePricingSummary(agenda);
+    final double subtotal = summary.subtotal;
+    final double discountAmount = summary.discountAmount;
+    final String discountLabel = summary.discountLabel;
+    final double transportFee = summary.transportFee;
+    final double dpAmount = summary.dpAmount;
+    final double grandTotal = summary.grandTotal;
 
     // Nomor Invoice & Tanggal
     final invoiceNumber =
@@ -726,25 +793,46 @@ class InvoicePdfHelper {
                                   ),
                                 ],
                               ),
-                              pw.SizedBox(height: 8),
-
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text(
-                                    'Uang Transport',
-                                    style: pw.TextStyle(font: baseFont, fontSize: 10, color: textDark),
-                                  ),
-                                  pw.Text(
-                                    transportFee > 0 ? currencyFormatter.format(transportFee) : 'Rp 0',
-                                    style: pw.TextStyle(
-                                      font: boldFont,
-                                      fontSize: 10,
-                                      color: textDark,
+                              if (discountAmount > 0) ...[
+                                pw.SizedBox(height: 8),
+                                pw.Row(
+                                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    pw.Text(
+                                      discountLabel,
+                                      style: pw.TextStyle(font: baseFont, fontSize: 10, color: textDark),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                    pw.Text(
+                                      '- ${currencyFormatter.format(discountAmount)}',
+                                      style: pw.TextStyle(
+                                        font: boldFont,
+                                        fontSize: 10,
+                                        color: PdfColor.fromHex('#2E7D32'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (transportFee > 0) ...[
+                                pw.SizedBox(height: 8),
+                                pw.Row(
+                                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    pw.Text(
+                                      'Uang Transport',
+                                      style: pw.TextStyle(font: baseFont, fontSize: 10, color: textDark),
+                                    ),
+                                    pw.Text(
+                                      '+ ${currencyFormatter.format(transportFee)}',
+                                      style: pw.TextStyle(
+                                        font: boldFont,
+                                        fontSize: 10,
+                                        color: textDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               pw.SizedBox(height: 8),
 
                               pw.Row(
@@ -761,21 +849,6 @@ class InvoicePdfHelper {
                                       fontSize: 10,
                                       color: dpAmount > 0 ? PdfColor.fromHex('#2E7D32') : textDark,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              pw.SizedBox(height: 8),
-
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text(
-                                    'Discount',
-                                    style: pw.TextStyle(font: baseFont, fontSize: 10, color: textDark),
-                                  ),
-                                  pw.Text(
-                                    'Rp 0',
-                                    style: pw.TextStyle(font: baseFont, fontSize: 10, color: textDark),
                                   ),
                                 ],
                               ),
@@ -939,77 +1012,15 @@ class InvoicePdfHelper {
         ? companyUser!.companyBankInfo
         : 'Nama : Soni Julianto\nNo Rek (BCA) : 5720732931\nNo Rek (BRI) : 144801005406501';
 
-    final form = agenda.clientForm;
-    final double packagePrice = _calculatePackagePrice(agenda);
-
-    // Ekstraksi item tabel
-    final List<InvoiceItemData> items = [];
-
-    // 1. Paket Utama
-    items.add(
-      InvoiceItemData(
-        no: 1,
-        name: agenda.packageName.isNotEmpty ? agenda.packageName.toUpperCase() : 'PAKET DEKORASI',
-        subtitle: [
-          if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
-          if (agenda.modelName.isNotEmpty) 'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
-        ].join(' | '),
-        quantity: 1,
-        unitPrice: packagePrice,
-        totalPrice: packagePrice,
-      ),
-    );
-
-    // 2. Upgrade Model (jika ada harga tambahan)
-    if (agenda.modelAdditionalPrice > 0) {
-      items.add(
-        InvoiceItemData(
-          no: items.length + 1,
-          name: 'UPGRADE MODEL: ${agenda.modelName.toUpperCase()}',
-          subtitle: agenda.modelWidth.isNotEmpty ? 'Lebar: ${agenda.modelWidth}' : '',
-          quantity: 1,
-          unitPrice: agenda.modelAdditionalPrice,
-          totalPrice: agenda.modelAdditionalPrice,
-        ),
-      );
-    }
-
-    // 3. Addon Items
-    final addonList = _extractAddonItems(form?.selectedAddons ?? '', agenda.notes, startNo: items.length + 1);
-    for (final a in addonList) {
-      items.add(
-        InvoiceItemData(
-          no: a.no,
-          name: a.name.toUpperCase(),
-          subtitle: a.subtitle,
-          quantity: a.quantity,
-          unitPrice: a.unitPrice,
-          totalPrice: a.totalPrice,
-        ),
-      );
-    }
-
-    // 4. Uang Transport (dimasukkan sebagai baris item sesuai referensi template 2)
-    if (agenda.transportFee > 0) {
-      items.add(
-        InvoiceItemData(
-          no: items.length + 1,
-          name: 'TRANSPORT',
-          subtitle: '',
-          quantity: 1,
-          unitPrice: agenda.transportFee,
-          totalPrice: agenda.transportFee,
-        ),
-      );
-    }
-
-    // Kalkulasi
-    double subtotal = 0.0;
-    for (final it in items) {
-      subtotal += it.totalPrice;
-    }
-    final double dpAmount = agenda.dpAmount;
-    final double grandTotal = (subtotal - dpAmount) > 0 ? (subtotal - dpAmount) : 0.0;
+    // Ekstraksi item tabel (Khusus item dekorasi; Transport dipindah ke blok ringkasan bawah sejajar DP)
+    final List<InvoiceItemData> items = buildAllInvoiceItems(agenda, uppercase: true);
+    final InvoicePricingSummary summary = calculatePricingSummary(agenda);
+    final double subtotal = summary.subtotal;
+    final double discountAmount = summary.discountAmount;
+    final String discountLabelUpper = summary.discountLabel.toUpperCase();
+    final double transportFee = summary.transportFee;
+    final double dpAmount = summary.dpAmount;
+    final double grandTotal = summary.grandTotal;
 
     // Nomor Invoice: FB-001-21102026 format sesuai referensi user
     String initials = companyName
@@ -1332,6 +1343,42 @@ class InvoicePdfHelper {
                                 ),
                               ],
                             ),
+
+                            // DISCOUNT : (disembunyikan jika tidak ada diskon)
+                            if (discountAmount > 0) ...[
+                              pw.SizedBox(height: 6),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text(
+                                    '$discountLabelUpper :',
+                                    style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                  ),
+                                  pw.Text(
+                                    '- ${_formatRupiahCaps(discountAmount)}',
+                                    style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                  ),
+                                ],
+                              ),
+                            ],
+
+                            // TRANSPORT : (sejajar blok DP agar tidak terkena diskon %)
+                            if (transportFee > 0) ...[
+                              pw.SizedBox(height: 6),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text(
+                                    'TRANSPORT :',
+                                    style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                  ),
+                                  pw.Text(
+                                    '+ ${_formatRupiahCaps(transportFee)}',
+                                    style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
+                                  ),
+                                ],
+                              ),
+                            ],
                             pw.SizedBox(height: 6),
 
                             // DP :
@@ -1343,7 +1390,7 @@ class InvoicePdfHelper {
                                   style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
                                 ),
                                 pw.Text(
-                                  dpAmount > 0 ? _formatRupiahCaps(dpAmount) : 'RP 0',
+                                  dpAmount > 0 ? '- ${_formatRupiahCaps(dpAmount)}' : 'RP 0',
                                   style: pw.TextStyle(font: boldFont, fontSize: 10.5, color: PdfColors.black),
                                 ),
                               ],
@@ -1438,6 +1485,64 @@ class InvoicePdfHelper {
   // ─────────────────────────────────────────────────────────────────────────────
   // Helper Metrik & Parsing
   // ─────────────────────────────────────────────────────────────────────────────
+  static List<InvoiceItemData> buildPrimaryDecorationItems(
+    AgendaItem agenda,
+    double packagePrice, {
+    bool uppercase = false,
+  }) {
+    String fmtName(String raw) => uppercase ? raw.toUpperCase() : raw;
+    final items = <InvoiceItemData>[];
+
+    if (agenda.isStandaloneModel) {
+      final modelTitle = agenda.modelName.trim().isNotEmpty
+          ? agenda.modelName.trim()
+          : 'Model Dekorasi';
+      items.add(
+        InvoiceItemData(
+          no: 1,
+          name: fmtName(modelTitle),
+          subtitle: '',
+          quantity: 1,
+          unitPrice: agenda.modelAdditionalPrice,
+          totalPrice: agenda.modelAdditionalPrice,
+        ),
+      );
+      return items;
+    }
+
+    items.add(
+      InvoiceItemData(
+        no: 1,
+        name: fmtName(agenda.packageName.isNotEmpty ? agenda.packageName : 'Paket Dekorasi'),
+        subtitle: [
+          if (agenda.backdropTitle.isNotEmpty) 'Acara: ${agenda.backdropTitle}',
+          if (agenda.modelName.isNotEmpty)
+            'Model: ${agenda.modelName}${agenda.modelWidth.isNotEmpty ? ' (${agenda.modelWidth})' : ''}',
+        ].join(' | '),
+        quantity: 1,
+        unitPrice: packagePrice,
+        totalPrice: packagePrice,
+      ),
+    );
+
+    if (agenda.modelAdditionalPrice > 0) {
+      items.add(
+        InvoiceItemData(
+          no: items.length + 1,
+          name: fmtName('Upgrade Model: ${agenda.modelName}'),
+          subtitle: agenda.modelWidth.isNotEmpty
+              ? '${uppercase ? 'Lebar' : 'Lebar Backdrop'}: ${agenda.modelWidth}'
+              : '',
+          quantity: 1,
+          unitPrice: agenda.modelAdditionalPrice,
+          totalPrice: agenda.modelAdditionalPrice,
+        ),
+      );
+    }
+
+    return items;
+  }
+
   static double _calculatePackagePrice(AgendaItem agenda) {
     final form = agenda.clientForm;
     final isUnselected = agenda.packageName.toLowerCase().contains('belum dipilih') ||

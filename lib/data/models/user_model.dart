@@ -17,6 +17,7 @@ class UserModel {
     this.companyDescription = '',
     this.companyInstagram = '',
     this.companyBankInfo = '',
+    this.companyInvoiceTemplate = 'template_modern_navy',
     this.permissions = const [],
   });
 
@@ -34,10 +35,12 @@ class UserModel {
   final String companyDescription;
   final String companyInstagram;
   final String companyBankInfo;
+  final String companyInvoiceTemplate;
   final List<String> permissions;
 
   /// Creates a [UserModel] from a JSON map.
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final rawTemplate = (json['company_invoice_template'] as String? ?? '').trim();
     return UserModel(
       id: json['id'] as String? ?? '',
       fullName: json['full_name'] as String? ?? '',
@@ -53,6 +56,7 @@ class UserModel {
       companyDescription: json['company_description'] as String? ?? '',
       companyInstagram: json['company_instagram'] as String? ?? '',
       companyBankInfo: json['company_bank_info'] as String? ?? '',
+      companyInvoiceTemplate: rawTemplate.isNotEmpty ? rawTemplate : 'template_modern_navy',
       permissions: (json['permissions'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -77,6 +81,7 @@ class UserModel {
       'company_description': companyDescription,
       'company_instagram': companyInstagram,
       'company_bank_info': companyBankInfo,
+      'company_invoice_template': companyInvoiceTemplate,
       'permissions': permissions,
     };
   }
@@ -98,6 +103,7 @@ class UserModel {
       companyDescription: companyDescription,
       companyInstagram: companyInstagram,
       companyBankInfo: companyBankInfo,
+      companyInvoiceTemplate: companyInvoiceTemplate,
       permissions: permissions,
     );
   }

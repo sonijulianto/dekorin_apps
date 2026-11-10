@@ -16,6 +16,7 @@ void main() {
         'description': 'Wedding & Luxury Event Decoration',
         'instagram': '@mahakaryadekor',
         'bank_info': 'BCA 123456789 a.n. Mahakarya',
+        'invoice_template': 'template_minimalist_grey',
         'updated_by': 'usr_owner_01',
         'updated_by_name': 'Budi Santoso',
         'created_at': '2026-01-01T10:00:00.000Z',
@@ -33,6 +34,7 @@ void main() {
       expect(profile.description, 'Wedding & Luxury Event Decoration');
       expect(profile.instagram, '@mahakaryadekor');
       expect(profile.bankInfo, 'BCA 123456789 a.n. Mahakarya');
+      expect(profile.invoiceTemplate, 'template_minimalist_grey');
       expect(profile.updatedBy, 'usr_owner_01');
       expect(profile.updatedByName, 'Budi Santoso');
       expect(profile.createdAt, isNotNull);
@@ -114,20 +116,24 @@ void main() {
         'company_description': 'Vendor Spesialis Pernikahan',
         'company_instagram': '@hendradecor',
         'company_bank_info': 'BCA 999888',
+        'company_invoice_template': 'template_minimalist_grey',
       };
 
       final model = UserModel.fromJson(json);
       expect(model.companyLogo, 'https://domain.com/logo.jpg');
       expect(model.companyEmail, 'decor@hendra.com');
       expect(model.companyBankInfo, 'BCA 999888');
+      expect(model.companyInvoiceTemplate, 'template_minimalist_grey');
 
       final domain = model.toDomain();
       expect(domain.companyLogo, 'https://domain.com/logo.jpg');
+      expect(domain.companyInvoiceTemplate, 'template_minimalist_grey');
       expect(domain.canManageCompany, isTrue);
 
       final outputJson = model.toJson();
       expect(outputJson['company_logo'], 'https://domain.com/logo.jpg');
       expect(outputJson['company_bank_info'], 'BCA 999888');
+      expect(outputJson['company_invoice_template'], 'template_minimalist_grey');
     });
   });
 }

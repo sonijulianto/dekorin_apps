@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_generator_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
 
 void main() {
   group('Invitation Flow & Template Tests', () {
-    test('InvitationTemplate has 4 active templates: ta17, jawa3, ta3, and pn4', () {
+    test('InvitationTemplate has 5 active templates: ta17, jawa3, jawa2, ta3, and pn4', () {
       final templates = InvitationTemplate.all;
-      expect(templates.length, 4);
+      expect(templates.length, 5);
 
       final ids = templates.map((t) => t['id'] as String).toList();
       expect(ids, containsAll([
         InvitationTemplate.ta17,
         InvitationTemplate.jawa3,
+        InvitationTemplate.jawa2,
         InvitationTemplate.ta3,
         InvitationTemplate.pn4,
       ]));
@@ -29,6 +32,7 @@ void main() {
       expect(InvitationTemplate.getById('unknown_id')['id'], InvitationTemplate.ta17);
       expect(InvitationTemplate.getById('ta17')['name'], 'Ocean Blossom TA17');
       expect(InvitationTemplate.getById('jawa3')['name'], 'Art Jawa Coklat 3');
+      expect(InvitationTemplate.getById('jawa2')['name'], 'Art Jawa Biru 2');
       expect(InvitationTemplate.getById('ta3')['name'], 'Sakura Blossom TA3');
       expect(InvitationTemplate.getById('pn4')['name'], 'Monochrome PN4');
     });
@@ -102,6 +106,49 @@ void main() {
       expect(urlWithSlug, contains('/preview/pn4'));
       expect(urlWithSlug, contains('slug=bagas-zulia'));
       expect(urlWithSlug, contains('preview=1'));
+    });
+
+    testWidgets('InvitationGeneratorView renders and adds quick guest without layout errors', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const invitation = InvitationItem(
+        id: 'inv-1',
+        slug: 'bagas-zulia',
+        title: 'The Wedding of Bagas & Zulia',
+        groomName: 'Bagas',
+        groomNickname: 'Bagas',
+        brideName: 'Zulia',
+        brideNickname: 'Zulia',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const InvitationGeneratorView(invitation: invitation),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final addBtn = find.text('Tambah');
+      await tester.scrollUntilVisible(
+        addBtn,
+        300.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(addBtn, findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Ketik nama tamu lalu klik Tambah...'),
+        'Budi Santoso',
+      );
+      await tester.tap(addBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Budi Santoso'), findsOneWidget);
     });
   });
 }

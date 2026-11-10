@@ -224,6 +224,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                   additionalPrice: additionalPrice,
                   isSelected: isSelected,
                   isFromPackage: true,
+                  isStandaloneMode: false,
                 );
               },
             );
@@ -247,6 +248,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                   additionalPrice: additionalPrice,
                   isSelected: isSelected,
                   isFromPackage: matchingPm != null,
+                  isStandaloneMode: false,
                 );
               },
             );
@@ -254,7 +256,9 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
             return TabBarView(controller: _tabController, children: [packageModelsView, allModelsView]);
           }
 
-          // Jika paket belum memiliki model terhubung, tampilkan semua model master
+          // Jika paket belum dipilih (standalone) atau paket belum memiliki model terhubung:
+          // Saat tanpa paket, harga model diambil dari harga dasar model (model.price).
+          final isStandaloneMode = widget.package == null;
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: allModels.length,
@@ -262,7 +266,13 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
               final model = allModels[idx];
               final isSelected = widget.selectedModelId == model.id;
 
-              return _buildModelCard(model: model, additionalPrice: 0.0, isSelected: isSelected, isFromPackage: false);
+              return _buildModelCard(
+                model: model,
+                additionalPrice: isStandaloneMode ? model.price : 0.0,
+                isSelected: isSelected,
+                isFromPackage: false,
+                isStandaloneMode: isStandaloneMode,
+              );
             },
           );
         },
@@ -275,6 +285,7 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
     required double additionalPrice,
     required bool isSelected,
     required bool isFromPackage,
+    bool isStandaloneMode = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -392,8 +403,23 @@ class _ModelPickerScreenState extends ConsumerState<ModelPickerScreen> with Sing
                           ),
                           const SizedBox(height: 6),
 
-                          // Label Biaya Tambahan
-                          if (additionalPrice > 0)
+                          // Label Harga Model (Standalone vs Upgrade Paket)
+                          if (isStandaloneMode)
+                            Row(
+                              children: [
+                                const Icon(Icons.sell_outlined, size: 14, color: AppColors.primaryGold),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Harga Model: ${currencyFormatter.format(model.price)}',
+                                  style: AppTypography.labelMedium.copyWith(
+                                    color: AppColors.primaryGold,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else if (additionalPrice > 0)
                             Row(
                               children: [
                                 const Icon(Icons.add_circle, size: 14, color: AppColors.primaryGold),

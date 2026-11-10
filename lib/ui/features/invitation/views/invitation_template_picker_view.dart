@@ -569,6 +569,8 @@ class _InvitationTemplatePickerViewState
         return '💙';
       case 'jawa3':
         return '🤎';
+      case 'jawa2':
+        return '💠';
       case 'ta3':
         return '🌸';
       case 'pn4':

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/property.dart';
+import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 
 class ManagePropertiesView extends ConsumerStatefulWidget {
   const ManagePropertiesView({super.key});
@@ -44,6 +45,7 @@ class _ManagePropertiesViewState extends ConsumerState<ManagePropertiesView>
 
     String selectedType = property?.type ?? initialType ?? (_tabController.index == 0 ? 'property' : 'tool');
     bool trackStock = property?.trackStock ?? (selectedType == 'property');
+    bool isSubmitting = false;
 
     final formKey = GlobalKey<FormState>();
 
@@ -54,7 +56,9 @@ class _ManagePropertiesViewState extends ConsumerState<ManagePropertiesView>
       builder: (bottomSheetCtx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
-            return Container(
+            return PopScope(
+              canPop: !isSubmitting,
+              child: Container(
               padding: EdgeInsets.only(
                 top: 20,
                 left: 20,
@@ -76,31 +80,37 @@ class _ManagePropertiesViewState extends ConsumerState<ManagePropertiesView>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.goldLight,
-                                  borderRadius: BorderRadius.circular(10),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.goldLight,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    selectedType == 'tool' ? Icons.build_rounded : Icons.inventory_2_rounded,
+                                    color: AppColors.primaryGold,
+                                    size: 22,
+                                  ),
                                 ),
-                                child: Icon(
-                                  selectedType == 'tool' ? Icons.build_rounded : Icons.inventory_2_rounded,
-                                  color: AppColors.primaryGold,
-                                  size: 22,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    isEditing
+                                        ? 'Ubah ${selectedType == 'tool' ? 'Alat' : 'Properti'}'
+                                        : 'Tambah ${selectedType == 'tool' ? 'Alat Kerja' : 'Properti Baru'}',
+                                    style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                isEditing
-                                    ? 'Ubah ${selectedType == 'tool' ? 'Alat' : 'Properti'}'
-                                    : 'Tambah ${selectedType == 'tool' ? 'Alat Kerja' : 'Properti Baru'}',
-                                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           IconButton(
-                            onPressed: () => Navigator.pop(bottomSheetCtx),
+                            onPressed: isSubmitting ? null : () => Navigator.pop(bottomSheetCtx),
                             icon: const Icon(Icons.close, color: AppColors.textLight),
                           ),
                         ],
@@ -342,84 +352,96 @@ class _ManagePropertiesViewState extends ConsumerState<ManagePropertiesView>
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () async {
-                            if (!formKey.currentState!.validate()) return;
-                            final name = nameController.text.trim();
-                            final category = categoryController.text.trim().isNotEmpty
-                                ? categoryController.text.trim()
-                                : (selectedType == 'tool' ? 'Alat Kerja' : 'Lainnya');
-                            final unit = unitController.text.trim().isNotEmpty ? unitController.text.trim() : 'pcs';
-                            final totalStock = int.tryParse(stockController.text.trim()) ?? 1;
-                            final notes = notesController.text.trim();
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  if (!formKey.currentState!.validate()) return;
+                                  setSheetState(() => isSubmitting = true);
 
-                            try {
-                              final service = ref.read(propertyServiceProvider);
-                              if (isEditing) {
-                                await service.updateProperty(
-                                  property.id,
-                                  name: name,
-                                  category: category,
-                                  type: selectedType,
-                                  trackStock: trackStock,
-                                  totalStock: totalStock,
-                                  unit: unit,
-                                  notes: notes,
-                                );
-                              } else {
-                                await service.createProperty(
-                                  name: name,
-                                  category: category,
-                                  type: selectedType,
-                                  trackStock: trackStock,
-                                  totalStock: totalStock,
-                                  unit: unit,
-                                  notes: notes,
-                                );
-                              }
+                                  final name = nameController.text.trim();
+                                  final category = categoryController.text.trim().isNotEmpty
+                                      ? categoryController.text.trim()
+                                      : (selectedType == 'tool' ? 'Alat Kerja' : 'Lainnya');
+                                  final unit = unitController.text.trim().isNotEmpty ? unitController.text.trim() : 'pcs';
+                                  final totalStock = int.tryParse(stockController.text.trim()) ?? 1;
+                                  final notes = notesController.text.trim();
 
-                              ref.invalidate(propertiesProvider);
-                              if (bottomSheetCtx.mounted) {
-                                Navigator.pop(bottomSheetCtx);
-                              }
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      isEditing
-                                          ? 'Data barang berhasil diperbarui!'
-                                          : 'Barang baru berhasil ditambahkan!',
-                                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                                    ),
-                                    backgroundColor: AppColors.primaryGold,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              if (bottomSheetCtx.mounted) {
-                                ScaffoldMessenger.of(bottomSheetCtx).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Gagal menyimpan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
+                                  try {
+                                    final service = ref.read(propertyServiceProvider);
+                                    if (isEditing) {
+                                      await service.updateProperty(
+                                        property.id,
+                                        name: name,
+                                        category: category,
+                                        type: selectedType,
+                                        trackStock: trackStock,
+                                        totalStock: totalStock,
+                                        unit: unit,
+                                        notes: notes,
+                                      );
+                                    } else {
+                                      await service.createProperty(
+                                        name: name,
+                                        category: category,
+                                        type: selectedType,
+                                        trackStock: trackStock,
+                                        totalStock: totalStock,
+                                        unit: unit,
+                                        notes: notes,
+                                      );
+                                    }
+
+                                    ref.invalidate(propertiesProvider);
+                                    if (bottomSheetCtx.mounted) {
+                                      Navigator.pop(bottomSheetCtx);
+                                    }
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            isEditing
+                                                ? 'Data barang berhasil diperbarui!'
+                                                : 'Barang baru berhasil ditambahkan!',
+                                            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                                          ),
+                                          backgroundColor: AppColors.primaryGold,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (bottomSheetCtx.mounted) {
+                                      setSheetState(() => isSubmitting = false);
+                                      ScaffoldMessenger.of(bottomSheetCtx).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Gagal menyimpan: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryGold,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: Text(
-                            isEditing ? 'Simpan Perubahan' : 'Tambah ke Inventaris',
-                            style: AppTypography.button,
-                          ),
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : Text(
+                                  isEditing ? 'Simpan Perubahan' : 'Tambah ke Inventaris',
+                                  style: AppTypography.button,
+                                ),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
               ),
             );
           },
@@ -428,54 +450,36 @@ class _ManagePropertiesViewState extends ConsumerState<ManagePropertiesView>
     );
   }
 
-  void _showDeleteDialog(Property property) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Hapus Barang?', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold)),
-          content: Text(
-            'Apakah Anda yakin ingin menghapus "${property.name}" dari master inventaris?',
-            style: AppTypography.bodyMedium,
+  Future<void> _showDeleteDialog(Property property) async {
+    try {
+      final deleted = await DekorinConfirmActionDialog.show(
+        context,
+        title: 'Hapus Barang?',
+        message: 'Apakah Anda yakin ingin menghapus "${property.name}" dari master inventaris?',
+        confirmLabel: 'Hapus',
+        onConfirm: () async {
+          await ref.read(propertyServiceProvider).deleteProperty(property.id);
+          ref.invalidate(propertiesProvider);
+        },
+      );
+      if (deleted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Barang berhasil dihapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            backgroundColor: AppColors.primaryGold,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: Text('Batal', style: AppTypography.bodyMedium.copyWith(color: AppColors.textLight)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogCtx);
-                try {
-                  await ref.read(propertyServiceProvider).deleteProperty(property.id);
-                  ref.invalidate(propertiesProvider);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Barang berhasil dihapus', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                        backgroundColor: AppColors.primaryGold,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal menghapus: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-              child: Text('Hapus', style: AppTypography.button),
-            ),
-          ],
         );
-      },
-    );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
