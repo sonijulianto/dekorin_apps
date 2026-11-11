@@ -123,6 +123,7 @@ Widget buildVisualEditorWebIframe({
 }) {
   return SizedBox.expand(
     child: HtmlElementView.fromTagName(
+      key: const ValueKey('dekorin_ve_iframe'),
       tagName: 'iframe',
       onElementCreated: (Object element) {
         final iframe = element as web.HTMLIFrameElement;

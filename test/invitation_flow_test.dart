@@ -206,5 +206,117 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'VisualEditorModalCoordinator prevents stacked modals and blocks ghost clicks during post-close cooldown',
+      (tester) async {
+        final lockEvents = <bool>[];
+        StateSetter? hostSetState;
+        int openedCount = 0;
+        var fakeNow = DateTime(2026, 11, 11, 17, 0);
+
+        final coordinator = VisualEditorModalCoordinator(
+          unlockCooldown: const Duration(milliseconds: 450),
+          nowProvider: () => fakeNow,
+          onLockStateChanged: (locked) {
+            lockEvents.add(locked);
+            hostSetState?.call(() {});
+          },
+        );
+        addTearDown(coordinator.dispose);
+
+        Future<void> triggerPhotoModal(BuildContext ctx) async {
+          if (coordinator.shouldIgnoreEditTrigger) return;
+          openedCount++;
+          await coordinator.runWithModal(
+            () => showModalBottomSheet<void>(
+              context: ctx,
+              builder: (sheetCtx) => SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Sheet Foto Aktif'),
+                    TextButton(
+                      onPressed: () => Navigator.of(sheetCtx).pop(),
+                      child: const Text('Tutup Sheet'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        late BuildContext capturedContext;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setLocalState) {
+                hostSetState = setLocalState;
+                capturedContext = context;
+                return Scaffold(
+                  body: AbsorbPointer(
+                    absorbing: coordinator.isLocked,
+                    child: Center(
+                      child: ElevatedButton(
+                        onPressed: () => triggerPhotoModal(context),
+                        child: const Text('Tap Elemen Foto'),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        // 1. Tap pertama membuka bottom sheet & mengunci background
+        await tester.tap(find.text('Tap Elemen Foto'));
+        await tester.pumpAndSettle();
+
+        expect(openedCount, 1);
+        expect(find.text('Sheet Foto Aktif'), findsOneWidget);
+        expect(coordinator.isLocked, isTrue);
+        expect(coordinator.shouldIgnoreEditTrigger, isTrue);
+        expect(lockEvents, [true]);
+
+        // 2. Pesan duplicate edit_photo saat sheet aktif harus diabaikan
+        await triggerPhotoModal(capturedContext);
+        await tester.pump();
+        expect(openedCount, 1);
+        expect(find.text('Sheet Foto Aktif'), findsOneWidget);
+
+        // 3. Tutup bottom sheet -> cooldown 450ms menjaga background tetap terkunci
+        await tester.tap(find.text('Tutup Sheet'));
+        await tester.pump();
+        fakeNow = fakeNow.add(const Duration(milliseconds: 260));
+        await tester.pump(const Duration(milliseconds: 260));
+
+        expect(find.text('Sheet Foto Aktif'), findsNothing);
+        expect(coordinator.isLocked, isTrue);
+        expect(coordinator.shouldIgnoreEditTrigger, isTrue);
+
+        // Tap / ghost-click selama masa cooldown tidak membuka sheet lagi
+        await tester.tap(find.text('Tap Elemen Foto'), warnIfMissed: false);
+        await triggerPhotoModal(capturedContext);
+        await tester.pump();
+        expect(openedCount, 1);
+        expect(find.text('Sheet Foto Aktif'), findsNothing);
+
+        // 4. Setelah melewati 450ms cooldown, background terbuka kembali normal
+        fakeNow = fakeNow.add(const Duration(milliseconds: 460));
+        await tester.pump(const Duration(milliseconds: 460));
+        expect(coordinator.isLocked, isFalse);
+        expect(coordinator.shouldIgnoreEditTrigger, isFalse);
+        expect(lockEvents, [true, false]);
+
+        // 5. Tap berikutnya setelah cooldown membuka sheet baru dengan normal
+        await tester.tap(find.text('Tap Elemen Foto'));
+        await tester.pumpAndSettle();
+        expect(openedCount, 2);
+        expect(find.text('Sheet Foto Aktif'), findsOneWidget);
+      },
+    );
   });
 }

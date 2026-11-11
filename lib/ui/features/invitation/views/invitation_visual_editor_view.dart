@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -79,13 +80,25 @@ class _InvitationVisualEditorViewState
   String _loadErrorMessage = '';
   bool _isBridgeReady = false;
   bool _bridgeCheckFailed = false;
+  static const Set<String> _editTriggerActions = {
+    'edit_text',
+    'edit_couple_nick',
+    'edit_bank',
+    'edit_love_story',
+    'edit_gallery',
+    'edit_photo',
+  };
+
   bool _isEditMode = true;
   bool _isGateVisible = false;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
-  int _activeModalCount = 0;
+  late final VisualEditorModalCoordinator _modalCoordinator =
+      VisualEditorModalCoordinator(
+        onLockStateChanged: _handleModalLockChanged,
+      );
 
-  bool get _isModalOverlayActive => _activeModalCount > 0;
+  bool get _isModalOverlayActive => _modalCoordinator.isLocked;
 
   bool get _supportsEmbeddedWebView =>
       !kIsWeb && WebViewPlatform.instance != null;
@@ -122,8 +135,16 @@ class _InvitationVisualEditorViewState
 
   @override
   void dispose() {
+    _modalCoordinator.dispose();
     _webIframeController.dispose();
     super.dispose();
+  }
+
+  void _handleModalLockChanged(bool locked) {
+    _setBackgroundInteractionLocked(locked);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _setBackgroundInteractionLocked(bool locked) {
@@ -138,21 +159,8 @@ class _InvitationVisualEditorViewState
     }
   }
 
-  Future<T> _withOverlayModal<T>(Future<T> Function() action) async {
-    _activeModalCount++;
-    if (_activeModalCount == 1) {
-      _setBackgroundInteractionLocked(true);
-      if (mounted) setState(() {});
-    }
-    try {
-      return await action();
-    } finally {
-      _activeModalCount = (_activeModalCount - 1).clamp(0, 999);
-      if (_activeModalCount == 0) {
-        _setBackgroundInteractionLocked(false);
-        if (mounted) setState(() {});
-      }
-    }
+  Future<T> _withOverlayModal<T>(Future<T> Function() action) {
+    return _modalCoordinator.runWithModal(action);
   }
 
   Future<T?> _showEditorModalSheet<T>({
@@ -327,6 +335,10 @@ class _InvitationVisualEditorViewState
     if (decoded['source'] != 'dekorin-visual-editor') return;
 
     final action = decoded['action'] as String? ?? '';
+    if (_editTriggerActions.contains(action) &&
+        _modalCoordinator.shouldIgnoreEditTrigger) {
+      return;
+    }
     switch (action) {
       case 'ready':
         setState(() {
@@ -2107,5 +2119,68 @@ class _InvitationVisualEditorViewState
       side: BorderSide(color: AppColors.primaryGold.withValues(alpha: 0.35)),
       onPressed: onTap,
     );
+  }
+}
+
+/// Coordinates modal overlays and post-dismiss cooldown locking so rapid clicks
+/// or delayed synthetic ghost clicks cannot re-trigger invitation edits right
+/// after a bottom sheet or dialog closes.
+@visibleForTesting
+class VisualEditorModalCoordinator {
+  VisualEditorModalCoordinator({
+    this.unlockCooldown = const Duration(milliseconds: 450),
+    DateTime Function()? nowProvider,
+    required this.onLockStateChanged,
+  }) : _now = nowProvider ?? DateTime.now;
+
+  final Duration unlockCooldown;
+  final DateTime Function() _now;
+  final void Function(bool locked) onLockStateChanged;
+
+  int _activeModalCount = 0;
+  bool _isBackgroundLocked = false;
+  Timer? _unlockCooldownTimer;
+  DateTime? _lastModalClosedAt;
+
+  bool get isLocked => _activeModalCount > 0 || _isBackgroundLocked;
+
+  bool get shouldIgnoreEditTrigger {
+    if (isLocked) return true;
+    final closedAt = _lastModalClosedAt;
+    if (closedAt != null &&
+        _now().difference(closedAt) < unlockCooldown) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<T> runWithModal<T>(Future<T> Function() action) async {
+    _unlockCooldownTimer?.cancel();
+    _unlockCooldownTimer = null;
+    _activeModalCount++;
+    if (!_isBackgroundLocked) {
+      _isBackgroundLocked = true;
+      onLockStateChanged(true);
+    }
+    try {
+      return await action();
+    } finally {
+      _activeModalCount = (_activeModalCount - 1).clamp(0, 999);
+      if (_activeModalCount == 0) {
+        _lastModalClosedAt = _now();
+        _unlockCooldownTimer?.cancel();
+        _unlockCooldownTimer = Timer(unlockCooldown, () {
+          if (_activeModalCount > 0) return;
+          _isBackgroundLocked = false;
+          _unlockCooldownTimer = null;
+          onLockStateChanged(false);
+        });
+      }
+    }
+  }
+
+  void dispose() {
+    _unlockCooldownTimer?.cancel();
+    _unlockCooldownTimer = null;
   }
 }
