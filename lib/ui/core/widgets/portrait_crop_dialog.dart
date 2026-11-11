@@ -215,8 +215,12 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 440),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onScaleStart: (_) {},
+        onScaleUpdate: (_) {},
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 440),
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(20),
@@ -277,59 +281,62 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
 
             const Divider(color: Color(0xFF2E2E2E), height: 1),
 
-            // 2. Area Crop & Viewport
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 240,
-                        child: Center(
-                          child: CircularProgressIndicator(color: AppColors.primaryGold),
-                        ),
-                      )
-                    : _errorMessage != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              _errorMessage!,
-                              style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              width: viewportSize.width,
-                              height: viewportSize.height,
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                border: Border.all(color: AppColors.primaryGold, width: 2),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGold.withValues(alpha: 0.35),
-                                    blurRadius: 18,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
+            // 2. Area Crop & Viewport (GestureDetector meliputi padding luar bingkai agar jari besar / pinggir tetap aman menggeser foto tanpa bocor ke background)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onScaleStart: _rawImage == null || _isLoading
+                  ? null
+                  : (details) {
+                      _startScale = _scale;
+                    },
+              onScaleUpdate: _rawImage == null || _isLoading
+                  ? null
+                  : (details) {
+                      setState(() {
+                        _scale = (_startScale * details.scale).clamp(1.0, 3.5);
+                        final candidateOffset = _offset + details.focalPointDelta;
+                        _offset = _clampOffset(candidateOffset, viewportSize, baseScale, _scale);
+                      });
+                    },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                child: Center(
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 240,
+                          child: Center(
+                            child: CircularProgressIndicator(color: AppColors.primaryGold),
+                          ),
+                        )
+                      : _errorMessage != null
+                          ? Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Text(
+                                _errorMessage!,
+                                style: AppTypography.bodyMedium.copyWith(color: AppColors.errorRed),
+                                textAlign: TextAlign.center,
                               ),
-                              child: Stack(
-                                children: [
-                                  // Gesture area untuk Pan & Zoom
-                                  Positioned.fill(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onScaleStart: (details) {
-                                        _startScale = _scale;
-                                      },
-                                      onScaleUpdate: (details) {
-                                        setState(() {
-                                          _scale = (_startScale * details.scale).clamp(1.0, 3.5);
-                                          final candidateOffset = _offset + details.focalPointDelta;
-                                          _offset = _clampOffset(candidateOffset, viewportSize, baseScale, _scale);
-                                        });
-                                      },
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: viewportSize.width,
+                                height: viewportSize.height,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  border: Border.all(color: AppColors.primaryGold, width: 2),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primaryGold.withValues(alpha: 0.35),
+                                      blurRadius: 18,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
                                       child: CustomPaint(
                                         key: PortraitCropDialog.cropCanvasKey,
                                         painter: _ImageCropPainter(
@@ -340,41 +347,41 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
                                         ),
                                       ),
                                     ),
-                                  ),
 
-                                  // Overlay Grid Rule-of-Thirds & Corner Brackets
-                                  Positioned.fill(
-                                    child: IgnorePointer(
-                                      child: CustomPaint(
-                                        painter: _GridAndCornerPainter(),
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Loading overlay saat memproses hasil potong
-                                  if (_isProcessing)
+                                    // Overlay Grid Rule-of-Thirds & Corner Brackets
                                     Positioned.fill(
-                                      child: Container(
-                                        color: Colors.black54,
-                                        child: Center(
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const CircularProgressIndicator(color: AppColors.primaryGold),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                'Memproses foto potrait...',
-                                                style: AppTypography.caption.copyWith(color: Colors.white),
-                                              ),
-                                            ],
-                                          ),
+                                      child: IgnorePointer(
+                                        child: CustomPaint(
+                                          painter: _GridAndCornerPainter(),
                                         ),
                                       ),
                                     ),
-                                ],
+
+                                    // Loading overlay saat memproses hasil potong
+                                    if (_isProcessing)
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.black54,
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const CircularProgressIndicator(color: AppColors.primaryGold),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  'Memproses foto potrait...',
+                                                  style: AppTypography.caption.copyWith(color: Colors.white),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                ),
               ),
             ),
 
@@ -498,6 +505,7 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

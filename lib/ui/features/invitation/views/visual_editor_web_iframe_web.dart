@@ -65,10 +65,17 @@ class VisualEditorWebIframeController {
     });
   }
 
-  void setPointerEventsEnabled(bool enabled) {
+  void setInteractionLocked(bool locked) {
     final iframe = _iframe;
-    if (iframe == null) return;
-    iframe.style.pointerEvents = enabled ? 'auto' : 'none';
+    if (iframe != null) {
+      iframe.style.pointerEvents = locked ? 'none' : 'auto';
+      iframe.style.touchAction = locked ? 'none' : 'auto';
+    }
+    _postToIframe({
+      'source': 'dekorin-portal-parent',
+      'action': 'lock_scroll',
+      'locked': locked,
+    });
   }
 
   void _postToIframe(Map<String, dynamic> payload) {

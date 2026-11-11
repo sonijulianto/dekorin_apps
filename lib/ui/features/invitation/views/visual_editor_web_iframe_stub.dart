@@ -6,7 +6,7 @@ class VisualEditorWebIframeController {
   void applyPatch(Map<String, dynamic> patch) {}
   void setEditMode(bool enabled) {}
   void toggleGate(bool showGate) {}
-  void setPointerEventsEnabled(bool enabled) {}
+  void setInteractionLocked(bool locked) {}
   void dispose() {}
 }
 

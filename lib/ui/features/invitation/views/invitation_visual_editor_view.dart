@@ -83,6 +83,9 @@ class _InvitationVisualEditorViewState
   bool _isGateVisible = false;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
+  int _activeModalCount = 0;
+
+  bool get _isModalOverlayActive => _activeModalCount > 0;
 
   bool get _supportsEmbeddedWebView =>
       !kIsWeb && WebViewPlatform.instance != null;
@@ -123,12 +126,32 @@ class _InvitationVisualEditorViewState
     super.dispose();
   }
 
+  void _setBackgroundInteractionLocked(bool locked) {
+    if (kIsWeb) {
+      _webIframeController.setInteractionLocked(locked);
+      return;
+    }
+    if (_webViewController != null && _isBridgeReady) {
+      _webViewController!.runJavaScript(
+        'if (window.dekorinSetScrollLocked) { window.dekorinSetScrollLocked($locked); }',
+      );
+    }
+  }
+
   Future<T> _withOverlayModal<T>(Future<T> Function() action) async {
-    _webIframeController.setPointerEventsEnabled(false);
+    _activeModalCount++;
+    if (_activeModalCount == 1) {
+      _setBackgroundInteractionLocked(true);
+      if (mounted) setState(() {});
+    }
     try {
       return await action();
     } finally {
-      _webIframeController.setPointerEventsEnabled(true);
+      _activeModalCount = (_activeModalCount - 1).clamp(0, 999);
+      if (_activeModalCount == 0) {
+        _setBackgroundInteractionLocked(false);
+        if (mounted) setState(() {});
+      }
     }
   }
 
@@ -1155,96 +1178,106 @@ class _InvitationVisualEditorViewState
     if (aspect == '1:1') cropRatio = 1.0;
     if (aspect == '4:3') cropRatio = 4 / 3;
 
-    await _showEditorModalSheet<void>(
-      isScrollControlled: false,
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSheetHeader(
-                title: label,
-                subtitle: 'Pilih foto baru atau kembalikan ke default tema',
-                leading: const Icon(Icons.photo_camera_outlined,
-                    color: AppColors.secondaryGold),
-              ),
-              const SizedBox(height: 14),
-              Center(
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.borderLight),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: currentUrl.isNotEmpty
-                      ? Image.network(
-                          currentUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Center(
-                            child: Text('Foto tersimpan',
-                                style: AppTypography.caption),
-                          ),
-                        )
-                      : Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              'Menggunakan foto bawaan tema',
-                              textAlign: TextAlign.center,
-                              style: AppTypography.caption,
+    final sheetAction = await _withOverlayModal<String?>(() async {
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: false,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSheetHeader(
+                  title: label,
+                  subtitle: 'Pilih foto baru atau kembalikan ke default tema',
+                  leading: const Icon(Icons.photo_camera_outlined,
+                      color: AppColors.secondaryGold),
+                ),
+                const SizedBox(height: 14),
+                Center(
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundLight,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: currentUrl.isNotEmpty
+                        ? Image.network(
+                            currentUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Center(
+                              child: Text('Foto tersimpan',
+                                  style: AppTypography.caption),
+                            ),
+                          )
+                        : Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                'Menggunakan foto bawaan tema',
+                                textAlign: TextAlign.center,
+                                style: AppTypography.caption,
+                              ),
                             ),
                           ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await _pickCropUploadPhoto(
-                    field: field,
-                    cropRatio: cropRatio,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGold),
-                icon: const Icon(Icons.photo_library_outlined,
-                    color: Colors.white, size: 18),
-                label: Text('Pilih & Upload Foto Baru',
-                    style: AppTypography.button),
-              ),
-              if (currentUrl.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    final patch = <String, dynamic>{field: ''};
-                    if (field == 'groom_photo' && _isSinglePersonEvent) {
-                      patch['child_photo'] = '';
-                    }
-                    await _applyPatch(patch);
-                    _showSnack('Foto dikembalikan ke bawaan tema.');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.errorRed),
-                  ),
-                  child: Text(
-                    'Kembalikan ke Bawaan Tema',
-                    style: AppTypography.labelMedium
-                        .copyWith(color: AppColors.errorRed),
                   ),
                 ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(ctx, 'pick'),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGold),
+                  icon: const Icon(Icons.photo_library_outlined,
+                      color: Colors.white, size: 18),
+                  label: Text('Pilih & Upload Foto Baru',
+                      style: AppTypography.button),
+                ),
+                if (currentUrl.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, 'reset'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.errorRed),
+                    ),
+                    child: Text(
+                      'Kembalikan ke Bawaan Tema',
+                      style: AppTypography.labelMedium
+                          .copyWith(color: AppColors.errorRed),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
+            ),
+          );
+        },
+      );
+
+      if (selected == 'pick' && mounted) {
+        await _pickCropUploadPhoto(
+          field: field,
+          cropRatio: cropRatio,
         );
-      },
-    );
+      }
+      return selected;
+    });
+
+    if (sheetAction == 'reset') {
+      final patch = <String, dynamic>{field: ''};
+      if (field == 'groom_photo' && _isSinglePersonEvent) {
+        patch['child_photo'] = '';
+      }
+      await _applyPatch(patch);
+      _showSnack('Foto dikembalikan ke bawaan tema.');
+    }
   }
 
   Future<void> _pickCropUploadPhoto({
@@ -1772,7 +1805,12 @@ class _InvitationVisualEditorViewState
           children: [
             _buildQuickActionBar(),
             if (_bridgeCheckFailed) _buildBridgeWarningBanner(),
-            Expanded(child: _buildMainViewport()),
+            Expanded(
+              child: AbsorbPointer(
+                absorbing: _isModalOverlayActive,
+                child: _buildMainViewport(),
+              ),
+            ),
           ],
         ),
       ),

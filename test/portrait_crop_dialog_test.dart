@@ -56,12 +56,7 @@ void main() {
 
     final canvasFinder = find.byKey(PortraitCropDialog.cropCanvasKey);
     final viewportSize = tester.getSize(canvasFinder);
-    final cropGesture = find.descendant(
-      of: find.byType(ClipRRect),
-      matching: find.byType(GestureDetector),
-    );
-    expect(cropGesture, findsOneWidget);
-    final center = tester.getCenter(cropGesture);
+    final center = tester.getCenter(canvasFinder);
 
     Rect readRenderedDstRect() {
       final cp = tester.widget<CustomPaint>(canvasFinder);
