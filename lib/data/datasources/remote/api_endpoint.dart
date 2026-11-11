@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Kumpulan semua endpoint API.
 ///
 /// Gunakan class ini agar tidak ada string URL yang tersebar
@@ -111,9 +113,12 @@ class ApiEndpoint {
     final uri = Uri.parse(baseUrl);
     final isProdDomain = uri.host == 'dekorin.my.id' || uri.host.endsWith('.dekorin.my.id');
     final cleanSlug = Uri.encodeComponent(slug.trim());
-    final base = isProdDomain
-        ? '$invitationDomainBaseUrl/$cleanSlug'
-        : '$webFormBaseUrl/invitation/$cleanSlug';
+    final bool isAppSubdomain = kIsWeb && Uri.base.host == 'app.dekorin.my.id';
+    final base = isAppSubdomain
+        ? '${Uri.base.origin}/invitation/$cleanSlug'
+        : isProdDomain
+            ? '$invitationDomainBaseUrl/$cleanSlug'
+            : '$webFormBaseUrl/invitation/$cleanSlug';
     final queryParts = <String>['preview=1', 'edit=1'];
     if (templateOverride != null && templateOverride.trim().isNotEmpty) {
       queryParts.add('template=${Uri.encodeComponent(templateOverride.trim())}');

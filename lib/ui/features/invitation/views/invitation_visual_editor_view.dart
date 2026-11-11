@@ -20,6 +20,7 @@ import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_form_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/visual_editor_web_iframe.dart';
 
 /// Visual Click-to-Edit Editor untuk undangan digital.
 ///
@@ -70,6 +71,8 @@ class _InvitationVisualEditorViewState
 
   late Map<String, dynamic> _draft;
   WebViewController? _webViewController;
+  final VisualEditorWebIframeController _webIframeController =
+      VisualEditorWebIframeController();
 
   int _loadingProgress = 0;
   bool _hasLoadError = false;
@@ -107,9 +110,53 @@ class _InvitationVisualEditorViewState
     _draft = Map<String, dynamic>.from(widget.invitation.toJson());
     if (_supportsEmbeddedWebView) {
       _initWebView();
+    } else if (kIsWeb) {
+      _loadingProgress = 50;
     } else {
       _loadingProgress = 100;
     }
+  }
+
+  @override
+  void dispose() {
+    _webIframeController.dispose();
+    super.dispose();
+  }
+
+  Future<T> _withOverlayModal<T>(Future<T> Function() action) async {
+    _webIframeController.setPointerEventsEnabled(false);
+    try {
+      return await action();
+    } finally {
+      _webIframeController.setPointerEventsEnabled(true);
+    }
+  }
+
+  Future<T?> _showEditorModalSheet<T>({
+    required WidgetBuilder builder,
+    bool isScrollControlled = true,
+  }) {
+    return _withOverlayModal(
+      () => showModalBottomSheet<T>(
+        context: context,
+        isScrollControlled: isScrollControlled,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: builder,
+      ),
+    );
+  }
+
+  void _onWebIframeLoaded() {
+    if (!mounted) return;
+    setState(() => _loadingProgress = 100);
+    Future<void>.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted && !_isBridgeReady) {
+        setState(() => _bridgeCheckFailed = true);
+      }
+    });
   }
 
   void _initWebView() {
@@ -194,7 +241,12 @@ class _InvitationVisualEditorViewState
   }
 
   Future<void> _pushPatchToWebView(Map<String, dynamic> patch) async {
-    if (_webViewController == null || !_isBridgeReady) return;
+    if (!_isBridgeReady) return;
+    if (kIsWeb) {
+      _webIframeController.applyPatch(patch);
+      return;
+    }
+    if (_webViewController == null) return;
     final encoded = jsonEncode(patch);
     await _webViewController!.runJavaScript(
       'if (window.dekorinApplyPatch) { window.dekorinApplyPatch($encoded); }',
@@ -202,7 +254,12 @@ class _InvitationVisualEditorViewState
   }
 
   Future<void> _syncWebViewEditMode() async {
-    if (_webViewController == null || !_isBridgeReady) return;
+    if (!_isBridgeReady) return;
+    if (kIsWeb) {
+      _webIframeController.setEditMode(_isEditMode);
+      return;
+    }
+    if (_webViewController == null) return;
     await _webViewController!.runJavaScript(
       'if (window.dekorinSetEditMode) { window.dekorinSetEditMode($_isEditMode); }',
     );
@@ -211,7 +268,12 @@ class _InvitationVisualEditorViewState
   Future<void> _toggleGateInWebView() async {
     final next = !_isGateVisible;
     setState(() => _isGateVisible = next);
-    if (_webViewController != null && _isBridgeReady) {
+    if (!_isBridgeReady) return;
+    if (kIsWeb) {
+      _webIframeController.toggleGate(next);
+      return;
+    }
+    if (_webViewController != null) {
       await _webViewController!.runJavaScript(
         'if (window.dekorinToggleGate) { window.dekorinToggleGate($next); }',
       );
@@ -231,51 +293,59 @@ class _InvitationVisualEditorViewState
     if (!mounted) return;
     try {
       final decoded = jsonDecode(message.message);
-      if (decoded is! Map<String, dynamic>) return;
-      if (decoded['source'] != 'dekorin-visual-editor') return;
-
-      final action = decoded['action'] as String? ?? '';
-      switch (action) {
-        case 'ready':
-          setState(() {
-            _isBridgeReady = true;
-            _bridgeCheckFailed = false;
-          });
-          _pushPatchToWebView(_draft);
-          break;
-        case 'gate_opened':
-          setState(() => _isGateVisible = false);
-          break;
-        case 'edit_text':
-          _showSingleFieldBottomSheet(
-            field: decoded['field'] as String? ?? '',
-            type: decoded['type'] as String? ?? 'text',
-            label: decoded['label'] as String? ?? 'Edit Teks',
-            fallbackValue: decoded['currentValue'] as String? ?? '',
-          );
-          break;
-        case 'edit_couple_nick':
-          _showCoupleNickBottomSheet();
-          break;
-        case 'edit_bank':
-          final idx = (decoded['bankIndex'] as String? ?? '1') == '2' ? 2 : 1;
-          _showBankBottomSheet(idx);
-          break;
-        case 'edit_love_story':
-          _showLoveStoryBottomSheet();
-          break;
-        case 'edit_gallery':
-          _showGalleryBottomSheet();
-          break;
-        case 'edit_photo':
-          _showPhotoBottomSheet(
-            field: decoded['field'] as String? ?? '',
-            label: decoded['label'] as String? ?? 'Ganti Foto',
-            aspect: decoded['aspect'] as String? ?? 'free',
-          );
-          break;
+      if (decoded is Map<String, dynamic>) {
+        _handleEditorMessage(decoded);
       }
     } catch (_) {}
+  }
+
+  void _handleEditorMessage(Map<String, dynamic> decoded) {
+    if (!mounted) return;
+    if (decoded['source'] != 'dekorin-visual-editor') return;
+
+    final action = decoded['action'] as String? ?? '';
+    switch (action) {
+      case 'ready':
+        setState(() {
+          _loadingProgress = 100;
+          _isBridgeReady = true;
+          _bridgeCheckFailed = false;
+        });
+        _pushPatchToWebView(_draft);
+        _syncWebViewEditMode();
+        break;
+      case 'gate_opened':
+        setState(() => _isGateVisible = false);
+        break;
+      case 'edit_text':
+        _showSingleFieldBottomSheet(
+          field: decoded['field'] as String? ?? '',
+          type: decoded['type'] as String? ?? 'text',
+          label: decoded['label'] as String? ?? 'Edit Teks',
+          fallbackValue: decoded['currentValue'] as String? ?? '',
+        );
+        break;
+      case 'edit_couple_nick':
+        _showCoupleNickBottomSheet();
+        break;
+      case 'edit_bank':
+        final idx = (decoded['bankIndex'] as String? ?? '1') == '2' ? 2 : 1;
+        _showBankBottomSheet(idx);
+        break;
+      case 'edit_love_story':
+        _showLoveStoryBottomSheet();
+        break;
+      case 'edit_gallery':
+        _showGalleryBottomSheet();
+        break;
+      case 'edit_photo':
+        _showPhotoBottomSheet(
+          field: decoded['field'] as String? ?? '',
+          label: decoded['label'] as String? ?? 'Ganti Foto',
+          aspect: decoded['aspect'] as String? ?? 'free',
+        );
+        break;
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -298,13 +368,7 @@ class _InvitationVisualEditorViewState
     final isMaps = type == 'maps';
     final isInstagram = type == 'instagram';
 
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final result = await _showEditorModalSheet<String>(
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
@@ -503,13 +567,7 @@ class _InvitationVisualEditorViewState
       text: (_draft['title'] ?? '').toString(),
     );
 
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final applied = await _showEditorModalSheet<bool>(
       builder: (ctx) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
@@ -613,13 +671,7 @@ class _InvitationVisualEditorViewState
       text: (_draft['gift_address'] ?? '').toString(),
     );
 
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final applied = await _showEditorModalSheet<bool>(
       builder: (ctx) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
@@ -781,13 +833,7 @@ class _InvitationVisualEditorViewState
   Future<void> _showLoveStoryBottomSheet() async {
     final items = _parseLoveStoryList((_draft['love_story'] ?? '').toString());
 
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final applied = await _showEditorModalSheet<bool>(
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
@@ -949,13 +995,7 @@ class _InvitationVisualEditorViewState
   Future<void> _showGalleryBottomSheet() async {
     var urls = _splitGallery((_draft['gallery_images'] ?? '').toString());
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    await _showEditorModalSheet<void>(
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
@@ -1115,12 +1155,8 @@ class _InvitationVisualEditorViewState
     if (aspect == '1:1') cropRatio = 1.0;
     if (aspect == '4:3') cropRatio = 4 / 3;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    await _showEditorModalSheet<void>(
+      isScrollControlled: false,
       builder: (ctx) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -1227,22 +1263,27 @@ class _InvitationVisualEditorViewState
 
       PickedImageData imgData = await PickedImageData.fromXFile(picked);
       if (cropRatio != null && mounted) {
-        final cropped = await PortraitCropDialog.show(
-          context,
-          image: imgData,
-          aspectRatio: cropRatio,
-          title: 'Sesuaikan Bingkai Foto',
-          subtitle: 'Geser dan zoom agar posisi wajah pas di frame undangan',
+        final cropped = await _withOverlayModal(
+          () => PortraitCropDialog.show(
+            context,
+            image: imgData,
+            aspectRatio: cropRatio,
+            title: 'Sesuaikan Bingkai Foto',
+            subtitle:
+                'Geser dan zoom agar posisi wajah pas di frame undangan',
+          ),
         );
         if (cropped == null) return;
         imgData = cropped;
       }
 
       if (!mounted) return;
-      final uploadedUrl = await DekorinLoadingDialog.run(
-        context,
-        message: 'Mengunggah foto...',
-        task: () => ApiClient.uploadImage(imgData),
+      final uploadedUrl = await _withOverlayModal(
+        () => DekorinLoadingDialog.run(
+          context,
+          message: 'Mengunggah foto...',
+          task: () => ApiClient.uploadImage(imgData),
+        ),
       );
 
       final patch = <String, dynamic>{field: uploadedUrl};
@@ -1275,13 +1316,7 @@ class _InvitationVisualEditorViewState
     final waCtrl = TextEditingController(
         text: (_draft['wa_confirmation'] ?? '').toString());
 
-    final applied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final applied = await _showEditorModalSheet<bool>(
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
@@ -1495,8 +1530,17 @@ class _InvitationVisualEditorViewState
         'wa_confirmation': waCtrl.text.trim(),
         'is_active': isActive,
       });
-      if (templateChanged && _webViewController != null) {
-        _webViewController!.loadRequest(Uri.parse(_editorUrl));
+      if (templateChanged) {
+        if (kIsWeb) {
+          setState(() {
+            _isBridgeReady = false;
+            _bridgeCheckFailed = false;
+            _loadingProgress = 50;
+          });
+          _webIframeController.loadUrl(_editorUrl);
+        } else if (_webViewController != null) {
+          _webViewController!.loadRequest(Uri.parse(_editorUrl));
+        }
       }
     }
 
@@ -1597,9 +1641,10 @@ class _InvitationVisualEditorViewState
 
   Future<bool> _confirmDiscardIfNeeded() async {
     if (!_hasUnsavedChanges) return true;
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
+    final discard = await _withOverlayModal(
+      () => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
         title: Text('Buang Perubahan?', style: AppTypography.titleMedium),
         content: Text(
           'Anda memiliki perubahan yang belum disimpan. Yakin ingin keluar dari Visual Editor?',
@@ -1621,6 +1666,7 @@ class _InvitationVisualEditorViewState
           ),
         ],
       ),
+    ),
     );
     return discard ?? false;
   }
@@ -1857,6 +1903,15 @@ class _InvitationVisualEditorViewState
   }
 
   Widget _buildMainViewport() {
+    if (kIsWeb) {
+      return buildVisualEditorWebIframe(
+        url: _editorUrl,
+        controller: _webIframeController,
+        onMessage: _handleEditorMessage,
+        onLoadFinished: _onWebIframeLoaded,
+      );
+    }
+
     if (!_supportsEmbeddedWebView) {
       return Center(
         child: Padding(
