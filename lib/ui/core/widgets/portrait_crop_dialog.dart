@@ -12,6 +12,10 @@ class PortraitCropDialog extends StatefulWidget {
   final double aspectRatio;
   final String title;
   final String subtitle;
+  @visibleForTesting
+  final ui.Image? debugInitialImage;
+
+  static const Key cropCanvasKey = ValueKey('portrait_crop_canvas');
 
   const PortraitCropDialog({
     super.key,
@@ -19,6 +23,7 @@ class PortraitCropDialog extends StatefulWidget {
     this.aspectRatio = 3 / 4,
     this.title = 'Sesuaikan Foto (Potrait)',
     this.subtitle = 'Geser foto ke kiri/kanan atau perbesar agar pas di bingkai',
+    @visibleForTesting this.debugInitialImage,
   });
 
   /// Helper statis untuk menampilkan dialog dan mengembalikan [PickedImageData] hasil crop (atau null jika dibatalkan).
@@ -56,14 +61,18 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
   double _scale = 1.0;
   Offset _offset = Offset.zero;
 
-  // State awal gesture saat mulai drag/pinch
+  // State skala awal saat mulai gesture pinch-to-zoom
   double _startScale = 1.0;
-  Offset _startOffset = Offset.zero;
 
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    if (widget.debugInitialImage != null) {
+      _rawImage = widget.debugInitialImage;
+      _isLoading = false;
+    } else {
+      _loadImage();
+    }
   }
 
   Future<void> _loadImage() async {
@@ -313,16 +322,16 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
                                       behavior: HitTestBehavior.opaque,
                                       onScaleStart: (details) {
                                         _startScale = _scale;
-                                        _startOffset = _offset;
                                       },
                                       onScaleUpdate: (details) {
                                         setState(() {
                                           _scale = (_startScale * details.scale).clamp(1.0, 3.5);
-                                          final candidateOffset = _startOffset + details.focalPointDelta;
+                                          final candidateOffset = _offset + details.focalPointDelta;
                                           _offset = _clampOffset(candidateOffset, viewportSize, baseScale, _scale);
                                         });
                                       },
                                       child: CustomPaint(
+                                        key: PortraitCropDialog.cropCanvasKey,
                                         painter: _ImageCropPainter(
                                           image: _rawImage!,
                                           baseScale: baseScale,
@@ -385,9 +394,11 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
                       children: [
                         const Icon(Icons.touch_app_outlined, color: AppColors.primaryGold, size: 14),
                         const SizedBox(width: 6),
-                        Text(
-                          'Geser foto ke kiri / kanan untuk menyesuaikan',
-                          style: AppTypography.caption.copyWith(color: AppColors.goldLight, fontSize: 11),
+                        Flexible(
+                          child: Text(
+                            'Geser foto untuk memposisikan area potong',
+                            style: AppTypography.caption.copyWith(color: AppColors.goldLight, fontSize: 11),
+                          ),
                         ),
                       ],
                     ),
