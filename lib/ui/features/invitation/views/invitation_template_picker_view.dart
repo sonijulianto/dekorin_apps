@@ -575,6 +575,8 @@ class _InvitationTemplatePickerViewState
         return '🌸';
       case 'pn4':
         return '🖤';
+      case 'ultah1':
+        return '🎀';
       default:
         return '✨';
     }

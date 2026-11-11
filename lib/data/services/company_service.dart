@@ -90,6 +90,9 @@ class CompanyService {
     required String name,
     required String address,
     required String phone,
+    String? category,
+    String? city,
+    bool? isPublicListed,
     String? email,
     String? logoUrl,
     String? description,
@@ -101,6 +104,9 @@ class CompanyService {
       'address': address,
       'phone': phone,
     };
+    if (category != null) body['category'] = category;
+    if (city != null) body['city'] = city;
+    if (isPublicListed != null) body['is_public_listed'] = isPublicListed;
     if (email != null) body['email'] = email;
     if (logoUrl != null) body['logo_url'] = logoUrl;
     if (description != null) body['description'] = description;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,13 +20,18 @@ class PickedPhoneContact {
 /// Service untuk memilih nomor HP klien dari aplikasi kontak bawaan perangkat.
 class ContactPickerService {
   ContactPickerService({FlutterNativeContactPicker? picker})
-      : _picker = picker ?? FlutterNativeContactPicker();
+      : _hasCustomPicker = picker != null,
+        _picker = picker ?? FlutterNativeContactPicker();
 
+  final bool _hasCustomPicker;
   final FlutterNativeContactPicker _picker;
 
   /// Membuka pemilih kontak bawaan (Android/iOS) untuk memilih satu nomor HP.
-  /// Mengembalikan `null` jika pengguna membatalkan pemilihan.
+  /// Mengembalikan `null` jika pengguna membatalkan pemilihan atau di browser Web.
   Future<PickedPhoneContact?> pickPhoneContact() async {
+    if (kIsWeb && !_hasCustomPicker) {
+      throw UnsupportedError('Pemilih kontak tidak tersedia di browser.');
+    }
     final contact = await _picker.selectPhoneNumber();
     if (contact == null) return null;
 

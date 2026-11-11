@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,6 +9,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:flutter/services.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
@@ -37,7 +36,7 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
     final descController = TextEditingController(text: addon?.description ?? '');
     final formKey = GlobalKey<FormState>();
 
-    File? selectedImageFile;
+    PickedImageData? selectedImage;
     String existingImageUrl = addon?.imageUrl ?? '';
     bool isSubmitting = false;
 
@@ -53,8 +52,9 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
         );
 
         if (pickedFile != null) {
+          final pickedImage = await PickedImageData.fromXFile(pickedFile);
           setModalState(() {
-            selectedImageFile = File(pickedFile.path);
+            selectedImage = pickedImage;
           });
         }
       } catch (e) {
@@ -128,11 +128,11 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15),
-                            child: selectedImageFile != null
+                            child: selectedImage != null
                                 ? Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      Image.file(selectedImageFile!, fit: BoxFit.cover),
+                                      Image.memory(selectedImage!.bytes, fit: BoxFit.cover),
                                       Positioned(
                                         top: 8,
                                         right: 8,
@@ -271,8 +271,8 @@ class _ManageAddonsViewState extends ConsumerState<ManageAddonsView> {
                                     String finalImageUrl = existingImageUrl;
 
                                     // Upload gambar terkompresi ke server jika ada foto baru yang dipilih
-                                    if (selectedImageFile != null) {
-                                      finalImageUrl = await ApiClient.uploadImage(selectedImageFile!);
+                                    if (selectedImage != null) {
+                                      finalImageUrl = await ApiClient.uploadImage(selectedImage!);
                                     }
 
                                     if (isEdit) {

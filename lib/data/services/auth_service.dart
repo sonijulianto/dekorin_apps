@@ -39,6 +39,45 @@ class AuthService {
     return user;
   }
 
+  /// Pendaftaran akun mandiri untuk Calon Pengantin ('couple')
+  Future<UserModel> registerCouple({
+    required String fullName,
+    required String phone,
+    required String password,
+    String? email,
+    String? partnerName,
+    String? weddingDate,
+    String? city,
+    String? venueName,
+    double budgetTarget = 0,
+    String? joinCode,
+  }) async {
+    final responseData = await ApiClient.post(
+      ApiEndpoint.registerCouple,
+      body: {
+        'full_name': fullName.trim(),
+        'phone': phone.trim(),
+        'password': password,
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+        if (partnerName != null && partnerName.trim().isNotEmpty) 'partner_name': partnerName.trim(),
+        if (weddingDate != null && weddingDate.trim().isNotEmpty) 'wedding_date': weddingDate.trim(),
+        if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+        if (venueName != null && venueName.trim().isNotEmpty) 'venue_name': venueName.trim(),
+        if (budgetTarget > 0) 'budget_target': budgetTarget,
+        if (joinCode != null && joinCode.trim().isNotEmpty) 'join_code': joinCode.trim(),
+      },
+      withToken: false,
+    );
+
+    final user = UserModel.fromJson(responseData['data']);
+    final token = responseData['token'];
+
+    await DataPreferences.setToken(token);
+    await DataPreferences.setUser(jsonEncode(user.toJson()));
+
+    return user;
+  }
+
   /// Cek apakah user sudah login sebelumnya (membaca SharedPreferences)
   Future<UserModel?> getSavedUser() async {
     final userJsonString = DataPreferences.getUser();

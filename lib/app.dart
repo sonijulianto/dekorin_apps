@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/ui/core/widgets/web_mobile_shell.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/login/views/login_view.dart';
 import 'package:dekorin_apps/ui/features/main/views/main_view.dart';
@@ -48,11 +49,13 @@ class _DekorinAppState extends ConsumerState<DekorinApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       // Tutup keyboard secara global ketika user tap di area kosong mana pun
-      // (berlaku untuk semua screen, dialog, dan bottom sheet).
-      builder: (context, child) => GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: child,
+      // dan pusatkan ke frame mobile saat dibuka di browser desktop.
+      builder: (context, child) => WebMobileShell(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       home: authState.when(
         data: (user) {

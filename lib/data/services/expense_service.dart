@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 
 final expenseServiceProvider = Provider<ExpenseService>((ref) {
   return ExpenseService();
@@ -59,11 +58,11 @@ class ExpenseService {
   }
 
   /// Membaca foto nota / kuitansi pengeluaran dengan bantuan Gemini Vision AI di backend
-  Future<ExpenseOcrResult> scanReceiptWithAi(File imageFile) async {
+  Future<ExpenseOcrResult> scanReceiptWithAi(PickedImageData image) async {
     final response = await ApiClient.uploadMultipart(
       ApiEndpoint.aiScanReceipt,
       fileField: 'receipt',
-      file: imageFile,
+      image: image,
     );
 
     final data = response['data'] as Map<String, dynamic>? ?? {};

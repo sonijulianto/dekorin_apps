@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -531,69 +534,14 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     final mainCompanyName = currentUser?.companyName ?? 'Brand Utama';
     final bool canViewPrice = currentUser?.canViewPrice ?? !(currentUser?.isCrew ?? false);
     final selectedBrandLabel = _resolveBrandLabel(brands, mainCompanyName);
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInset = mediaQuery.viewInsets.bottom;
+    final bottomSafePadding = mediaQuery.padding.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Title
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/icons/calendar.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Buat Agenda Baru',
-                          style: AppTypography.titleLarge.copyWith(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textDark,
-                          ),
-                        ),
-                        Text(
-                          'Wajib isi Nama Client. Detail lain dapat diisi oleh client via Web Form.',
-                          style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppTheme.textLight),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+    final formFieldsColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
 
               // 0. Pilihan Brand Usaha (Muncul jika punya Sub-Brand)
               if (brands.isNotEmpty) ...[
@@ -744,11 +692,13 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                       colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
                     ),
                   ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.contacts_outlined, color: AppTheme.primaryGold, size: 20),
-                    tooltip: 'Ambil dari Kontak',
-                    onPressed: _isPickingContact ? null : _pickContactPhone,
-                  ),
+                  suffixIcon: kIsWeb
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.contacts_outlined, color: AppTheme.primaryGold, size: 20),
+                          tooltip: 'Ambil dari Kontak',
+                          onPressed: _isPickingContact ? null : _pickContactPhone,
+                        ),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),
@@ -1440,9 +1390,131 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                         ],
                       ),
               ),
+      ],
+    );
+
+    return PopScope(
+      canPop: !_isLoading,
+      child: SafeArea(
+        top: true,
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final hasBoundedHeight = constraints.hasBoundedHeight;
+            final double? maxSheetHeight;
+            if (hasBoundedHeight) {
+              final baseMaxHeight = constraints.maxHeight * 0.90;
+              maxSheetHeight = (baseMaxHeight - bottomInset) < 220
+                  ? math.min(constraints.maxHeight, bottomInset + 220)
+                  : baseMaxHeight;
+            } else {
+              maxSheetHeight = null;
+            }
+            final contentBottomPadding = bottomInset > 0 ? 20.0 : bottomSafePadding + 24.0;
+
+            return Container(
+              constraints: maxSheetHeight != null ? BoxConstraints(maxHeight: maxSheetHeight) : null,
+              padding: EdgeInsets.only(bottom: bottomInset),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeader(context),
+                    Divider(height: 1, color: Colors.grey.shade200),
+                    if (hasBoundedHeight)
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(20, 16, 20, contentBottomPadding),
+                          child: formFieldsColumn,
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(20, 16, 20, contentBottomPadding),
+                        child: formFieldsColumn,
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar dipin di luar area scroll agar mudah di-drag ke bawah
+          Center(
+            child: Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SvgPicture.asset(
+                  'assets/icons/calendar.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(AppTheme.primaryGold, BlendMode.srcIn),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Buat Agenda Baru',
+                      style: AppTypography.titleLarge.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    Text(
+                      'Wajib isi Nama Client. Detail lain dapat diisi oleh client via Web Form.',
+                      style: AppTypography.bodySmall.copyWith(fontSize: 12, color: AppTheme.textLight),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Tutup',
+                onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.goldLight,
+                  foregroundColor: AppTheme.textDark,
+                  minimumSize: const Size(36, 36),
+                ),
+                icon: const Icon(Icons.close_rounded, size: 20),
+              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

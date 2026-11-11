@@ -7,6 +7,9 @@ import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_view.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/views/ai_decor_studio_view.dart';
+import 'package:dekorin_apps/ui/features/couple/views/couple_invitation_view.dart';
+import 'package:dekorin_apps/ui/features/couple/views/couple_planner_view.dart';
+import 'package:dekorin_apps/ui/features/couple/views/couple_vendors_view.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/profile/views/profile_view.dart';
@@ -39,6 +42,7 @@ class _MainViewState extends ConsumerState<MainView> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(globalAuthProvider).value;
+    final isCouple = user?.isCouple ?? false;
     final isOwner = user?.canAccessDashboard ?? true;
     final canUseAiStudio = user?.canUseAiStudio ?? true;
 
@@ -46,94 +50,49 @@ class _MainViewState extends ConsumerState<MainView> {
     const inactiveNavColor = Color(0xFF7A7A7A);
 
     // Menentukan daftar halaman & item navigasi bawah berdasarkan role:
-    // - Owner: [Dashboard, Agenda, Simulasi AI, Profile]
-    // - Admin: [Agenda, Simulasi AI, Profile]
-    // - Crew:  [Agenda, Profile]
-    final List<Widget> pages = [
-      if (isOwner) const DashboardView(),
-      const AgendaView(),
-      if (canUseAiStudio) const AiDecorStudioView(),
-      const ProfileView(),
-    ];
+    // - Couple: [Planner, Vendor, Undangan, Profil]
+    // - Owner:  [Dashboard, Agenda, Simulasi AI, Profile]
+    // - Admin:  [Agenda, Simulasi AI, Profile]
+    // - Crew:   [Agenda, Profile]
+    final List<Widget> pages = isCouple
+        ? [
+            CouplePlannerView(onNavigateToTab: _onItemTapped),
+            const CoupleVendorsView(),
+            const CoupleInvitationView(),
+            const ProfileView(),
+          ]
+        : [
+            if (isOwner) const DashboardView(),
+            const AgendaView(),
+            if (canUseAiStudio) const AiDecorStudioView(),
+            const ProfileView(),
+          ];
 
-    final List<BottomNavigationBarItem> navItems = [
-      if (isOwner)
-        const BottomNavigationBarItem(
-          icon: Padding(
-            padding: EdgeInsets.only(bottom: 3),
-            child: Icon(Icons.dashboard_outlined, size: 24),
-          ),
-          activeIcon: Padding(
-            padding: EdgeInsets.only(bottom: 3),
-            child: Icon(Icons.dashboard_rounded, size: 24),
-          ),
-          label: 'Dashboard',
-        ),
-      BottomNavigationBarItem(
-        icon: Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: SvgPicture.asset(
-            'assets/icons/calendar.svg',
-            width: 22,
-            height: 22,
-            colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-          ),
-        ),
-        activeIcon: Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: SvgPicture.asset(
-            'assets/icons/calendar.svg',
-            width: 22,
-            height: 22,
-            colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-          ),
-        ),
-        label: 'Agenda',
-      ),
-      if (canUseAiStudio)
-        BottomNavigationBarItem(
-          icon: Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: SvgPicture.asset(
-              'assets/icons/ai-magic.svg',
-              width: 22,
-              height: 22,
-              colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-            ),
-          ),
-          activeIcon: Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: SvgPicture.asset(
-              'assets/icons/ai-magic.svg',
-              width: 22,
-              height: 22,
-              colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-            ),
-          ),
-          label: 'Simulasi AI',
-        ),
-      BottomNavigationBarItem(
-        icon: Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 22,
-            height: 22,
-            colorFilter: const ColorFilter.mode(inactiveNavColor, BlendMode.srcIn),
-          ),
-        ),
-        activeIcon: Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: SvgPicture.asset(
-            'assets/icons/user.svg',
-            width: 22,
-            height: 22,
-            colorFilter: const ColorFilter.mode(activeNavColor, BlendMode.srcIn),
-          ),
-        ),
-        label: 'Profile',
-      ),
-    ];
+    final List<BottomNavigationBarItem> navItems = isCouple
+        ? [
+            _buildSvgNavItem('assets/icons/calendar.svg', 'Planner', activeNavColor, inactiveNavColor),
+            _buildSvgNavItem('assets/icons/wallet-income.svg', 'Vendor', activeNavColor, inactiveNavColor),
+            _buildSvgNavItem('assets/icons/share.svg', 'Undangan', activeNavColor, inactiveNavColor),
+            _buildSvgNavItem('assets/icons/user.svg', 'Profil', activeNavColor, inactiveNavColor),
+          ]
+        : [
+            if (isOwner)
+              const BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 3),
+                  child: Icon(Icons.dashboard_outlined, size: 24),
+                ),
+                activeIcon: Padding(
+                  padding: EdgeInsets.only(bottom: 3),
+                  child: Icon(Icons.dashboard_rounded, size: 24),
+                ),
+                label: 'Dashboard',
+              ),
+            _buildSvgNavItem('assets/icons/calendar.svg', 'Agenda', activeNavColor, inactiveNavColor),
+            if (canUseAiStudio)
+              _buildSvgNavItem('assets/icons/ai-magic.svg', 'Simulasi AI', activeNavColor, inactiveNavColor),
+            _buildSvgNavItem('assets/icons/user.svg', 'Profile', activeNavColor, inactiveNavColor),
+          ];
 
     // Mencegah index out of bounds jika beralih akun/role
     final currentIndex = _selectedIndex >= pages.length ? 0 : _selectedIndex;
@@ -181,6 +140,35 @@ class _MainViewState extends ConsumerState<MainView> {
           ),
         ),
       ),
+    );
+  }
+
+  BottomNavigationBarItem _buildSvgNavItem(
+    String assetPath,
+    String label,
+    Color activeColor,
+    Color inactiveColor,
+  ) {
+    return BottomNavigationBarItem(
+      icon: Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: SvgPicture.asset(
+          assetPath,
+          width: 22,
+          height: 22,
+          colorFilter: ColorFilter.mode(inactiveColor, BlendMode.srcIn),
+        ),
+      ),
+      activeIcon: Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: SvgPicture.asset(
+          assetPath,
+          width: 22,
+          height: 22,
+          colorFilter: ColorFilter.mode(activeColor, BlendMode.srcIn),
+        ),
+      ),
+      label: label,
     );
   }
 }

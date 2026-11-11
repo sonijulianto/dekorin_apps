@@ -1,40 +1,40 @@
-import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 
 /// Dialog interaktif untuk memotong (crop) foto menjadi rasio potrait (default 3:4).
 /// Memungkinkan user menggeser (pan) foto ke kiri/kanan/atas/bawah serta memperbesar (zoom),
 /// sehingga foto landscape yang diunggah dapat disesuaikan agar wajah mempelai tidak terpotong.
 class PortraitCropDialog extends StatefulWidget {
-  final File imageFile;
+  final PickedImageData image;
   final double aspectRatio;
   final String title;
   final String subtitle;
 
   const PortraitCropDialog({
     super.key,
-    required this.imageFile,
+    required this.image,
     this.aspectRatio = 3 / 4,
     this.title = 'Sesuaikan Foto (Potrait)',
     this.subtitle = 'Geser foto ke kiri/kanan atau perbesar agar pas di bingkai',
   });
 
-  /// Helper statis untuk menampilkan dialog dan mengembalikan [File] hasil crop (atau null jika dibatalkan).
-  static Future<File?> show(
+  /// Helper statis untuk menampilkan dialog dan mengembalikan [PickedImageData] hasil crop (atau null jika dibatalkan).
+  static Future<PickedImageData?> show(
     BuildContext context, {
-    required File imageFile,
+    required PickedImageData image,
     double aspectRatio = 3 / 4,
     String title = 'Sesuaikan Foto (Potrait)',
     String subtitle = 'Geser foto ke kiri/kanan atau perbesar agar pas di bingkai',
   }) {
-    return showDialog<File?>(
+    return showDialog<PickedImageData?>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black87,
       builder: (ctx) => PortraitCropDialog(
-        imageFile: imageFile,
+        image: image,
         aspectRatio: aspectRatio,
         title: title,
         subtitle: subtitle,
@@ -68,8 +68,7 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
 
   Future<void> _loadImage() async {
     try {
-      final bytes = await widget.imageFile.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
+      final codec = await ui.instantiateImageCodec(widget.image.bytes);
       final frame = await codec.getNextFrame();
       if (mounted) {
         setState(() {
@@ -155,12 +154,13 @@ class _PortraitCropDialogState extends State<PortraitCropDialog> {
         throw Exception('Gagal mengonversi gambar hasil potong');
       }
 
-      final tempDir = Directory.systemTemp;
-      final outFile = File('${tempDir.path}/crop_portrait_${DateTime.now().millisecondsSinceEpoch}.png');
-      await outFile.writeAsBytes(byteData.buffer.asUint8List());
+      final croppedImage = PickedImageData(
+        bytes: byteData.buffer.asUint8List(),
+        filename: 'crop_portrait_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
 
       if (mounted) {
-        Navigator.of(context).pop(outFile);
+        Navigator.of(context).pop(croppedImage);
       }
     } catch (e) {
       if (mounted) {

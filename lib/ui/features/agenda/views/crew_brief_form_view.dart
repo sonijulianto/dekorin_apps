@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,7 +22,7 @@ class _SectionFormItem {
 
   final TextEditingController titleController;
   final List<TextEditingController> noteControllers;
-  File? imageFile;
+  Uint8List? imageBytes;
   String? imageUrl;
 
   void dispose() {
@@ -32,7 +32,9 @@ class _SectionFormItem {
     }
   }
 
-  bool get hasImage => imageFile != null || (imageUrl != null && imageUrl!.trim().isNotEmpty);
+  bool get hasImage =>
+      (imageBytes != null && imageBytes!.isNotEmpty) ||
+      (imageUrl != null && imageUrl!.trim().isNotEmpty);
 }
 
 /// Screen form dinamis untuk menyusun Lembar Kerja Visual Crew Dekorasi format A4.
@@ -153,8 +155,10 @@ class _CrewBriefFormViewState extends ConsumerState<CrewBriefFormView> {
                     Navigator.pop(ctx);
                     final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
                     if (picked != null) {
+                      final bytes = await picked.readAsBytes();
+                      if (!mounted) return;
                       setState(() {
-                        _sections[sectionIndex].imageFile = File(picked.path);
+                        _sections[sectionIndex].imageBytes = bytes;
                         _sections[sectionIndex].imageUrl = null;
                       });
                     }
@@ -167,8 +171,10 @@ class _CrewBriefFormViewState extends ConsumerState<CrewBriefFormView> {
                     Navigator.pop(ctx);
                     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
                     if (picked != null) {
+                      final bytes = await picked.readAsBytes();
+                      if (!mounted) return;
                       setState(() {
-                        _sections[sectionIndex].imageFile = File(picked.path);
+                        _sections[sectionIndex].imageBytes = bytes;
                         _sections[sectionIndex].imageUrl = null;
                       });
                     }
@@ -183,7 +189,7 @@ class _CrewBriefFormViewState extends ConsumerState<CrewBriefFormView> {
                       Navigator.pop(ctx);
                       setState(() {
                         _sections[sectionIndex].imageUrl = widget.agenda.modelImageUrl;
-                        _sections[sectionIndex].imageFile = null;
+                        _sections[sectionIndex].imageBytes = null;
                       });
                     },
                   ),
@@ -205,7 +211,7 @@ class _CrewBriefFormViewState extends ConsumerState<CrewBriefFormView> {
 
       return CrewBriefSection(
         title: item.titleController.text.trim(),
-        imageFile: item.imageFile,
+        imageBytes: item.imageBytes,
         imageUrl: item.imageUrl,
         notes: notes.isNotEmpty ? notes : ['Pasang dan sesuaikan dengan foto referensi.'],
       );
@@ -299,8 +305,8 @@ class _CrewBriefFormViewState extends ConsumerState<CrewBriefFormView> {
                         Positioned.fill(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: section.imageFile != null
-                                ? Image.file(section.imageFile!, fit: BoxFit.cover)
+                            child: section.imageBytes != null
+                                ? Image.memory(section.imageBytes!, fit: BoxFit.cover)
                                 : Image.network(
                                     section.imageUrl!,
                                     fit: BoxFit.cover,

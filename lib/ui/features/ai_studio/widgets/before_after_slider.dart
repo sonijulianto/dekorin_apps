@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -9,14 +9,14 @@ class BeforeAfterSlider extends StatefulWidget {
   const BeforeAfterSlider({
     super.key,
     required this.afterImageUrl,
-    this.beforeImageFile,
+    this.beforeImageBytes,
     this.beforeImageUrl = '',
     this.height = 380,
     this.onTapFullscreen,
   });
 
   final String afterImageUrl;
-  final File? beforeImageFile;
+  final Uint8List? beforeImageBytes;
   final String beforeImageUrl;
   final double height;
   final VoidCallback? onTapFullscreen;
@@ -36,9 +36,9 @@ class _BeforeAfterSliderState extends State<BeforeAfterSlider> {
   }
 
   Widget _buildBeforeImage() {
-    if (widget.beforeImageFile != null) {
-      return Image.file(
-        widget.beforeImageFile!,
+    if (widget.beforeImageBytes != null && widget.beforeImageBytes!.isNotEmpty) {
+      return Image.memory(
+        widget.beforeImageBytes!,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,

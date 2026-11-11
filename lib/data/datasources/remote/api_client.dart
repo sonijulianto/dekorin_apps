@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
 import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/datasources/remote/image_compressor.dart';
+import 'package:dekorin_apps/data/datasources/remote/network_error_helper.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 
 /// Exception khusus yang membawa pesan error dari API.
 class ApiException implements Exception {
@@ -19,24 +20,17 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// HTTP Client terpusat untuk seluruh aplikasi.
+/// HTTP Client terpusat untuk seluruh aplikasi (Mobile & Web).
 ///
 /// Menangani:
 /// - Base URL otomatis dari [ApiEndpoint]
 /// - Header `Content-Type` & `Authorization` (Bearer token) otomatis
 /// - Parsing JSON response
 /// - Error handling terpusat (network error & API error)
-///
-/// Contoh penggunaan:
-/// ```dart
-/// final data = await ApiClient.post(ApiEndpoint.login, body: {...});
-/// ```
 class ApiClient {
-  ApiClient._(); // Tidak bisa di-instansiasi
+  ApiClient._();
 
   /// Timeout default untuk semua HTTP request.
-  /// Jika server tidak merespons dalam waktu ini, request dibatalkan
-  /// dan muncul pesan error (tidak loading selamanya).
   static const _timeout = Duration(seconds: 15);
 
   /// Callback global yang dipanggil saat token kadaluarsa atau tidak valid (HTTP 401)
@@ -47,20 +41,17 @@ class ApiClient {
     if (_isHandlingUnauthorized) return;
     _isHandlingUnauthorized = true;
 
-    // Hapus token & user dari SharedPreferences
     DataPreferences.logout();
 
     try {
       onUnauthorized?.call();
     } catch (_) {}
 
-    // Reset flag setelah 2 detik untuk menghindari spam popup
     Future.delayed(const Duration(seconds: 2), () {
       _isHandlingUnauthorized = false;
     });
   }
 
-  // ── Helper: Membuat headers ───────────────────────────────
   static Map<String, String> _headers({bool withToken = true}) {
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -74,13 +65,11 @@ class ApiClient {
     return headers;
   }
 
-  // ── Helper: Handle response ───────────────────────────────
   static dynamic _handleResponse(http.Response response) {
     dynamic body;
     try {
       body = jsonDecode(response.body);
     } catch (_) {
-      // Body bukan format JSON valid (misal: plain text 404 dari Go Fiber / Nginx)
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.body;
       }
@@ -103,43 +92,57 @@ class ApiClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
-    } else {
-      if (response.statusCode == 401) {
-        _triggerUnauthorized();
-      }
-      if (response.statusCode == 413) {
-        throw ApiException(
-          'Ukuran file terlalu besar melebihi kapasitas server (413 Payload Too Large).',
-          statusCode: 413,
-        );
-      }
+    }
 
-      // Ambil pesan error dari API (jika ada), fallback ke pesan generic
-      String errorMessage = 'Terjadi kesalahan pada server.';
-      if (body is Map) {
-        errorMessage = body['error'] ?? body['message'] ?? errorMessage;
+    if (response.statusCode == 401) {
+      _triggerUnauthorized();
+    }
+    if (response.statusCode == 413) {
+      throw ApiException(
+        'Ukuran file terlalu besar melebihi kapasitas server (413 Payload Too Large).',
+        statusCode: 413,
+      );
+    }
+
+    String errorMessage = 'Terjadi kesalahan pada server.';
+    if (body is Map) {
+      errorMessage = body['error'] ?? body['message'] ?? errorMessage;
+    }
+    throw ApiException(errorMessage, statusCode: response.statusCode);
+  }
+
+  static Future<dynamic> _executeRequest(
+    Future<http.Response> Function() requestFn, {
+    Duration? timeout,
+    String? timeoutMessage,
+  }) async {
+    final effectiveTimeout = timeout ?? _timeout;
+    try {
+      final response = await requestFn().timeout(effectiveTimeout);
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(
+        timeoutMessage ??
+            'Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan server berjalan dan URL benar.',
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      if (isNetworkConnectionError(e)) {
+        throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
       }
-      throw ApiException(errorMessage, statusCode: response.statusCode);
+      throw ApiException('Terjadi kesalahan: $e');
     }
   }
 
   // ── GET ───────────────────────────────────────────────────
-  static Future<dynamic> get(String endpoint, {bool withToken = true}) async {
-    try {
-      final response = await http.get(
+  static Future<dynamic> get(String endpoint, {bool withToken = true}) {
+    return _executeRequest(
+      () => http.get(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
-      ).timeout(_timeout);
-      return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Terjadi kesalahan: $e');
-    }
+      ),
+    );
   }
 
   // ── POST ──────────────────────────────────────────────────
@@ -148,24 +151,18 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool withToken = true,
     Duration? timeout,
-  }) async {
+  }) {
     final effectiveTimeout = timeout ?? _timeout;
-    try {
-      final response = await http.post(
+    return _executeRequest(
+      () => http.post(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      ).timeout(effectiveTimeout);
-      return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan koneksi internet stabil.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Terjadi kesalahan: $e');
-    }
+      ),
+      timeout: effectiveTimeout,
+      timeoutMessage:
+          'Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan koneksi internet stabil.',
+    );
   }
 
   // ── PUT ───────────────────────────────────────────────────
@@ -173,23 +170,14 @@ class ApiClient {
     String endpoint, {
     Map<String, dynamic>? body,
     bool withToken = true,
-  }) async {
-    try {
-      final response = await http.put(
+  }) {
+    return _executeRequest(
+      () => http.put(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      ).timeout(_timeout);
-      return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Terjadi kesalahan: $e');
-    }
+      ),
+    );
   }
 
   // ── PATCH ──────────────────────────────────────────────────
@@ -197,92 +185,54 @@ class ApiClient {
     String endpoint, {
     Map<String, dynamic>? body,
     bool withToken = true,
-  }) async {
-    try {
-      final response = await http.patch(
+  }) {
+    return _executeRequest(
+      () => http.patch(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
-      ).timeout(_timeout);
-      return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Terjadi kesalahan: $e');
-    }
+      ),
+    );
   }
 
   // ── DELETE ────────────────────────────────────────────────
-  static Future<dynamic> delete(String endpoint, {bool withToken = true}) async {
-    try {
-      final response = await http.delete(
+  static Future<dynamic> delete(String endpoint, {bool withToken = true}) {
+    return _executeRequest(
+      () => http.delete(
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
-      ).timeout(_timeout);
-      return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on TimeoutException {
-      throw ApiException('Server tidak merespons (timeout 15 detik). Pastikan server berjalan dan URL benar.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Terjadi kesalahan: $e');
-    }
+      ),
+    );
   }
 
   // ── UPLOAD IMAGE ──────────────────────────────────────────
-  static Future<String> uploadImage(File file, {bool withToken = true}) async {
-    try {
-      // Auto Multi-Pass Compression untuk memastikan file <= 5MB sebelum diunggah
-      final processedFile = await ImageCompressor.compressUnder5MB(file);
-
-      final uri = Uri.parse('${ApiEndpoint.baseUrl}/upload');
-      final request = http.MultipartRequest('POST', uri);
-
-      if (withToken) {
-        final token = DataPreferences.getToken();
-        if (token.isNotEmpty) {
-          request.headers['Authorization'] = 'Bearer $token';
-        }
-      }
-
-      final multipartFile = await http.MultipartFile.fromPath(
-        'image',
-        processedFile.path,
-      );
-      request.files.add(multipartFile);
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      final body = _handleResponse(response);
-
-      return body['url'] as String? ?? '';
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException('Gagal mengunggah gambar: $e');
-    }
+  static Future<String> uploadImage(
+    PickedImageData image, {
+    bool withToken = true,
+  }) async {
+    final body = await uploadMultipart(
+      '/upload',
+      fileField: 'image',
+      image: image,
+      withToken: withToken,
+      timeout: const Duration(seconds: 45),
+      timeoutMessage: 'Gagal mengunggah gambar (timeout). Periksa koneksi internet Anda.',
+    );
+    return body['url'] as String? ?? '';
   }
 
   // ── UPLOAD MULTIPART GENERIC ──────────────────────────────
   static Future<dynamic> uploadMultipart(
     String endpoint, {
     required String fileField,
-    required File file,
+    required PickedImageData image,
     Map<String, String>? fields,
     bool withToken = true,
     Duration timeout = const Duration(seconds: 45),
+    String? timeoutMessage,
   }) async {
     try {
-      // Auto compress image jika berupa foto
-      final processedFile = await ImageCompressor.compressUnder5MB(file);
+      final processedImage = await ImageCompressor.compressUnder5MB(image);
 
       final uri = Uri.parse('${ApiEndpoint.baseUrl}$endpoint');
       final request = http.MultipartRequest('POST', uri);
@@ -298,22 +248,27 @@ class ApiClient {
         request.fields.addAll(fields);
       }
 
-      final multipartFile = await http.MultipartFile.fromPath(
+      final multipartFile = http.MultipartFile.fromBytes(
         fileField,
-        processedFile.path,
+        processedImage.bytes,
+        filename: processedImage.filename,
       );
       request.files.add(multipartFile);
 
       final streamedResponse = await request.send().timeout(timeout);
       final response = await http.Response.fromStream(streamedResponse).timeout(timeout);
       return _handleResponse(response);
-    } on SocketException {
-      throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
     } on TimeoutException {
-      throw ApiException('Proses analisis AI membutuhkan waktu lebih lama. Silakan periksa koneksi Anda.');
+      throw ApiException(
+        timeoutMessage ??
+            'Proses analisis AI membutuhkan waktu lebih lama. Silakan periksa koneksi Anda.',
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
+      if (isNetworkConnectionError(e)) {
+        throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+      }
       throw ApiException('Gagal memproses file: $e');
     }
   }

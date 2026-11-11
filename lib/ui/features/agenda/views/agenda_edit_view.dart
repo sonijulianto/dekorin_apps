@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -752,11 +753,13 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                 colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
                               ),
                             ),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.contacts_outlined, color: AppColors.primaryGold, size: 20),
-                              tooltip: 'Ambil dari Kontak',
-                              onPressed: _isPickingContact ? null : _pickContactPhone,
-                            ),
+                            suffixIcon: kIsWeb
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.contacts_outlined, color: AppColors.primaryGold, size: 20),
+                                    tooltip: 'Ambil dari Kontak',
+                                    onPressed: _isPickingContact ? null : _pickContactPhone,
+                                  ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),

@@ -20,7 +20,19 @@ class ApiEndpoint {
 
   // ── Auth ──────────────────────────────────────────────────
   static const String login = '/auth/login';
+  static const String registerCouple = '/auth/register-couple';
   static const String changePassword = '/auth/change-password';
+
+  // ── Couple / Calon Pengantin & Direktori Vendor ───────────
+  static const String couplePlan = '/couple/plan';
+  static const String couplePlanJoin = '/couple/plan/join';
+  static const String coupleVendors = '/couple/vendors';
+  static const String coupleLinkAgenda = '/couple/vendors/link-agenda';
+  static const String coupleAddPublicVendor = '/couple/vendors/from-directory';
+  static const String coupleTasks = '/couple/tasks';
+  static const String coupleInvitations = '/couple/invitations';
+  static const String coupleClaimInvitation = '/couple/invitations/claim';
+  static const String vendorDirectory = '/vendors/directory';
 
   // ── Users & Company ──────────────────────────────────────
   static const String users = '/users';
@@ -92,5 +104,20 @@ class ApiEndpoint {
       return '$base?slug=${Uri.encodeComponent(slug.trim())}&preview=1';
     }
     return '$base?preview=1';
+  }
+
+  /// Helper untuk membuat URL Visual Click-to-Edit Editor undangan digital (?preview=1&edit=1)
+  static String getInvitationVisualEditorUrl(String slug, {String? templateOverride}) {
+    final uri = Uri.parse(baseUrl);
+    final isProdDomain = uri.host == 'dekorin.my.id' || uri.host.endsWith('.dekorin.my.id');
+    final cleanSlug = Uri.encodeComponent(slug.trim());
+    final base = isProdDomain
+        ? '$invitationDomainBaseUrl/$cleanSlug'
+        : '$webFormBaseUrl/invitation/$cleanSlug';
+    final queryParts = <String>['preview=1', 'edit=1'];
+    if (templateOverride != null && templateOverride.trim().isNotEmpty) {
+      queryParts.add('template=${Uri.encodeComponent(templateOverride.trim())}');
+    }
+    return '$base?${queryParts.join('&')}';
   }
 }

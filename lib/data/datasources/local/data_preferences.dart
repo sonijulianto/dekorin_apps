@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,7 +23,15 @@ class DataPreferences {
       await _preferences.remove(_legacyInvoiceTemplate);
     }
 
-    // 1. Coba baca token dari encrypted secure storage
+    if (kIsWeb) {
+      // Pada Flutter Web, gunakan SharedPreferences (localStorage) agar sesi tetap
+      // berjalan stabil baik di HTTPS production maupun HTTP development tanpa
+      // ketergantungan WebCrypto subtle API.
+      _cachedToken = _preferences.getString(_token);
+      return;
+    }
+
+    // 1. Coba baca token dari encrypted secure storage (Android/iOS)
     try {
       _cachedToken = await _secureStorage.read(key: _token);
     } catch (_) {
@@ -35,22 +44,37 @@ class DataPreferences {
       final legacyToken = _preferences.getString(_token);
       if (legacyToken != null && legacyToken.isNotEmpty) {
         _cachedToken = legacyToken;
+        bool migrated = false;
         try {
           await _secureStorage.write(key: _token, value: legacyToken);
+          migrated = true;
         } catch (_) {}
-        // Hapus token plaintext dari SharedPreferences setelah sukses migrasi
-        await _preferences.remove(_token);
+        if (migrated) {
+          await _preferences.remove(_token);
+        }
       }
     }
   }
 
   static Future setToken(String token) async {
     _cachedToken = token;
+    if (kIsWeb) {
+      await _preferences.setString(_token, token);
+      return;
+    }
+
+    bool wroteSecure = false;
     try {
       await _secureStorage.write(key: _token, value: token);
+      wroteSecure = true;
     } catch (_) {}
-    // Pastikan tidak ada token plaintext tertinggal di SharedPreferences
-    await _preferences.remove(_token);
+
+    if (wroteSecure) {
+      // Pastikan tidak ada token plaintext tertinggal di SharedPreferences
+      await _preferences.remove(_token);
+    } else {
+      await _preferences.setString(_token, token);
+    }
   }
 
   static String getToken() => _cachedToken ?? "";
@@ -68,9 +92,11 @@ class DataPreferences {
 
   static Future<void> logout() async {
     _cachedToken = null;
-    try {
-      await _secureStorage.delete(key: _token);
-    } catch (_) {}
+    if (!kIsWeb) {
+      try {
+        await _secureStorage.delete(key: _token);
+      } catch (_) {}
+    }
     await _preferences.remove(_token);
     await _preferences.remove(_user);
   }

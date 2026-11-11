@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:dekorin_apps/config/theme/app_colors.dart';
@@ -29,7 +31,7 @@ class InvitationTemplatePreviewView extends StatefulWidget {
 
 class _InvitationTemplatePreviewViewState
     extends State<InvitationTemplatePreviewView> {
-  late final WebViewController _webViewController;
+  late final WebViewController? _webViewController;
   int _loadingProgress = 0;
   bool _hasError = false;
   String _errorMessage = '';
@@ -42,7 +44,17 @@ class _InvitationTemplatePreviewViewState
   @override
   void initState() {
     super.initState();
-    _initWebViewController();
+    if (!kIsWeb) {
+      _initWebViewController();
+    } else {
+      _webViewController = null;
+      _loadingProgress = 100;
+    }
+  }
+
+  Future<void> _openInBrowserTab() async {
+    final uri = Uri.parse(_previewUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   void _initWebViewController() {
@@ -90,11 +102,15 @@ class _InvitationTemplatePreviewViewState
   }
 
   void _reloadPreview() {
+    if (kIsWeb) {
+      _openInBrowserTab();
+      return;
+    }
     setState(() {
       _hasError = false;
       _loadingProgress = 10;
     });
-    _webViewController.loadRequest(Uri.parse(_previewUrl));
+    _webViewController?.loadRequest(Uri.parse(_previewUrl));
   }
 
   @override
@@ -154,11 +170,65 @@ class _InvitationTemplatePreviewViewState
               : const SizedBox(height: 3),
         ),
       ),
-      body: Stack(
-        children: [
-          // Native WebView
-          if (!_hasError)
-            WebViewWidget(controller: _webViewController),
+      body: kIsWeb
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: AppColors.goldLight,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.open_in_browser_rounded,
+                        size: 36,
+                        color: AppColors.primaryGold,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Live Preview Undangan Digital',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pada versi browser, preview interaktif template "${widget.templateName}" dibuka di tab baru agar musik, animasi, dan tata letaknya tampil penuh.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(height: 1.45),
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGold,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: _openInBrowserTab,
+                        icon: const Icon(Icons.open_in_new_rounded, color: Colors.white, size: 18),
+                        label: Text(
+                          'Buka Live Preview di Tab Baru',
+                          style: AppTypography.button.copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : Stack(
+              children: [
+                // Native WebView
+                if (!_hasError && _webViewController != null)
+                  WebViewWidget(controller: _webViewController),
 
           // Loading Overlay saat progress awal
           if (_loadingProgress < 60 && !_hasError)

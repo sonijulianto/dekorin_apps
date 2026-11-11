@@ -13,6 +13,7 @@ import 'package:dekorin_apps/ui/features/invitation/views/client_portal_access_s
 import 'package:dekorin_apps/ui/features/invitation/views/guest_manager_sheet.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_form_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_generator_view.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_visual_editor_view.dart';
 
 final invitationsProvider = FutureProvider.autoDispose<List<InvitationItem>>((ref) async {
   final service = ref.watch(invitationServiceProvider);
@@ -241,7 +242,9 @@ class _ManageInvitationsViewState extends ConsumerState<ManageInvitationsView> {
                                 } else if (value == 'edit') {
                                   final res = await Navigator.push<bool>(
                                     context,
-                                    MaterialPageRoute(builder: (_) => InvitationFormView(invitation: inv)),
+                                    MaterialPageRoute(
+                                      builder: (_) => InvitationVisualEditorView(invitation: inv),
+                                    ),
                                   );
                                   if (res == true) {
                                     ref.invalidate(invitationsProvider);

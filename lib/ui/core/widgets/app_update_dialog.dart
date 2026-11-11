@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -317,6 +318,7 @@ class AppUpdateChecker {
   /// Memeriksa apakah ada update baru
   /// [showToastIfLatest]: jika true, menampilkan feedback jika sudah versi terbaru (cocok untuk tombol manual di Profile)
   static Future<void> check(BuildContext context, {bool showToastIfLatest = false}) async {
+    if (kIsWeb) return;
     if (_isChecking) return;
     _isChecking = true;
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -361,12 +362,22 @@ class ProfileView extends ConsumerWidget {
                       decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
                       child: const Icon(Icons.system_update_rounded, color: AppColors.primaryGold, size: 22),
                     ),
-                    title: Text('Periksa Pembaruan', style: AppTypography.titleSmall),
-                    subtitle: Text('Versi $versionStr (Ketuk untuk cek pembaruan)', style: AppTypography.caption),
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                    onTap: () {
-                      AppUpdateChecker.check(context, showToastIfLatest: true);
-                    },
+                    title: Text(
+                      kIsWeb ? 'Versi Web App' : 'Periksa Pembaruan',
+                      style: AppTypography.titleSmall,
+                    ),
+                    subtitle: Text(
+                      kIsWeb
+                          ? 'Versi $versionStr (Selalu menggunakan versi web terbaru)'
+                          : 'Versi $versionStr (Ketuk untuk cek pembaruan)',
+                      style: AppTypography.caption,
+                    ),
+                    trailing: kIsWeb ? null : const Icon(Icons.chevron_right, color: AppColors.textLight),
+                    onTap: kIsWeb
+                        ? null
+                        : () {
+                            AppUpdateChecker.check(context, showToastIfLatest: true);
+                          },
                   );
                 },
               ),
@@ -424,10 +435,15 @@ class ProfileView extends ConsumerWidget {
   }
 
   Widget _buildProfileHeaderCard(BuildContext context, User? user) {
-    final companyName = (user?.companyName.isNotEmpty ?? false) ? user!.companyName : 'Nama Usaha Belum Diatur';
-    final companyAddress = (user?.companyAddress.isNotEmpty ?? false)
-        ? user!.companyAddress
-        : 'Alamat usaha belum diatur';
+    final isCouple = user?.isCouple ?? false;
+    final companyName = isCouple
+        ? 'Dekorin Wedding Plan'
+        : ((user?.companyName.isNotEmpty ?? false) ? user!.companyName : 'Nama Usaha Belum Diatur');
+    final companyAddress = isCouple
+        ? 'Akun Calon Pengantin Terintegrasi'
+        : ((user?.companyAddress.isNotEmpty ?? false)
+            ? user!.companyAddress
+            : 'Alamat usaha belum diatur');
     final userName = (user?.name.isNotEmpty ?? false) ? user!.name : 'Pengguna Dekorin';
     final userPhone = (user?.phone.isNotEmpty ?? false)
         ? user!.phone

@@ -1,38 +1,188 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Dekorin — Platform Manajemen Vendor, Agenda, Invoice, Undangan Digital & Crew Dekorasi.">
+  <meta name="theme-color" content="#D4A574">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Preconnect ke CDN engine, Google Fonts, dan API backend agar handshake paralel lebih cepat -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://dekorin.my.id" crossorigin>
+
+  <!-- iOS / PWA meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="dekorin_apps">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dekorin">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>dekorin_apps</title>
+  <title>Dekorin — Aplikasi Manajemen Dekorasi</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #F6F1EA 0%, #E8DFD2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #dekorin-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #F6F1EA 0%, #E8DFD2 100%);
+      transition: opacity 0.28s ease, visibility 0.28s ease;
+    }
+
+    #dekorin-splash.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 28px;
+      text-align: center;
+      max-width: 320px;
+    }
+
+    @media (min-width: 561px) {
+      .splash-frame {
+        width: 480px;
+        height: min(calc(100vh - 32px), 860px);
+        border-radius: 24px;
+        background: #F5F0EB;
+        border: 1px solid rgba(212, 165, 116, 0.25);
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .splash-logo-wrap {
+      width: 84px;
+      height: 84px;
+      border-radius: 22px;
+      background: #FFFFFF;
+      box-shadow: 0 8px 24px rgba(197, 149, 99, 0.18);
+      border: 1px solid rgba(212, 165, 116, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+
+    .splash-logo-wrap img {
+      width: 68px;
+      height: 68px;
+      object-fit: contain;
+    }
+
+    .splash-title {
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #2C2C2C;
+      letter-spacing: 0.2px;
+    }
+
+    .splash-subtitle {
+      margin: 0 0 20px 0;
+      font-size: 13px;
+      color: #7A7267;
+    }
+
+    .splash-progress-track {
+      width: 160px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(212, 165, 116, 0.25);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .splash-progress-bar {
+      position: absolute;
+      inset: 0;
+      width: 45%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #C59563, #D4A574, #E5BC91);
+      animation: splashSlide 1.2s ease-in-out infinite;
+    }
+
+    @keyframes splashSlide {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(240%); }
+    }
+  </style>
 </head>
 <body>
+  <!-- Splash screen instan saat engine Flutter Web sedang dimuat -->
+  <div id="dekorin-splash" aria-label="Memuat Dekorin">
+    <div class="splash-frame">
+      <div class="splash-card">
+        <div class="splash-logo-wrap">
+          <img src="favicon.png" alt="Dekorin">
+        </div>
+        <h1 class="splash-title">Dekorin</h1>
+        <p class="splash-subtitle" id="dekorin-splash-status">Menyiapkan aplikasi...</p>
+        <div class="splash-progress-track">
+          <div class="splash-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var splashDismissed = false;
+      function hideSplash() {
+        if (splashDismissed) return;
+        splashDismissed = true;
+        var el = document.getElementById('dekorin-splash');
+        if (!el) return;
+        el.classList.add('is-hidden');
+        setTimeout(function () {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 320);
+      }
+
+      // Flutter Web memicu event ini tepat saat frame pertama selesai dirender
+      window.addEventListener('flutter-first-frame', hideSplash, { once: true });
+
+      // Update teks status ringan jika koneksi pengguna agak lambat
+      setTimeout(function () {
+        var status = document.getElementById('dekorin-splash-status');
+        if (!splashDismissed && status) {
+          status.textContent = 'Mengunduh modul tampilan...';
+        }
+      }, 1800);
+
+      // Pengaman fallback agar splash tidak pernah menghalangi layar
+      setTimeout(hideSplash, 15000);
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -38,13 +38,17 @@ class User {
 
   /// Helper getters for Role-Based Access Control
   bool get isSuperAdmin => role.toLowerCase() == 'superadmin';
+  bool get isCouple => role.toLowerCase() == 'couple';
+  bool get isVendor => !isCouple;
   bool get isOwner => role.toLowerCase() == 'owner' || isSuperAdmin;
   bool get isAdmin => role.toLowerCase() == 'admin' || isSuperAdmin;
   bool get isCrew => role.toLowerCase() == 'crew';
 
   /// Memeriksa apakah user memiliki izin terhadap fitur tertentu.
   /// Catatan: Superadmin & Owner selalu memiliki izin penuh ke seluruh fitur.
+  /// Akun Calon Pengantin ('couple') tidak pernah memiliki izin internal vendor.
   bool can(String permissionKey) {
+    if (isCouple) return false;
     if (isOwner) return true;
     return permissions.contains(permissionKey);
   }
@@ -98,7 +102,7 @@ class User {
   bool get canManageTeam => isOwner || can('team.manage_crew');
 
   /// Akses mengelola profil usaha dekorasi & data perusahaan
-  bool get canManageCompany => isOwner || isAdmin;
+  bool get canManageCompany => !isCouple && (isOwner || isAdmin);
 
   /// Akses ke AI Decor Studio & AI Assistant
   bool get canUseAiStudio => isOwner || can('ai.use_studio');
@@ -113,6 +117,8 @@ class User {
         return 'Administrator';
       case 'crew':
         return 'Crew Lapangan';
+      case 'couple':
+        return 'Calon Pengantin';
       default:
         return role;
     }

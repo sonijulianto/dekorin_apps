@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +9,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/features/company/views/manage_brands_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
@@ -27,12 +27,15 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
+  late TextEditingController _cityController;
   late TextEditingController _emailController;
   late TextEditingController _descriptionController;
   late TextEditingController _instagramController;
   late TextEditingController _bankInfoController;
 
-  File? _selectedImageFile;
+  String _selectedCategory = 'decoration';
+  bool _isPublicListed = false;
+  PickedImageData? _selectedImage;
   String _currentLogoUrl = '';
   CompanyProfile? _companyProfile;
 
@@ -45,6 +48,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
     _nameController = TextEditingController();
     _phoneController = TextEditingController();
     _addressController = TextEditingController();
+    _cityController = TextEditingController();
     _emailController = TextEditingController();
     _descriptionController = TextEditingController();
     _instagramController = TextEditingController();
@@ -58,6 +62,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
     _nameController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
     _emailController.dispose();
     _descriptionController.dispose();
     _instagramController.dispose();
@@ -86,6 +91,9 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
         setState(() {
           _companyProfile = profile;
           _nameController.text = profile.name;
+          _selectedCategory = profile.category;
+          _cityController.text = profile.city;
+          _isPublicListed = profile.isPublicListed;
           _phoneController.text = profile.phone;
           _addressController.text = profile.address;
           _emailController.text = profile.email;
@@ -116,8 +124,10 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       );
 
       if (pickedFile != null) {
+        final pickedImage = await PickedImageData.fromXFile(pickedFile);
+        if (!mounted) return;
         setState(() {
-          _selectedImageFile = File(pickedFile.path);
+          _selectedImage = pickedImage;
         });
       }
     } catch (e) {
@@ -161,7 +171,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                     _pickLogo(ImageSource.camera);
                   },
                 ),
-                if (_selectedImageFile != null || _currentLogoUrl.isNotEmpty) ...[
+                if (_selectedImage != null || _currentLogoUrl.isNotEmpty) ...[
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.delete_outline, color: AppColors.errorRed),
@@ -172,7 +182,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                     onTap: () {
                       Navigator.pop(ctx);
                       setState(() {
-                        _selectedImageFile = null;
+                        _selectedImage = null;
                         _currentLogoUrl = '';
                       });
                     },
@@ -209,8 +219,8 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
       String finalLogoUrl = _currentLogoUrl;
 
       // 1. Upload foto baru jika ada yang dipilih
-      if (_selectedImageFile != null) {
-        final uploadedUrl = await ApiClient.uploadImage(_selectedImageFile!);
+      if (_selectedImage != null) {
+        final uploadedUrl = await ApiClient.uploadImage(_selectedImage!);
         if (uploadedUrl.isNotEmpty) {
           finalLogoUrl = uploadedUrl;
         }
@@ -221,6 +231,9 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
           .read(companyServiceProvider)
           .updateCompanyProfile(
             name: _nameController.text.trim(),
+            category: _selectedCategory,
+            city: _cityController.text.trim(),
+            isPublicListed: _isPublicListed,
             address: _addressController.text.trim(),
             phone: _phoneController.text.trim(),
             email: _emailController.text.trim(),
@@ -345,7 +358,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                           const SizedBox(height: 10),
                           TextButton.icon(
                             onPressed: _showImageSourceDialog,
-                            icon: (_selectedImageFile != null || _currentLogoUrl.isNotEmpty)
+                            icon: (_selectedImage != null || _currentLogoUrl.isNotEmpty)
                                 ? SvgPicture.asset(
                                     'assets/icons/edit.svg',
                                     width: 18,
@@ -354,7 +367,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                                   )
                                 : const Icon(Icons.cloud_upload_outlined, size: 18),
                             label: Text(
-                              _selectedImageFile != null || _currentLogoUrl.isNotEmpty
+                              _selectedImage != null || _currentLogoUrl.isNotEmpty
                                   ? 'Ubah Logo Usaha'
                                   : 'Unggah Logo Usaha',
                               style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
@@ -428,6 +441,58 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                             label: 'Slogan / Deskripsi Singkat',
                             hint: 'Contoh: Wedding & Event Decoration Vendor',
                             prefixIcon: Icons.info_outline,
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            initialValue: VendorCategoryOption.byId(_selectedCategory).id,
+                            decoration: InputDecoration(
+                              labelText: 'Kategori Vendor',
+                              labelStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                              prefixIcon: const Icon(Icons.category_outlined, color: AppColors.primaryGold),
+                              filled: true,
+                              fillColor: AppColors.backgroundLight.withValues(alpha: 0.45),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppColors.borderLight),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppColors.borderLight),
+                              ),
+                            ),
+                            style: AppTypography.bodyMedium,
+                            items: VendorCategoryOption.all
+                                .map(
+                                  (cat) => DropdownMenuItem<String>(
+                                    value: cat.id,
+                                    child: Text(cat.label, style: AppTypography.bodyMedium),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _selectedCategory = val);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          DekorinTextField(
+                            controller: _cityController,
+                            label: 'Kota / Area Layanan',
+                            hint: 'Contoh: Jakarta Selatan / Bandung',
+                            prefixIcon: Icons.location_city_outlined,
+                          ),
+                          const SizedBox(height: 12),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            activeThumbColor: AppColors.primaryGold,
+                            title: Text('Tampilkan di Direktori Calon Pengantin', style: AppTypography.titleSmall),
+                            subtitle: Text(
+                              'Aktifkan agar calon pengantin bisa menemukan profil & katalog usaha Anda',
+                              style: AppTypography.caption,
+                            ),
+                            value: _isPublicListed,
+                            onChanged: (val) => setState(() => _isPublicListed = val),
                           ),
                         ],
                       ),
@@ -596,8 +661,8 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
   }
 
   Widget _buildLogoPreview() {
-    if (_selectedImageFile != null) {
-      return Image.file(_selectedImageFile!, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
+    if (_selectedImage != null) {
+      return Image.memory(_selectedImage!.bytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
     }
 
     if (_currentLogoUrl.isNotEmpty) {

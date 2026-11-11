@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +10,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/models/ai_decor_simulation_model.dart';
 import 'package:dekorin_apps/data/services/ai_decor_service.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/utils/ai_simulation_pdf_helper.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/widgets/before_after_slider.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/widgets/catalog_photo_picker_sheet.dart';
@@ -40,7 +39,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
   final TextEditingController _nuanceController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
-  File? _selectedImageFile;
+  PickedImageData? _selectedImage;
   String _selectedCatalogUrl = '';
   String _selectedModelName = '';
 
@@ -96,8 +95,10 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
         imageQuality: 88,
       );
       if (picked == null) return;
+      final pickedImage = await PickedImageData.fromXFile(picked);
+      if (!mounted) return;
       setState(() {
-        _selectedImageFile = File(picked.path);
+        _selectedImage = pickedImage;
         _selectedCatalogUrl = '';
         _selectedModelName = '';
       });
@@ -116,7 +117,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
     );
     if (chosen == null) return;
     setState(() {
-      _selectedImageFile = null;
+      _selectedImage = null;
       _selectedCatalogUrl = chosen.imageUrl;
       _selectedModelName = chosen.name;
     });
@@ -131,7 +132,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
     );
     if (chosen == null) return;
     setState(() {
-      _selectedImageFile = null;
+      _selectedImage = null;
       _selectedCatalogUrl = chosen.originalUrl;
       _selectedModelName = chosen.modelName;
       _fabricController.text = chosen.fabricColor;
@@ -175,7 +176,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
   Future<void> _runSimulation() async {
     FocusManager.instance.primaryFocus?.unfocus();
 
-    if (_selectedImageFile == null && _selectedCatalogUrl.trim().isEmpty) {
+    if (_selectedImage == null && _selectedCatalogUrl.trim().isEmpty) {
       _showSnack('Pilih foto dekorasi referensi terlebih dahulu (Katalog / Galeri / Kamera).', isError: true);
       return;
     }
@@ -196,7 +197,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
 
     try {
       final sim = await ref.read(aiDecorServiceProvider).simulateDecor(
-            imageFile: _selectedImageFile,
+            image: _selectedImage,
             imageUrl: _selectedCatalogUrl,
             modelName: _selectedModelName,
             fabricColor: fabric,
@@ -712,7 +713,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
   }
 
   Widget _buildSourcePhotoSection() {
-    final hasPhoto = _selectedImageFile != null || _selectedCatalogUrl.isNotEmpty;
+    final hasPhoto = _selectedImage != null || _selectedCatalogUrl.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,8 +726,8 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
                 child: SizedBox(
                   width: double.infinity,
                   height: 220,
-                  child: _selectedImageFile != null
-                      ? Image.file(_selectedImageFile!, fit: BoxFit.cover)
+                  child: _selectedImage != null
+                      ? Image.memory(_selectedImage!.bytes, fit: BoxFit.cover)
                       : Image.network(
                           _selectedCatalogUrl,
                           fit: BoxFit.cover,
@@ -767,7 +768,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
                     customBorder: const CircleBorder(),
                     onTap: () {
                       setState(() {
-                        _selectedImageFile = null;
+                        _selectedImage = null;
                         _selectedCatalogUrl = '';
                         _selectedModelName = '';
                       });
@@ -1183,7 +1184,7 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
           if (_previewMode == 0)
             BeforeAfterSlider(
               afterImageUrl: sim.resultUrl,
-              beforeImageFile: _selectedImageFile,
+              beforeImageBytes: _selectedImage?.bytes,
               beforeImageUrl: sim.originalUrl,
               height: 370,
               onTapFullscreen: () => _openFullscreenViewer(sim.resultUrl, 'Hasil Simulasi AI'),
@@ -1208,9 +1209,9 @@ class _AiDecorStudioViewState extends ConsumerState<AiDecorStudioView> {
                   : null,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
-                child: _selectedImageFile != null
-                    ? Image.file(
-                        _selectedImageFile!,
+                child: _selectedImage != null
+                    ? Image.memory(
+                        _selectedImage!.bytes,
                         height: 370,
                         width: double.infinity,
                         fit: BoxFit.cover,

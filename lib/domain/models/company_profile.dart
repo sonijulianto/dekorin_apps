@@ -1,7 +1,43 @@
-/// Model domain untuk profil badan usaha vendor dekorasi.
+/// Daftar kategori usaha vendor resmi di Dekorin (mendukung multi-kategori).
+class VendorCategoryOption {
+  const VendorCategoryOption({
+    required this.id,
+    required this.label,
+    required this.shortLabel,
+  });
+
+  final String id;
+  final String label;
+  final String shortLabel;
+
+  static const List<VendorCategoryOption> all = [
+    VendorCategoryOption(id: 'decoration', label: 'Dekorasi & Pelaminan', shortLabel: 'Dekorasi'),
+    VendorCategoryOption(id: 'wo', label: 'Wedding Organizer (WO)', shortLabel: 'WO'),
+    VendorCategoryOption(id: 'mua', label: 'MUA & Rias Pengantin', shortLabel: 'MUA'),
+    VendorCategoryOption(id: 'photo_video', label: 'Fotografi & Videografi', shortLabel: 'Foto & Video'),
+    VendorCategoryOption(id: 'catering', label: 'Katering & Konsumsi', shortLabel: 'Catering'),
+    VendorCategoryOption(id: 'attire', label: 'Busana & Gaun Pengantin', shortLabel: 'Busana'),
+    VendorCategoryOption(id: 'entertainment', label: 'MC, Musik & Hiburan', shortLabel: 'MC & Hiburan'),
+    VendorCategoryOption(id: 'venue', label: 'Venue & Gedung Acara', shortLabel: 'Venue'),
+    VendorCategoryOption(id: 'other', label: 'Vendor & Kebutuhan Lain', shortLabel: 'Lainnya'),
+  ];
+
+  static VendorCategoryOption byId(String id) {
+    final normalized = id.trim().toLowerCase();
+    return all.firstWhere(
+      (item) => item.id == normalized,
+      orElse: () => all.last,
+    );
+  }
+}
+
+/// Model domain untuk profil badan usaha vendor.
 class CompanyProfile {
   final String id;
   final String name;
+  final String category;
+  final String city;
+  final bool isPublicListed;
   final String address;
   final String phone;
   final String email;
@@ -18,6 +54,9 @@ class CompanyProfile {
   const CompanyProfile({
     required this.id,
     required this.name,
+    this.category = 'decoration',
+    this.city = '',
+    this.isPublicListed = false,
     this.address = '',
     this.phone = '',
     this.email = '',
@@ -34,9 +73,13 @@ class CompanyProfile {
 
   factory CompanyProfile.fromJson(Map<String, dynamic> json) {
     final rawTmpl = (json['invoice_template'] as String? ?? '').trim();
+    final rawCategory = (json['category'] as String? ?? '').trim();
     return CompanyProfile(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      category: rawCategory.isNotEmpty ? rawCategory : 'decoration',
+      city: json['city'] as String? ?? '',
+      isPublicListed: json['is_public_listed'] as bool? ?? false,
       address: json['address'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       email: json['email'] as String? ?? '',
@@ -56,6 +99,9 @@ class CompanyProfile {
     return {
       'id': id,
       'name': name,
+      'category': category,
+      'city': city,
+      'is_public_listed': isPublicListed,
       'address': address,
       'phone': phone,
       'email': email,
@@ -74,6 +120,9 @@ class CompanyProfile {
   CompanyProfile copyWith({
     String? id,
     String? name,
+    String? category,
+    String? city,
+    bool? isPublicListed,
     String? address,
     String? phone,
     String? email,
@@ -90,6 +139,9 @@ class CompanyProfile {
     return CompanyProfile(
       id: id ?? this.id,
       name: name ?? this.name,
+      category: category ?? this.category,
+      city: city ?? this.city,
+      isPublicListed: isPublicListed ?? this.isPublicListed,
       address: address ?? this.address,
       phone: phone ?? this.phone,
       email: email ?? this.email,

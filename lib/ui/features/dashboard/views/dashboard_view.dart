@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +10,7 @@ import 'package:dekorin_apps/data/services/expense_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
 import 'package:dekorin_apps/domain/models/expense.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
@@ -1567,9 +1566,10 @@ class _AddExpenseBottomSheetState extends State<_AddExpenseBottomSheet> {
 
       setState(() => _isScanning = true);
 
+      final pickedImage = await PickedImageData.fromXFile(pickedFile);
       final result = await widget.ref
           .read(expenseServiceProvider)
-          .scanReceiptWithAi(File(pickedFile.path));
+          .scanReceiptWithAi(pickedImage);
 
       if (!mounted) return;
 

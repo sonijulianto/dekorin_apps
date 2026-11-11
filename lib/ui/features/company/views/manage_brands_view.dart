@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +9,7 @@ import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/company/views/edit_company_view.dart';
@@ -457,7 +457,7 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
   late TextEditingController _phoneCtrl;
   late TextEditingController _igCtrl;
 
-  File? _pickedImageFile;
+  PickedImageData? _pickedImage;
   String _currentLogoUrl = '';
   bool _isSaving = false;
 
@@ -489,8 +489,10 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
       maxHeight: 1080,
     );
     if (file != null && mounted) {
+      final pickedImage = await PickedImageData.fromXFile(file);
+      if (!mounted) return;
       setState(() {
-        _pickedImageFile = File(file.path);
+        _pickedImage = pickedImage;
       });
     }
   }
@@ -501,8 +503,8 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
     setState(() => _isSaving = true);
     try {
       String finalLogoUrl = _currentLogoUrl;
-      if (_pickedImageFile != null) {
-        final uploaded = await ApiClient.uploadImage(_pickedImageFile!);
+      if (_pickedImage != null) {
+        final uploaded = await ApiClient.uploadImage(_pickedImage!);
         if (uploaded.isNotEmpty) {
           finalLogoUrl = uploaded;
         }
@@ -618,8 +620,8 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          child: _pickedImageFile != null
-                              ? Image.file(_pickedImageFile!, fit: BoxFit.cover)
+                          child: _pickedImage != null
+                              ? Image.memory(_pickedImage!.bytes, fit: BoxFit.cover)
                               : (_currentLogoUrl.isNotEmpty
                                   ? Image.network(
                                       _currentLogoUrl,
@@ -634,7 +636,7 @@ class _BrandFormSheetState extends ConsumerState<_BrandFormSheet> {
                     TextButton(
                       onPressed: _pickLogo,
                       child: Text(
-                        _pickedImageFile != null || _currentLogoUrl.isNotEmpty ? 'Ubah Logo Brand' : 'Pilih Logo Brand',
+                        _pickedImage != null || _currentLogoUrl.isNotEmpty ? 'Ubah Logo Brand' : 'Pilih Logo Brand',
                         style: AppTypography.labelMedium.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
                       ),
                     ),

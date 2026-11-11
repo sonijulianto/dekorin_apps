@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,11 +11,13 @@ import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/invitation_service.dart';
 import 'package:dekorin_apps/domain/models/invitation.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/portrait_crop_dialog.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_picker_view.dart';
 import 'package:dekorin_apps/ui/features/invitation/views/invitation_template_preview_view.dart';
+import 'package:dekorin_apps/ui/features/invitation/views/invitation_visual_editor_view.dart';
 
 class LoveStoryItem {
   final TextEditingController dateController;
@@ -45,9 +46,14 @@ class LoveStoryItem {
 }
 
 class InvitationFormView extends ConsumerStatefulWidget {
-  const InvitationFormView({super.key, this.invitation});
+  const InvitationFormView({
+    super.key,
+    this.invitation,
+    this.onUpdateOverride,
+  });
 
   final InvitationItem? invitation;
+  final Future<void> Function(String id, Map<String, dynamic> payload)? onUpdateOverride;
 
   @override
   ConsumerState<InvitationFormView> createState() => _InvitationFormViewState();
@@ -65,6 +71,7 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
   bool get _isMonochrome => _selectedTemplate == InvitationTemplate.pn4;
   bool get _isJawa3 => _selectedTemplate == InvitationTemplate.jawa3;
   bool get _isJawa2 => _selectedTemplate == InvitationTemplate.jawa2;
+  bool get _isUltah1 => _selectedTemplate == InvitationTemplate.ultah1;
 
   late TextEditingController _titleController;
   late TextEditingController _slugController;
@@ -144,10 +151,13 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                 inv.template == InvitationTemplate.ta3 ||
                 inv.template == InvitationTemplate.pn4 ||
                 inv.template == InvitationTemplate.jawa3 ||
-                inv.template == InvitationTemplate.jawa2))
+                inv.template == InvitationTemplate.jawa2 ||
+                inv.template == InvitationTemplate.ultah1))
         ? inv.template
         : InvitationTemplate.ta17;
-    _selectedEventType = inv?.eventType.isNotEmpty == true ? inv!.eventType : 'wedding';
+    _selectedEventType = inv?.eventType.isNotEmpty == true
+        ? inv!.eventType
+        : (_selectedTemplate == InvitationTemplate.ultah1 ? 'birthday' : 'wedding');
 
     _titleController = TextEditingController(text: inv?.title ?? 'The Wedding of Bagas & Zulia');
     _slugController = TextEditingController(text: inv?.slug ?? 'bagas-zulia-$randSuffix');
@@ -312,28 +322,28 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         maxHeight: 2048,
       );
       if (picked != null) {
-        File fileToUpload = File(picked.path);
+        PickedImageData imageToUpload = await PickedImageData.fromXFile(picked);
 
         if (enableCrop && mounted) {
-          final croppedFile = await PortraitCropDialog.show(
+          final croppedImage = await PortraitCropDialog.show(
             context,
-            imageFile: fileToUpload,
+            image: imageToUpload,
             aspectRatio: aspectRatio,
             title: cropTitle,
             subtitle: cropSubtitle,
           );
-          if (croppedFile == null) {
+          if (croppedImage == null) {
             // User membatalkan dialog crop
             return;
           }
-          fileToUpload = croppedFile;
+          imageToUpload = croppedImage;
         }
 
         if (!mounted) return;
         final uploadedUrl = await DekorinLoadingDialog.run(
           context,
           message: 'Mengunggah foto...',
-          task: () => ApiClient.uploadImage(fileToUpload),
+          task: () => ApiClient.uploadImage(imageToUpload),
         );
         if (mounted) {
           onUploaded(uploadedUrl);
@@ -360,7 +370,8 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
           message: 'Mengunggah foto galeri (${pickedList.length} foto)...',
           task: () async {
             for (final picked in pickedList) {
-              final uploadedUrl = await ApiClient.uploadImage(File(picked.path));
+              final pickedImage = await PickedImageData.fromXFile(picked);
+              final uploadedUrl = await ApiClient.uploadImage(pickedImage);
               if (mounted) {
                 setState(() {
                   _galleryUrls.add(uploadedUrl);
@@ -396,6 +407,19 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         }
         if (_titleController.text.trim().isEmpty) {
           _titleController.text = 'Tasyakuran Khitanan $name';
+        }
+      }
+    } else if (_selectedEventType == 'birthday') {
+      final name = _childNicknameController.text.trim().isNotEmpty
+          ? _childNicknameController.text.trim()
+          : _childNameController.text.trim();
+      if (name.isNotEmpty) {
+        final s = name.toLowerCase().replaceAll(' ', '-');
+        if (_slugController.text.trim().isEmpty) {
+          _slugController.text = 'birthday-$s';
+        }
+        if (_titleController.text.trim().isEmpty) {
+          _titleController.text = 'Birthday Party of $name';
         }
       }
     } else {
@@ -536,7 +560,11 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     try {
       final service = ref.read(invitationServiceProvider);
       if (widget.invitation != null) {
-        await service.updateInvitation(widget.invitation!.id, payload);
+        if (widget.onUpdateOverride != null) {
+          await widget.onUpdateOverride!(widget.invitation!.id, payload);
+        } else {
+          await service.updateInvitation(widget.invitation!.id, payload);
+        }
       } else {
         await service.createInvitation(payload);
       }
@@ -579,6 +607,38 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          if (isEdit)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => InvitationVisualEditorView(
+                        invitation: widget.invitation!,
+                        onUpdateOverride: widget.onUpdateOverride,
+                      ),
+                    ),
+                  );
+                },
+                icon: SvgPicture.asset(
+                  'assets/icons/ai-magic.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(AppColors.secondaryGold, BlendMode.srcIn),
+                ),
+                label: Text(
+                  'Visual Editor',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.secondaryGold,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -1612,22 +1672,41 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
                 '“Semoga menjadi anak yang sholeh, berbakti kepada kedua orang tua, serta berguna bagi nusa, bangsa, dan agama. Aamiin ya Rabbal \'Alamin.”';
           }
         } else if (newType == 'birthday') {
+          _selectedTemplate = InvitationTemplate.ultah1;
+          if (_childNameController.text.isEmpty || _childNameController.text == 'Rayyan Althaf Pratama') {
+            _childNameController.text = 'Amelia Putri';
+          }
+          if (_childNicknameController.text.isEmpty || _childNicknameController.text == 'Rayyan') {
+            _childNicknameController.text = 'Amel';
+          }
+          if (_childOrderController.text.isEmpty || _childOrderController.text == 'Putra pertama dari') {
+            _childOrderController.text = '17th';
+          }
           if (_titleController.text.isEmpty ||
               _titleController.text.startsWith('The Wedding') ||
               _titleController.text.startsWith('Tasyakuran')) {
             _titleController.text =
-                'The Birthday Party of ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Kenzo"}';
+                'Birthday Party of ${_childNicknameController.text.isNotEmpty ? _childNicknameController.text : "Amel"}';
           }
           if (_slugController.text.isEmpty ||
               _slugController.text.startsWith('bagas-zulia') ||
               _slugController.text.startsWith('khitan')) {
-            _slugController.text = 'birthday-kenzo-${DateTime.now().millisecondsSinceEpoch % 10000}';
+            _slugController.text = 'birthday-amel-${DateTime.now().millisecondsSinceEpoch % 10000}';
           }
           if (_quotesController.text.isEmpty ||
               _quotesController.text.contains('Ar-Rum') ||
               _quotesController.text.contains('anak yang sholeh')) {
             _quotesController.text =
-                '“Bertambah satu tahun lagi usia penuh berkah, tawa, dan kebahagiaan bersama keluarga dan sahabat tercinta.”';
+                'Aku mengundang kamu merayakan ulang tahunku yang ke-17. Dandan yang cantik dan ganteng, ya. Datang biar makin seru!';
+          }
+          if (_coverImageUrl.isEmpty || _coverImageUrl.contains('/pn4/') || _coverImageUrl.contains('/jawa')) {
+            _coverImageUrl = '/assets/templates/ultah1/photos/cover-default.jpg';
+          }
+          if (_groomPhotoUrl.isEmpty || _groomPhotoUrl.contains('/pn4/') || _groomPhotoUrl.contains('/jawa')) {
+            _groomPhotoUrl = '/assets/templates/ultah1/photos/profile-default.jpg';
+          }
+          if (_closingPhotoUrl.isEmpty || _closingPhotoUrl.contains('/pn4/') || _closingPhotoUrl.contains('/jawa')) {
+            _closingPhotoUrl = '/assets/templates/ultah1/photos/closing-default.jpg';
           }
         } else if (newType == 'aqiqah') {
           if (_titleController.text.isEmpty || _titleController.text.startsWith('The Wedding')) {
@@ -1696,7 +1775,18 @@ class _InvitationFormViewState extends ConsumerState<InvitationFormView> {
     if (result != null && mounted) {
       setState(() {
         _selectedTemplate = result;
-        if (_isJawa3) {
+        if (_isUltah1) {
+          _selectedEventType = 'birthday';
+          if (_coverImageUrl.isEmpty || _coverImageUrl.contains('/pn4/') || _coverImageUrl.contains('/jawa')) {
+            _coverImageUrl = '/assets/templates/ultah1/photos/cover-default.jpg';
+          }
+          if (_groomPhotoUrl.isEmpty || _groomPhotoUrl.contains('/pn4/') || _groomPhotoUrl.contains('/jawa')) {
+            _groomPhotoUrl = '/assets/templates/ultah1/photos/profile-default.jpg';
+          }
+          if (_closingPhotoUrl.isEmpty || _closingPhotoUrl.contains('/pn4/') || _closingPhotoUrl.contains('/jawa')) {
+            _closingPhotoUrl = '/assets/templates/ultah1/photos/closing-default.jpg';
+          }
+        } else if (_isJawa3) {
           _coverImageUrl = '/assets/templates/jawa3/bg-cover.jpg';
         } else if (_isJawa2 && (_coverImageUrl.isEmpty || _coverImageUrl == '/assets/templates/jawa3/bg-cover.jpg' || _coverImageUrl == '/assets/templates/pn4/photos/LeniArdi2.jpeg')) {
           _coverImageUrl = '/assets/templates/jawa2/photos/cover-default.jpg';

@@ -62,12 +62,6 @@ class CrewBriefPdfHelper {
       final sec = sections[i];
       Uint8List? rawBytes = sec.imageBytes;
 
-      if (rawBytes == null && sec.imageFile != null) {
-        try {
-          rawBytes = await sec.imageFile!.readAsBytes();
-        } catch (_) {}
-      }
-
       if (rawBytes == null && sec.imageUrl != null && sec.imageUrl!.trim().isNotEmpty) {
         try {
           final res = await http.get(Uri.parse(sec.imageUrl!)).timeout(const Duration(seconds: 6));

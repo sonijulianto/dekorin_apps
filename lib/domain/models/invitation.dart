@@ -94,13 +94,14 @@ class InvitationEventCategory {
   }
 }
 
-/// Pilihan Template Desain Undangan Digital (Monochrome PN4, Sakura Blossom TA3, Ocean Blossom TA17, Art Jawa Coklat 3, Art Jawa Biru 2)
+/// Pilihan Template Desain Undangan Digital (Monochrome PN4, Sakura Blossom TA3, Ocean Blossom TA17, Art Jawa Coklat 3, Art Jawa Biru 2, Pita & Bola Disko)
 class InvitationTemplate {
   static const String ta17 = 'ta17';
   static const String ta3 = 'ta3';
   static const String pn4 = 'pn4';
   static const String jawa3 = 'jawa3';
   static const String jawa2 = 'jawa2';
+  static const String ultah1 = 'ultah1';
 
   static const List<Map<String, dynamic>> all = [
     {
@@ -172,6 +173,20 @@ class InvitationTemplate {
       'backgroundColor': Color(0xFFF1F1F1),
       'accentColor': Color(0xFFFFFFFF),
       'eventType': 'wedding',
+    },
+    {
+      'id': ultah1,
+      'name': 'Pita & Bola Disko',
+      'tag': 'Coquette Pink & Disco Party',
+      'category': 'birthday',
+      'categoryName': 'Ulang Tahun',
+      'supportedCategories': ['birthday'],
+      'description': 'Desain ulang tahun coquette ceria dengan pita merah ceri, bola disko, balon hati, tiket rundown pesta, photobooth strip, dan dress code.',
+      'primaryColor': Color(0xFFC8102E),
+      'secondaryColor': Color(0xFF7A4258),
+      'backgroundColor': Color(0xFFFFF4F7),
+      'accentColor': Color(0xFFF7C6D9),
+      'eventType': 'birthday',
     },
   ];
 

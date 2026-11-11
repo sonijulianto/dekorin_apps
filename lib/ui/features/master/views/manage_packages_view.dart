@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +13,7 @@ import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
@@ -489,7 +488,7 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
   late final TextEditingController _priceController;
   late final TextEditingController _descController;
 
-  File? _selectedImageFile;
+  PickedImageData? _selectedImage;
   late String _existingImageUrl;
   late String _selectedBrandId;
   final List<_PackageModelItemEntry> _selectedModels = [];
@@ -594,8 +593,10 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
       final XFile? pickedFile = await picker.pickImage(source: source, imageQuality: 70, maxWidth: 1080, maxHeight: 1080);
 
       if (pickedFile != null && mounted) {
+        final pickedImage = await PickedImageData.fromXFile(pickedFile);
+        if (!mounted) return;
         setState(() {
-          _selectedImageFile = File(pickedFile.path);
+          _selectedImage = pickedImage;
         });
       }
     } catch (e) {
@@ -735,8 +736,8 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
       final price = double.parse(cleanPrice);
       String finalImageUrl = _existingImageUrl;
 
-      if (_selectedImageFile != null) {
-        finalImageUrl = await ApiClient.uploadImage(_selectedImageFile!);
+      if (_selectedImage != null) {
+        finalImageUrl = await ApiClient.uploadImage(_selectedImage!);
       }
 
       final packageModelsPayload = _selectedModels.map((item) {
@@ -869,11 +870,11 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15),
-                            child: _selectedImageFile != null
+                            child: _selectedImage != null
                                 ? Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      Image.file(_selectedImageFile!, fit: BoxFit.cover),
+                                      Image.memory(_selectedImage!.bytes, fit: BoxFit.cover),
                                       Positioned(
                                         top: 8,
                                         right: 8,

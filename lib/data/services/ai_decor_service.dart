@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
+import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/data/models/ai_decor_simulation_model.dart';
 
 final aiDecorServiceProvider = Provider<AiDecorService>((ref) {
@@ -19,9 +19,9 @@ final aiDecorHistoryProvider =
 
 class AiDecorService {
   /// Memproses simulasi kustomisasi warna dekorasi dengan Gemini Image Editing AI.
-  /// Bisa menggunakan [imageFile] dari Galeri/Kamera HP ataupun [imageUrl] dari katalog yang sudah ada.
+  /// Bisa menggunakan [image] dari Galeri/Kamera ataupun [imageUrl] dari katalog yang sudah ada.
   Future<AiDecorSimulationModel> simulateDecor({
-    File? imageFile,
+    PickedImageData? image,
     String imageUrl = '',
     String modelName = '',
     String fabricColor = '',
@@ -31,11 +31,11 @@ class AiDecorService {
   }) async {
     dynamic response;
 
-    if (imageFile != null) {
+    if (image != null) {
       response = await ApiClient.uploadMultipart(
         ApiEndpoint.aiSimulateDecor,
         fileField: 'image',
-        file: imageFile,
+        image: image,
         fields: {
           'model_name': modelName.trim(),
           'fabric_color': fabricColor.trim(),

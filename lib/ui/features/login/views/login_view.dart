@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
+import 'package:dekorin_apps/ui/features/couple/views/register_couple_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/login_view_model.dart';
 
 /// Login screen for the Dekorin app.
@@ -152,7 +153,30 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           )
                         : Text('Masuk ke Aplikasi', style: AppTypography.button),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: state.isLoading
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterCoupleView()),
+                              );
+                            },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primaryGold),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Daftar sebagai Calon Pengantin',
+                        style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
 
                   // --- Footer ---
                   Text(
