@@ -154,37 +154,45 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
               child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Asisten Dekorin AI',
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Asisten Dekorin AI',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
                   ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Online • Analisis Data Real-Time',
-                      style: AppTypography.caption.copyWith(
-                        fontSize: 10,
-                        color: Colors.grey.shade600,
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          'Online • Analisis Data Real-Time',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 10,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -201,6 +209,7 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // List Chat
@@ -303,11 +312,13 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
           children: [
             const Icon(Icons.lightbulb_outline, color: AppColors.primaryGold, size: 18),
             const SizedBox(width: 6),
-            Text(
-              'Rekomendasi Pertanyaan Cepat:',
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+            Expanded(
+              child: Text(
+                'Rekomendasi Pertanyaan Cepat:',
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
               ),
             ),
           ],
@@ -532,6 +543,11 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
   }
 
   Widget _buildInputBar() {
+    final pillBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: BorderSide(color: Colors.grey.shade300),
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -544,57 +560,65 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F4EF),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
               child: TextField(
                 controller: _inputController,
                 textInputAction: TextInputAction.send,
                 onSubmitted: _sendMessage,
-                maxLines: null,
+                minLines: 1,
+                maxLines: 4,
                 style: AppTypography.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Tanyakan sesuatu seputar bisnis Anda...',
                   hintStyle: AppTypography.bodySmall.copyWith(color: Colors.grey.shade500),
-                  border: InputBorder.none,
+                  filled: true,
+                  fillColor: const Color(0xFFF7F4EF),
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          InkWell(
-            onTap: _isLoading ? null : () => _sendMessage(_inputController.text),
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primaryGold, AppColors.secondaryGold],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryGold.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                  constraints: const BoxConstraints(minHeight: 44),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: pillBorder,
+                  enabledBorder: pillBorder,
+                  disabledBorder: pillBorder,
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: AppColors.primaryGold, width: 1.5),
                   ),
-                ],
+                  errorBorder: pillBorder,
+                  focusedErrorBorder: pillBorder,
+                ),
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: _isLoading ? null : () => _sendMessage(_inputController.text),
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primaryGold, AppColors.secondaryGold],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGold.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
