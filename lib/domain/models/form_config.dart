@@ -119,11 +119,65 @@ class FormFieldDefinition {
   }
 }
 
+class FormTemplateSummary {
+  const FormTemplateSummary({
+    required this.eventType,
+    required this.eventLabel,
+    this.isSystemPreset = true,
+    this.isCustomized = false,
+    this.showPrice = true,
+  });
+
+  final String eventType;
+  final String eventLabel;
+  final bool isSystemPreset;
+  final bool isCustomized;
+  final bool showPrice;
+
+  static const List<FormTemplateSummary> builtInDefaults = [
+    FormTemplateSummary(eventType: '', eventLabel: 'Umum (Default)'),
+    FormTemplateSummary(eventType: 'wedding', eventLabel: 'Wedding'),
+    FormTemplateSummary(eventType: 'lamaran', eventLabel: 'Lamaran'),
+    FormTemplateSummary(eventType: 'birthday', eventLabel: 'Ulang Tahun'),
+    FormTemplateSummary(eventType: 'aqiqah', eventLabel: 'Aqiqah'),
+  ];
+
+  static String resolveLabel(String eventType, [String fallbackLabel = '']) {
+    final norm = eventType.trim().toLowerCase();
+    for (final item in builtInDefaults) {
+      if (item.eventType == norm) return item.eventLabel;
+    }
+    if (fallbackLabel.trim().isNotEmpty) return fallbackLabel.trim();
+    if (norm.isEmpty) return 'Umum (Default)';
+    final cleaned = norm.replaceFirst('custom_', '').replaceAll('_', ' ').trim();
+    if (cleaned.isEmpty) return 'Jenis Acara Khusus';
+    return cleaned
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
+  factory FormTemplateSummary.fromJson(Map<String, dynamic> json) {
+    final et = (json['event_type'] as String? ?? '').trim();
+    final el = (json['event_label'] as String? ?? '').trim();
+    return FormTemplateSummary(
+      eventType: et,
+      eventLabel: resolveLabel(et, el),
+      isSystemPreset: json['is_system_preset'] as bool? ?? true,
+      isCustomized: json['is_customized'] as bool? ?? false,
+      showPrice: json['show_price'] as bool? ?? true,
+    );
+  }
+}
+
 class CompanyFormConfig {
   const CompanyFormConfig({
     this.id = '',
     this.companyId = '',
     this.brandId = '',
+    this.eventType = '',
+    this.eventLabel = '',
     this.showPrice = true,
     this.fields = const [],
     this.isInherited = false,
@@ -132,6 +186,8 @@ class CompanyFormConfig {
   final String id;
   final String companyId;
   final String brandId;
+  final String eventType;
+  final String eventLabel;
   final bool showPrice;
   final List<FormFieldDefinition> fields;
   final bool isInherited;
@@ -147,10 +203,15 @@ class CompanyFormConfig {
       }
     }
 
+    final et = (json['event_type'] as String? ?? '').trim();
+    final el = (json['event_label'] as String? ?? '').trim();
+
     return CompanyFormConfig(
       id: json['id'] as String? ?? '',
       companyId: json['company_id'] as String? ?? '',
       brandId: json['brand_id'] as String? ?? '',
+      eventType: et,
+      eventLabel: FormTemplateSummary.resolveLabel(et, el),
       showPrice: json['show_price'] as bool? ?? true,
       fields: parsedFields,
       isInherited: isInherited,

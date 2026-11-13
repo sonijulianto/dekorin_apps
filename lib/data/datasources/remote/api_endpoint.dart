@@ -44,6 +44,7 @@ class ApiEndpoint {
   static const String rolePermissions = '/company/role-permissions';
   static const String resetRolePermissions = '/company/role-permissions/reset';
   static const String formConfig = '/company/form-config';
+  static const String formConfigTemplates = '/company/form-config/templates';
   static const String resetFormConfig = '/company/form-config/reset';
 
   // ── Dashboard & Expenses ──────────────────────────────────

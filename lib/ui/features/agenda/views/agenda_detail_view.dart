@@ -629,6 +629,21 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                 ],
                               ),
                             ),
+                          if (_item.displayEventLabel.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.textDark,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _item.displayEventLabel,
+                                style: AppTypography.caption.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           if (_item.isStandaloneModel)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

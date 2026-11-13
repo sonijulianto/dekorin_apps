@@ -84,6 +84,8 @@ class AgendaService {
   /// Membuat agenda baru ke backend
   Future<AgendaItem> createAgenda({
     String brandId = '',
+    String eventType = '',
+    String eventLabel = '',
     required String clientName,
     String clientPhone = '',
     String backdropTitle = '',
@@ -110,6 +112,8 @@ class AgendaService {
 
     final payload = {
       'brand_id': brandId,
+      if (eventType.isNotEmpty) 'event_type': eventType,
+      if (eventLabel.isNotEmpty) 'event_label': eventLabel,
       'client_name': clientName,
       'client_phone': clientPhone,
       if (backdropTitle.isNotEmpty) 'backdrop_title': backdropTitle,
@@ -373,6 +377,8 @@ class AgendaService {
   Future<AgendaItem> updateAgenda(
     String agendaId, {
     String brandId = '',
+    String? eventType,
+    String? eventLabel,
     required String clientName,
     String clientPhone = '',
     String backdropTitle = '',
@@ -401,6 +407,8 @@ class AgendaService {
 
     final payload = {
       'brand_id': brandId,
+      'event_type': ?eventType,
+      'event_label': ?eventLabel,
       'client_name': clientName,
       'client_phone': clientPhone,
       'backdrop_title': backdropTitle,
@@ -431,12 +439,16 @@ class AgendaService {
   /// Membuat link form kosong untuk diisi client (tidak masuk agenda utama sebelum client mengisi)
   Future<AgendaItem> generateClientFormLink({
     String brandId = '',
+    String eventType = '',
+    String eventLabel = '',
     String label = '',
   }) async {
     final responseData = await ApiClient.post(
       ApiEndpoint.generateAgendaLink,
       body: {
         'brand_id': brandId,
+        if (eventType.isNotEmpty) 'event_type': eventType,
+        if (eventLabel.isNotEmpty) 'event_label': eventLabel,
         if (label.trim().isNotEmpty) 'label': label.trim(),
       },
     );

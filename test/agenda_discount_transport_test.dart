@@ -41,6 +41,8 @@ class _CapturingAgendaService extends AgendaService {
   Future<AgendaItem> updateAgenda(
     String agendaId, {
     String brandId = '',
+    String? eventType,
+    String? eventLabel,
     required String clientName,
     String clientPhone = '',
     String backdropTitle = '',
@@ -94,6 +96,8 @@ class _CapturingAgendaService extends AgendaService {
   @override
   Future<AgendaItem> createAgenda({
     String brandId = '',
+    String eventType = '',
+    String eventLabel = '',
     required String clientName,
     String clientPhone = '',
     String backdropTitle = '',

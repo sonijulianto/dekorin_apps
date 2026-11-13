@@ -137,6 +137,8 @@ class AgendaItem {
     this.brandPhone = '',
     this.brandInstagram = '',
     this.brandDescription = '',
+    this.eventType = '',
+    this.eventLabel = '',
     required this.clientName,
     this.clientPhone = '',
     required this.backdropTitle,
@@ -172,6 +174,8 @@ class AgendaItem {
   final String brandPhone;
   final String brandInstagram;
   final String brandDescription;
+  final String eventType;
+  final String eventLabel;
   final String clientName;
   final String clientPhone;
   final String backdropTitle;
@@ -214,6 +218,23 @@ class AgendaItem {
     return 'Belum Dipilih';
   }
   String get displayAddress => eventAddress.isNotEmpty ? eventAddress : (clientForm?.eventAddress ?? '');
+  String get displayEventLabel {
+    if (eventLabel.trim().isNotEmpty) return eventLabel.trim();
+    switch (eventType.trim().toLowerCase()) {
+      case 'wedding':
+        return 'Wedding';
+      case 'lamaran':
+        return 'Lamaran';
+      case 'birthday':
+        return 'Ulang Tahun';
+      case 'aqiqah':
+        return 'Aqiqah';
+      default:
+        return eventType.trim().isEmpty
+            ? ''
+            : eventType.trim().replaceFirst('custom_', '').replaceAll('_', ' ');
+    }
+  }
 
   static String normalizeDiscountType(String? raw) {
     if ((raw ?? '').trim().toLowerCase() == 'percent') {
@@ -320,6 +341,8 @@ class AgendaItem {
     String? brandPhone,
     String? brandInstagram,
     String? brandDescription,
+    String? eventType,
+    String? eventLabel,
     String? clientName,
     String? clientPhone,
     String? backdropTitle,
@@ -355,6 +378,8 @@ class AgendaItem {
       brandPhone: brandPhone ?? this.brandPhone,
       brandInstagram: brandInstagram ?? this.brandInstagram,
       brandDescription: brandDescription ?? this.brandDescription,
+      eventType: eventType ?? this.eventType,
+      eventLabel: eventLabel ?? this.eventLabel,
       clientName: clientName ?? this.clientName,
       clientPhone: clientPhone ?? this.clientPhone,
       backdropTitle: backdropTitle ?? this.backdropTitle,
@@ -432,6 +457,8 @@ class AgendaItem {
       brandPhone: json['brand_phone'] as String? ?? '',
       brandInstagram: json['brand_instagram'] as String? ?? '',
       brandDescription: json['brand_description'] as String? ?? '',
+      eventType: json['event_type'] as String? ?? '',
+      eventLabel: json['event_label'] as String? ?? '',
       clientName: json['client_name'] as String? ?? '',
       clientPhone: json['client_phone'] as String? ?? '',
       backdropTitle: json['backdrop_title'] as String? ?? '',
@@ -470,6 +497,8 @@ class AgendaItem {
       'brand_phone': brandPhone,
       'brand_instagram': brandInstagram,
       'brand_description': brandDescription,
+      'event_type': eventType,
+      'event_label': eventLabel,
       'client_name': clientName,
       'client_phone': clientPhone,
       'backdrop_title': backdropTitle,

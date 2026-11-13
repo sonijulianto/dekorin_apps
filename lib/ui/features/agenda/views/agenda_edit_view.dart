@@ -9,11 +9,13 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_addon.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
+import 'package:dekorin_apps/domain/models/form_config.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
@@ -43,6 +45,9 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
   final _clientPhoneFieldKey = GlobalKey<FormFieldState<String>>();
 
   late String _brandId;
+  late String _eventType;
+  late String _eventLabel;
+  List<FormTemplateSummary> _templates = FormTemplateSummary.builtInDefaults;
   late TextEditingController _clientNameController;
   late TextEditingController _clientPhoneController;
   late TextEditingController _backdropTitleController;
@@ -83,7 +88,12 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
     final item = widget.item;
 
     _brandId = item.brandId;
+    _eventType = item.eventType;
+    _eventLabel = item.displayEventLabel;
     _clientNameController = TextEditingController(text: item.clientName);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEventTemplates();
+    });
     _clientPhoneController = TextEditingController(text: item.clientPhone);
     _backdropTitleController = TextEditingController(text: item.backdropTitle);
     _eventAddressController = TextEditingController(text: item.displayAddress);
@@ -498,6 +508,8 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
       final updated = await ref.read(agendaServiceProvider).updateAgenda(
         widget.item.id,
         brandId: _brandId,
+        eventType: _eventType,
+        eventLabel: _eventLabel,
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
@@ -555,6 +567,22 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  Future<void> _loadEventTemplates() async {
+    final list = await ref.read(formConfigServiceProvider).getFormTemplates(brandId: _brandId);
+    if (!mounted) return;
+    final updated = List<FormTemplateSummary>.from(list);
+    if (_eventType.isNotEmpty && !updated.any((t) => t.eventType == _eventType)) {
+      updated.add(FormTemplateSummary(
+        eventType: _eventType,
+        eventLabel: FormTemplateSummary.resolveLabel(_eventType, _eventLabel),
+        isSystemPreset: false,
+      ));
+    }
+    setState(() {
+      _templates = updated;
+    });
   }
 
   Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
@@ -684,6 +712,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                 onChanged: (val) {
                                   if (val != null) {
                                     setState(() => _brandId = val);
+                                    _loadEventTemplates();
                                   }
                                 },
                               ),
@@ -691,6 +720,42 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                           ),
                           const SizedBox(height: 12),
                         ],
+
+                        // Jenis Acara / Template Form
+                        Text('Jenis Acara / Template Form', style: AppTypography.caption),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: _templates.any((t) => t.eventType == _eventType) ? _eventType : '',
+                              items: _templates
+                                  .map(
+                                    (t) => DropdownMenuItem<String>(
+                                      value: t.eventType,
+                                      child: Text(t.eventLabel, style: AppTypography.bodyMedium),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  final found = _templates.where((t) => t.eventType == val).firstOrNull;
+                                  setState(() {
+                                    _eventType = val;
+                                    _eventLabel = found?.eventLabel ?? FormTemplateSummary.resolveLabel(val);
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
                         // Nama Klien
                         Text('Nama Klien *', style: AppTypography.caption),

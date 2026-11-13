@@ -9,10 +9,12 @@ import 'package:intl/intl.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
+import 'package:dekorin_apps/domain/models/form_config.dart';
 import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
@@ -67,6 +69,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _selectedBrandId = '';
+  String _selectedEventType = '';
+  String _selectedEventLabel = 'Umum (Default)';
+  List<FormTemplateSummary> _templates = FormTemplateSummary.builtInDefaults;
   DecorationPackage? _selectedPackage;
   DecorationModel? _selectedModel;
   double _selectedModelAdditionalPrice = 0.0;
@@ -79,6 +84,38 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEventTemplates();
+    });
+  }
+
+  Future<void> _loadEventTemplates() async {
+    final list = await ref.read(formConfigServiceProvider).getFormTemplates(brandId: _selectedBrandId);
+    if (!mounted) return;
+    setState(() {
+      _templates = list;
+      if (!_templates.any((t) => t.eventType == _selectedEventType)) {
+        _selectedEventType = '';
+        _selectedEventLabel = 'Umum (Default)';
+      } else {
+        _selectedEventLabel = _templates.firstWhere((t) => t.eventType == _selectedEventType).eventLabel;
+      }
+    });
+  }
+
+  String get _backdropHintText {
+    switch (_selectedEventType) {
+      case 'wedding':
+        return 'Contoh: The Wedding of Rian & Nisa';
+      case 'lamaran':
+        return 'Contoh: The Engagement of Rian & Nisa';
+      case 'birthday':
+        return 'Contoh: Happy 5th Birthday Kenzo';
+      case 'aqiqah':
+        return 'Contoh: Tasyakuran Aqiqah Baby Arsyil';
+      default:
+        return 'Contoh: The Engagement of Rian & Nisa';
+    }
   }
 
   double get _currentDecorSubtotal {
@@ -473,6 +510,8 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
       await agendaService.createAgenda(
         brandId: _selectedBrandId,
+        eventType: _selectedEventType,
+        eventLabel: _selectedEventLabel,
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
         backdropTitle: _backdropTitleController.text.trim(),
@@ -588,6 +627,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                             _syncSelectedModelPrice();
                           }
                         });
+                        _loadEventTemplates();
                       },
                     ),
                     ...brands.map((b) {
@@ -617,6 +657,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                               _syncSelectedModelPrice();
                             }
                           });
+                          _loadEventTemplates();
                         },
                       );
                     }),
@@ -624,6 +665,48 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 ),
                 const SizedBox(height: 16),
               ],
+
+              // 0B. Pilihan Jenis Acara (Menentukan template form link client)
+              Text(
+                'Jenis Acara / Template Form',
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Menyesuaikan daftar pertanyaan pada form link client (Wedding, Lamaran, Ultah, Aqiqah, atau Custom).',
+                style: AppTypography.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _templates.map((tpl) {
+                  final isSelected = _selectedEventType == tpl.eventType;
+                  return ChoiceChip(
+                    label: Text(
+                      tpl.eventLabel,
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : AppTheme.textDark,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: AppTheme.textDark,
+                    backgroundColor: AppColors.backgroundLight,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedEventType = tpl.eventType;
+                        _selectedEventLabel = tpl.eventLabel;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
 
               // 1. Nama Client
               Text(
@@ -723,8 +806,9 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               const SizedBox(height: 6),
               TextFormField(
                 controller: _backdropTitleController,
+                style: AppTypography.bodyMedium,
                 decoration: InputDecoration(
-                  hintText: 'Contoh: The Engagement of Rian & Nisa',
+                  hintText: _backdropHintText,
                   prefixIcon: const Icon(Icons.title),
                   filled: true,
                   fillColor: Colors.grey.shade50,

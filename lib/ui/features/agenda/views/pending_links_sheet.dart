@@ -10,8 +10,10 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/domain/models/form_config.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/profile/views/form_config_view.dart';
 
@@ -24,6 +26,9 @@ class PendingLinksSheet extends ConsumerStatefulWidget {
 
 class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
   String _selectedBrandId = '';
+  String _selectedEventType = '';
+  String _selectedEventLabel = 'Umum (Default)';
+  List<FormTemplateSummary> _templates = FormTemplateSummary.builtInDefaults;
   final _labelController = TextEditingController();
   bool _isLoading = true;
   bool _isGenerating = false;
@@ -35,6 +40,22 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPendingLinks();
+      _loadTemplates();
+    });
+  }
+
+  Future<void> _loadTemplates() async {
+    final list = await ref.read(formConfigServiceProvider).getFormTemplates(brandId: _selectedBrandId);
+    if (!mounted) return;
+    setState(() {
+      _templates = list;
+      if (!_templates.any((t) => t.eventType == _selectedEventType)) {
+        _selectedEventType = '';
+        _selectedEventLabel = 'Umum (Default)';
+      } else {
+        final match = _templates.firstWhere((t) => t.eventType == _selectedEventType);
+        _selectedEventLabel = match.eventLabel;
+      }
     });
   }
 
@@ -72,6 +93,8 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
     try {
       final created = await ref.read(agendaServiceProvider).generateClientFormLink(
             brandId: _selectedBrandId,
+            eventType: _selectedEventType,
+            eventLabel: _selectedEventLabel,
             label: _labelController.text.trim(),
           );
       _labelController.clear();
@@ -200,8 +223,9 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
               IconButton(
                 tooltip: 'Atur Daftar Isian Form',
                 icon: const Icon(Icons.tune_rounded, color: AppColors.secondaryGold),
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FormConfigView()));
+                onPressed: () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const FormConfigView()));
+                  if (mounted) _loadTemplates();
                 },
               ),
             ],
@@ -240,7 +264,10 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
                           selected: _selectedBrandId.isEmpty,
                           selectedColor: AppColors.primaryGold,
                           backgroundColor: Colors.white,
-                          onSelected: (_) => setState(() => _selectedBrandId = ''),
+                          onSelected: (_) {
+                            setState(() => _selectedBrandId = '');
+                            _loadTemplates();
+                          },
                         ),
                         ...brands.map((b) {
                           final sel = _selectedBrandId == b.id;
@@ -257,7 +284,10 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
                               selected: sel,
                               selectedColor: AppColors.primaryGold,
                               backgroundColor: Colors.white,
-                              onSelected: (_) => setState(() => _selectedBrandId = b.id),
+                              onSelected: (_) {
+                                setState(() => _selectedBrandId = b.id);
+                                _loadTemplates();
+                              },
                             ),
                           );
                         }),
@@ -266,6 +296,41 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
                   ),
                   const SizedBox(height: 10),
                 ],
+                Text(
+                  'Jenis Acara / Template Form:',
+                  style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                ),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _templates.map((tpl) {
+                      final sel = _selectedEventType == tpl.eventType;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(
+                            tpl.eventLabel,
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: sel ? Colors.white : AppColors.textDark,
+                            ),
+                          ),
+                          selected: sel,
+                          selectedColor: AppColors.textDark,
+                          backgroundColor: Colors.white,
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedEventType = tpl.eventType;
+                              _selectedEventLabel = tpl.eventLabel;
+                            });
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   controller: _labelController,
                   style: AppTypography.bodySmall,
@@ -442,6 +507,24 @@ class _PendingLinksSheetState extends ConsumerState<PendingLinksSheet> {
                                         ),
                                       ),
                                     ),
+                                    if (item.displayEventLabel.isNotEmpty) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.textDark,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          item.displayEventLabel,
+                                          style: AppTypography.caption.copyWith(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(

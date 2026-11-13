@@ -20,6 +20,9 @@ class FormConfigView extends ConsumerStatefulWidget {
 
 class _FormConfigViewState extends ConsumerState<FormConfigView> {
   String _selectedBrandId = '';
+  String _selectedEventType = '';
+  String _selectedEventLabel = 'Umum (Default)';
+  List<FormTemplateSummary> _templates = FormTemplateSummary.builtInDefaults;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _showPrice = true;
@@ -35,6 +38,13 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
     });
   }
 
+  FormTemplateSummary? get _currentTemplate {
+    for (final t in _templates) {
+      if (t.eventType == _selectedEventType) return t;
+    }
+    return null;
+  }
+
   Future<void> _loadConfig() async {
     setState(() {
       _isLoading = true;
@@ -42,9 +52,20 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
     });
 
     try {
-      final cfg = await ref.read(formConfigServiceProvider).getFormConfig(brandId: _selectedBrandId);
+      final svc = ref.read(formConfigServiceProvider);
+      final results = await Future.wait([
+        svc.getFormTemplates(brandId: _selectedBrandId),
+        svc.getFormConfig(brandId: _selectedBrandId, eventType: _selectedEventType),
+      ]);
       if (!mounted) return;
+      final fetchedTemplates = results[0] as List<FormTemplateSummary>;
+      final cfg = results[1] as CompanyFormConfig;
       setState(() {
+        _templates = fetchedTemplates;
+        if (!_templates.any((t) => t.eventType == _selectedEventType)) {
+          _selectedEventType = '';
+        }
+        _selectedEventLabel = FormTemplateSummary.resolveLabel(_selectedEventType, cfg.eventLabel);
         _fields = List<FormFieldDefinition>.from(cfg.fields);
         _showPrice = cfg.showPrice;
         _isInherited = cfg.isInherited;
@@ -69,15 +90,20 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
         ordered.add(_fields[i].copyWith(sortOrder: i + 1));
       }
 
-      await ref.read(formConfigServiceProvider).updateFormConfig(
-            brandId: _selectedBrandId,
-            showPrice: _showPrice,
-            fields: ordered,
-          );
+      final svc = ref.read(formConfigServiceProvider);
+      await svc.updateFormConfig(
+        brandId: _selectedBrandId,
+        eventType: _selectedEventType,
+        eventLabel: _selectedEventLabel,
+        showPrice: _showPrice,
+        fields: ordered,
+      );
+      final refreshedTemplates = await svc.getFormTemplates(brandId: _selectedBrandId);
 
       if (!mounted) return;
       setState(() {
         _fields = ordered;
+        _templates = refreshedTemplates;
         _isInherited = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,9 +138,9 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text('Reset ke Setelan Default?', style: AppTypography.titleMedium),
+        title: Text('Reset ke Preset Default?', style: AppTypography.titleMedium),
         content: Text(
-          'Daftar isian form untuk brand ini akan dikembalikan ke template standar sistem.',
+          'Daftar isian form untuk "$_selectedEventLabel" akan dikembalikan ke preset standar sistem.',
           style: AppTypography.bodySmall.copyWith(color: AppColors.textDark),
         ),
         actions: [
@@ -135,9 +161,15 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
 
     setState(() => _isLoading = true);
     try {
-      final cfg = await ref.read(formConfigServiceProvider).resetFormConfig(brandId: _selectedBrandId);
+      final svc = ref.read(formConfigServiceProvider);
+      final cfg = await svc.resetFormConfig(
+        brandId: _selectedBrandId,
+        eventType: _selectedEventType,
+      );
+      final refreshedTemplates = await svc.getFormTemplates(brandId: _selectedBrandId);
       if (!mounted) return;
       setState(() {
+        _templates = refreshedTemplates;
         _fields = List<FormFieldDefinition>.from(cfg.fields);
         _showPrice = cfg.showPrice;
         _isInherited = cfg.isInherited;
@@ -156,6 +188,144 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal reset: $e', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showAddCustomTemplateDialog() async {
+    final nameCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final createdLabel = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Tambah Jenis Acara Custom', style: AppTypography.titleMedium),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Buat template isian khusus di luar preset bawaan (misal: Khitanan, Wisuda, Grand Opening).',
+                style: AppTypography.caption.copyWith(color: AppColors.textLight),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: nameCtrl,
+                autofocus: true,
+                style: AppTypography.bodyMedium,
+                decoration: InputDecoration(
+                  labelText: 'Nama Jenis Acara *',
+                  labelStyle: AppTypography.bodySmall,
+                  hintText: 'Contoh: Khitanan / Corporate',
+                  hintStyle: AppTypography.caption,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama jenis acara wajib diisi' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold),
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(ctx, nameCtrl.text.trim());
+            },
+            child: Text('Buat Template', style: AppTypography.button.copyWith(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (createdLabel == null || createdLabel.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final svc = ref.read(formConfigServiceProvider);
+      final saved = await svc.updateFormConfig(
+        brandId: _selectedBrandId,
+        eventType: '__new__',
+        eventLabel: createdLabel,
+        showPrice: _showPrice,
+        fields: _fields,
+      );
+      if (!mounted) return;
+      _selectedEventType = saved.eventType;
+      _selectedEventLabel = saved.eventLabel;
+      await _loadConfig();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Template "$createdLabel" berhasil dibuat!', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+          backgroundColor: AppColors.successGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuat template: $e', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteCustomTemplate() async {
+    final tpl = _currentTemplate;
+    if (tpl == null || tpl.isSystemPreset || tpl.eventType.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Hapus Template Custom?', style: AppTypography.titleMedium),
+        content: Text(
+          'Hapus template "${tpl.eventLabel}"? Agenda lama tetap aman.',
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorRed),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Hapus', style: AppTypography.button.copyWith(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(formConfigServiceProvider).deleteCustomTemplate(
+            brandId: _selectedBrandId,
+            eventType: tpl.eventType,
+          );
+      _selectedEventType = '';
+      _selectedEventLabel = 'Umum (Default)';
+      await _loadConfig();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menghapus template: $e', style: AppTypography.bodySmall.copyWith(color: Colors.white)),
           backgroundColor: AppColors.errorRed,
         ),
       );
@@ -461,7 +631,90 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
                     ],
                   ),
                 ),
-                if (_isInherited && _selectedBrandId.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Jenis Acara / Template Form:',
+                      style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    ),
+                    if (_currentTemplate != null && !_currentTemplate!.isSystemPreset && _selectedEventType.isNotEmpty)
+                      InkWell(
+                        onTap: _isLoading || _isSaving ? null : _confirmDeleteCustomTemplate,
+                        child: Text(
+                          'Hapus Template',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.errorRed,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ..._templates.map((tpl) {
+                        final isSelected = _selectedEventType == tpl.eventType;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  tpl.eventLabel,
+                                  style: AppTypography.caption.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white : AppColors.textDark,
+                                  ),
+                                ),
+                                if (tpl.isCustomized) ...[
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.white : AppColors.successGreen,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            selected: isSelected,
+                            selectedColor: AppColors.textDark,
+                            backgroundColor: AppColors.backgroundLight,
+                            onSelected: (_) {
+                              setState(() {
+                                _selectedEventType = tpl.eventType;
+                                _selectedEventLabel = tpl.eventLabel;
+                              });
+                              _loadConfig();
+                            },
+                          ),
+                        );
+                      }),
+                      ActionChip(
+                        avatar: const Icon(Icons.add_circle_outline, size: 15, color: AppColors.secondaryGold),
+                        label: Text(
+                          'Custom',
+                          style: AppTypography.caption.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.secondaryGold,
+                          ),
+                        ),
+                        backgroundColor: AppColors.goldLight,
+                        side: BorderSide(color: AppColors.primaryGold.withValues(alpha: 0.4)),
+                        onPressed: _isLoading || _isSaving ? null : _showAddCustomTemplateDialog,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isInherited && (_selectedBrandId.isNotEmpty || _selectedEventType.isNotEmpty)) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -471,7 +724,7 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
                       border: Border.all(color: Colors.amber.shade200),
                     ),
                     child: Text(
-                      'Sub-brand ini masih mengikuti template default. Tekan Simpan di bawah untuk kustomisasi khusus brand ini.',
+                      'Template "$_selectedEventLabel" masih mengikuti preset bawaan/default. Tekan Simpan di bawah untuk kustomisasi.',
                       style: AppTypography.caption.copyWith(color: Colors.amber.shade900, fontSize: 11),
                     ),
                   ),
