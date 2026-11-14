@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/contact_picker_service.dart';
 import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
@@ -775,13 +775,13 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                       colorFilter: const ColorFilter.mode(AppTheme.textLight, BlendMode.srcIn),
                     ),
                   ),
-                  suffixIcon: kIsWeb
-                      ? null
-                      : IconButton(
+                  suffixIcon: ref.watch(contactPickerServiceProvider).isSupported
+                      ? IconButton(
                           icon: const Icon(Icons.contacts_outlined, color: AppTheme.primaryGold, size: 20),
                           tooltip: 'Ambil dari Kontak',
                           onPressed: _isPickingContact ? null : _pickContactPhone,
-                        ),
+                        )
+                      : null,
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),

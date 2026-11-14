@@ -25,11 +25,15 @@ class _FakeNativeContactPicker extends FlutterNativeContactPicker {
 }
 
 class _FakeContactPickerService extends ContactPickerService {
-  _FakeContactPickerService({this.picked, this.error});
+  _FakeContactPickerService({this.picked, this.error, this.supported = true});
 
   final PickedPhoneContact? picked;
   final Object? error;
+  final bool supported;
   int callCount = 0;
+
+  @override
+  bool get isSupported => supported;
 
   @override
   Future<PickedPhoneContact?> pickPhoneContact() async {
@@ -240,6 +244,23 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Ambil dari Kontak'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('hides contact picker actions when browser/platform is unsupported', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final unsupportedService = _FakeContactPickerService(supported: false);
+      await tester.pumpWidget(_buildCreateAgendaHarness(unsupportedService));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ambil dari Kontak'), findsNothing);
+      expect(find.byIcon(Icons.contacts_outlined), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

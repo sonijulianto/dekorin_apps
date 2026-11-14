@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,7 +6,7 @@ import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/contact_picker_service.dart';
 
 /// Tombol chip ringkas untuk memicu pemilihan nomor HP dari kontak perangkat.
-class ContactPickerChip extends StatelessWidget {
+class ContactPickerChip extends ConsumerWidget {
   const ContactPickerChip({
     super.key,
     required this.onTap,
@@ -18,8 +17,10 @@ class ContactPickerChip extends StatelessWidget {
   final bool isLoading;
 
   @override
-  Widget build(BuildContext context) {
-    if (kIsWeb) return const SizedBox.shrink();
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(contactPickerServiceProvider).isSupported) {
+      return const SizedBox.shrink();
+    }
     return InkWell(
       onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(8),

@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'web_contact_picker_stub.dart'
+    if (dart.library.js_interop) 'web_contact_picker_web.dart';
+
 final contactPickerServiceProvider = Provider<ContactPickerService>((ref) {
   return ContactPickerService();
 });
@@ -26,11 +29,20 @@ class ContactPickerService {
   final bool _hasCustomPicker;
   final FlutterNativeContactPicker _picker;
 
-  /// Membuka pemilih kontak bawaan (Android/iOS) untuk memilih satu nomor HP.
-  /// Mengembalikan `null` jika pengguna membatalkan pemilihan atau di browser Web.
+  /// Menandakan apakah pemilih kontak tersedia pada platform/browser saat ini.
+  bool get isSupported => !kIsWeb || _hasCustomPicker || isWebContactPickerSupported();
+
+  /// Membuka pemilih kontak bawaan (Android/iOS atau browser yang mendukung
+  /// Web Contact Picker API) untuk memilih satu nomor HP.
+  /// Mengembalikan `null` jika pengguna membatalkan pemilihan.
   Future<PickedPhoneContact?> pickPhoneContact() async {
     if (kIsWeb && !_hasCustomPicker) {
-      throw UnsupportedError('Pemilih kontak tidak tersedia di browser.');
+      final webContact = await pickWebContact();
+      if (webContact == null) return null;
+      return PickedPhoneContact(
+        name: webContact.name,
+        phoneNumber: normalizePhoneNumber(webContact.rawPhone),
+      );
     }
     final contact = await _picker.selectPhoneNumber();
     if (contact == null) return null;

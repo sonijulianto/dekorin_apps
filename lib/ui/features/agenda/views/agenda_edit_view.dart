@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
+import 'package:dekorin_apps/data/services/contact_picker_service.dart';
 import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/data/services/master_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
@@ -818,13 +818,13 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                                 colorFilter: const ColorFilter.mode(AppColors.primaryGold, BlendMode.srcIn),
                               ),
                             ),
-                            suffixIcon: kIsWeb
-                                ? null
-                                : IconButton(
+                            suffixIcon: ref.watch(contactPickerServiceProvider).isSupported
+                                ? IconButton(
                                     icon: const Icon(Icons.contacts_outlined, color: AppColors.primaryGold, size: 20),
                                     tooltip: 'Ambil dari Kontak',
                                     onPressed: _isPickingContact ? null : _pickContactPhone,
-                                  ),
+                                  )
+                                : null,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
                             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
