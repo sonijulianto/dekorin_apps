@@ -189,6 +189,17 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${_item.formToken}';
 
     String phone = _item.clientPhone.replaceAll(RegExp(r'\D'), '');
+    if (phone.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Nomor HP tidak valid.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+      return;
+    }
     if (phone.startsWith('0')) {
       phone = '62${phone.substring(1)}';
     } else if (!phone.startsWith('62') && phone.isNotEmpty) {
@@ -685,35 +696,32 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       const Divider(height: 1),
                       const SizedBox(height: 12),
 
-                      // Quick Contact Actions Strip
-                      Row(
-                        children: [
-                          SvgPicture.asset(
-                            'assets/icons/mobile-notch.svg',
-                            width: 20,
-                            height: 20,
-                            colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                      // Quick Contact Actions Strip (Klik nomor HP untuk redirect ke WhatsApp)
+                      InkWell(
+                        onTap: _item.clientPhone.trim().isNotEmpty ? () => _sendWhatsAppMessage(context) : null,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SvgPicture.asset(
+                                'assets/icons/mobile-notch.svg',
+                                width: 20,
+                                height: 20,
+                                colorFilter: const ColorFilter.mode(AppColors.textLight, BlendMode.srcIn),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _item.clientPhone.isNotEmpty ? _item.clientPhone : 'Belum ada nomor HP',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: _item.clientPhone.isNotEmpty ? AppColors.textDark : AppColors.textLight,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _item.clientPhone.isNotEmpty ? _item.clientPhone : 'Belum ada nomor HP',
-                              style: AppTypography.bodyMedium,
-                            ),
-                          ),
-                          if (_item.clientPhone.isNotEmpty) ...[
-                            IconButton(
-                              icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
-                              tooltip: 'Telepon Klien',
-                              onPressed: () => _launchUrl(context, 'tel:${_item.clientPhone}'),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
-                              tooltip: 'WhatsApp Klien',
-                              onPressed: () => _sendWhatsAppMessage(context),
-                            ),
-                          ],
-                        ],
+                        ),
                       ),
                     ],
                   ),
