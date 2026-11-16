@@ -261,7 +261,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Data profil usaha dekorasi berhasil disimpan!',
+              'Data profil usaha berhasil disimpan!',
               style: AppTypography.bodyMedium.copyWith(color: Colors.white),
             ),
             backgroundColor: Color(0xFF2E7D32),
@@ -293,7 +293,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('Profil Usaha Dekorasi', style: AppTypography.titleLarge),
+        title: Text('Profil Usaha', style: AppTypography.titleLarge),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -425,7 +425,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                         children: [
                           DekorinTextField(
                             controller: _nameController,
-                            label: 'Nama Usaha Dekorasi *',
+                            label: 'Nama Usaha *',
                             hint: 'Contoh: Dekorin Wedding & Event',
                             prefixIcon: Icons.storefront,
                             validator: (val) {
@@ -611,7 +611,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Punya lini brand dekorasi berbeda (mis. Wedding vs Engagement)? Atur nama, logo, WA & IG tiap brand di sini.',
+                                    'Punya lini brand usaha berbeda (mis. Wedding vs Engagement)? Atur nama, logo, WA & IG tiap brand di sini.',
                                     style: AppTypography.caption.copyWith(color: AppColors.textLight),
                                   ),
                                 ],

@@ -102,7 +102,7 @@ class _ManageDecorationModelsViewState extends ConsumerState<ManageDecorationMod
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('Master Model Dekorasi', style: AppTypography.titleMedium),
+        title: Text('Master Model', style: AppTypography.titleMedium),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -684,7 +684,7 @@ class _DecorationModelFormSheetState extends ConsumerState<_DecorationModelFormS
                   children: [
                     Expanded(
                       child: Text(
-                        _isEdit ? 'Edit Model Dekorasi' : 'Tambah Model Baru',
+                        _isEdit ? 'Edit Model' : 'Tambah Model Baru',
                         style: AppTypography.titleLarge,
                       ),
                     ),
@@ -744,7 +744,7 @@ class _DecorationModelFormSheetState extends ConsumerState<_DecorationModelFormS
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Label Upload Foto
-                        Text('Foto Model Dekorasi', style: AppTypography.labelLarge),
+                        Text('Foto Model', style: AppTypography.labelLarge),
                         const SizedBox(height: 8),
 
                         // Box Preview Foto & Button Upload
@@ -849,7 +849,7 @@ class _DecorationModelFormSheetState extends ConsumerState<_DecorationModelFormS
 
                         DekorinTextField(
                           controller: _nameController,
-                          label: 'Nama Model Dekorasi',
+                          label: 'Nama Model',
                           hint: 'Contoh: Model Rustic Arch Wood / Modern Hexagon',
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama model wajib diisi' : null,
                         ),
@@ -897,7 +897,7 @@ class _DecorationModelFormSheetState extends ConsumerState<_DecorationModelFormS
 
                         DekorinTextField(
                           controller: _widthController,
-                          label: 'Lebar Model Dekorasi',
+                          label: 'Ukuran / Lebar Model',
                           hint: 'Contoh: 3 Meter, 4 Meter, atau 6x3m',
                           prefixIcon: Icons.straighten,
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Lebar dekorasi wajib diisi' : null,

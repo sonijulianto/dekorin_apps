@@ -128,6 +128,58 @@ class ClientFormModel {
   }
 }
 
+class AgendaPayment {
+  const AgendaPayment({
+    required this.id,
+    required this.agendaId,
+    required this.amount,
+    required this.paidAt,
+    this.paymentMethod = '',
+    this.note = '',
+  });
+
+  final String id;
+  final String agendaId;
+  final double amount;
+  final DateTime paidAt;
+  final String paymentMethod;
+  final String note;
+
+  factory AgendaPayment.fromJson(Map<String, dynamic> json) {
+    DateTime parsedPaidAt = DateTime.now();
+    final rawDate = json['paid_at'] as String?;
+    if (rawDate != null && rawDate.isNotEmpty) {
+      try {
+        parsedPaidAt = DateTime.parse(rawDate).toLocal();
+      } catch (_) {}
+    }
+    final rawAmount = json['amount'];
+    final amount = rawAmount is num
+        ? rawAmount.toDouble()
+        : (rawAmount is String ? (double.tryParse(rawAmount) ?? 0.0) : 0.0);
+
+    return AgendaPayment(
+      id: json['id'] as String? ?? '',
+      agendaId: json['agenda_id'] as String? ?? '',
+      amount: amount,
+      paidAt: parsedPaidAt,
+      paymentMethod: json['payment_method'] as String? ?? '',
+      note: json['note'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'agenda_id': agendaId,
+      'amount': amount,
+      'paid_at': paidAt.toIso8601String(),
+      'payment_method': paymentMethod,
+      'note': note,
+    };
+  }
+}
+
 class AgendaItem {
   const AgendaItem({
     required this.id,
@@ -164,6 +216,7 @@ class AgendaItem {
     this.dpAmount = 0.0,
     this.notes = '',
     this.clientForm,
+    this.payments = const [],
     this.createdAt,
   });
 
@@ -201,6 +254,7 @@ class AgendaItem {
   final double dpAmount;
   final String notes;
   final ClientFormModel? clientForm;
+  final List<AgendaPayment> payments;
   final DateTime? createdAt;
 
   bool get isPaidOff => paymentStatus.toLowerCase() == 'paid';
@@ -368,6 +422,7 @@ class AgendaItem {
     double? dpAmount,
     String? notes,
     ClientFormModel? clientForm,
+    List<AgendaPayment>? payments,
     DateTime? createdAt,
   }) {
     return AgendaItem(
@@ -405,6 +460,7 @@ class AgendaItem {
       dpAmount: dpAmount ?? this.dpAmount,
       notes: notes ?? this.notes,
       clientForm: clientForm ?? this.clientForm,
+      payments: payments ?? this.payments,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -441,6 +497,15 @@ class AgendaItem {
     ClientFormModel? parsedForm;
     if (json['client_form'] != null && json['client_form'] is Map<String, dynamic>) {
       parsedForm = ClientFormModel.fromJson(json['client_form'] as Map<String, dynamic>);
+    }
+
+    final parsedPayments = <AgendaPayment>[];
+    if (json['payments'] is List) {
+      for (final item in json['payments'] as List) {
+        if (item is Map<String, dynamic>) {
+          parsedPayments.add(AgendaPayment.fromJson(item));
+        }
+      }
     }
 
     double parseDouble(dynamic value) {
@@ -484,6 +549,7 @@ class AgendaItem {
       dpAmount: parseDouble(json['dp_amount']),
       notes: json['notes'] as String? ?? '',
       clientForm: parsedForm,
+      payments: parsedPayments,
       createdAt: parsedCreatedAt,
     );
   }
@@ -524,6 +590,7 @@ class AgendaItem {
       'dp_amount': dpAmount,
       'notes': notes,
       if (clientForm != null) 'client_form': clientForm!.toJson(),
+      if (payments.isNotEmpty) 'payments': payments.map((p) => p.toJson()).toList(),
     };
   }
 

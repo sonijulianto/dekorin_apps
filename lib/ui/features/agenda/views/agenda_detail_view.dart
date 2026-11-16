@@ -13,6 +13,7 @@ import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
+import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_edit_view.dart';
@@ -90,6 +91,299 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     } finally {
       _isUpdatingStatus = false;
     }
+  }
+
+  Future<void> _addPayment({
+    required double amount,
+    required DateTime paidAt,
+    required String paymentMethod,
+    required String note,
+  }) async {
+    if (_isUpdatingStatus) return;
+    _isUpdatingStatus = true;
+    final preservedSchedule = _item.eventDateTime;
+    try {
+      final updated = await DekorinLoadingDialog.run(
+        context,
+        message: 'Menyimpan riwayat pembayaran...',
+        task: () => ref.read(agendaServiceProvider).addAgendaPayment(
+              _item.id,
+              amount: amount,
+              paidAt: paidAt,
+              paymentMethod: paymentMethod,
+              note: note,
+            ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _item = preservedSchedule.year > 1970
+            ? updated.copyWith(eventDateTime: preservedSchedule)
+            : updated;
+      });
+      ref.invalidate(agendaViewModelProvider);
+      ref.invalidate(dashboardViewModelProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            updated.isPaidOff
+                ? 'Pembayaran dicatat & status otomatis LUNAS!'
+                : 'Riwayat pembayaran DP berhasil ditambahkan!',
+            style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+          ),
+          backgroundColor: updated.isPaidOff ? Colors.green : AppColors.primaryGold,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menambah pembayaran: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _isUpdatingStatus = false;
+    }
+  }
+
+  Future<void> _deletePayment(AgendaPayment payment) async {
+    if (_isUpdatingStatus) return;
+    _isUpdatingStatus = true;
+    final preservedSchedule = _item.eventDateTime;
+    try {
+      final updated = await DekorinLoadingDialog.run(
+        context,
+        message: 'Menghapus riwayat pembayaran...',
+        task: () => ref.read(agendaServiceProvider).deleteAgendaPayment(_item.id, payment.id),
+      );
+      if (!mounted) return;
+      setState(() {
+        _item = preservedSchedule.year > 1970
+            ? updated.copyWith(eventDateTime: preservedSchedule)
+            : updated;
+      });
+      ref.invalidate(agendaViewModelProvider);
+      ref.invalidate(dashboardViewModelProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Riwayat pembayaran dihapus.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+          backgroundColor: AppColors.primaryGold,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus riwayat pembayaran: $e', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _isUpdatingStatus = false;
+    }
+  }
+
+  Future<void> _showAddPaymentDialog() async {
+    final remaining = _item.calculatedRemainingPayment;
+    final nextIndex = _item.payments.isNotEmpty
+        ? _item.payments.length + 1
+        : (_item.dpAmount > 0 ? 2 : 1);
+
+    final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController(text: 'DP $nextIndex');
+    var selectedDate = DateTime.now();
+    var selectedMethod = 'Transfer';
+    const methods = ['Transfer', 'Cash', 'QRIS', 'Lainnya'];
+    final currencyFmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('Tambah Pembayaran / DP', style: AppTypography.h3),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (remaining > 0) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Sisa tagihan: ${currencyFmt.format(remaining)}',
+                              style: AppTypography.caption.copyWith(color: AppColors.textDark, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              final formatted = NumberFormat('#,###', 'id_ID').format(remaining.round());
+                              amountCtrl.text = formatted;
+                              noteCtrl.text = 'Pelunasan';
+                              setDialogState(() {});
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Isi Lunas',
+                              style: AppTypography.labelMedium.copyWith(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text('Nominal Pembayaran (Rp)', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: amountCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        ThousandsSeparatorInputFormatter(),
+                      ],
+                      style: AppTypography.bodyMedium,
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: 2.000.000',
+                        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                        prefixText: 'Rp ',
+                        prefixStyle: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Tanggal Pembayaran', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2035),
+                        );
+                        if (picked != null) {
+                          final now = DateTime.now();
+                          setDialogState(() {
+                            selectedDate = DateTime(
+                              picked.year,
+                              picked.month,
+                              picked.day,
+                              now.hour,
+                              now.minute,
+                            );
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.primaryGold),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('dd MMM yyyy', 'id_ID').format(selectedDate),
+                              style: AppTypography.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Metode Pembayaran', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: methods.map((m) {
+                        final active = selectedMethod == m;
+                        return ChoiceChip(
+                          label: Text(
+                            m,
+                            style: AppTypography.caption.copyWith(
+                              color: active ? Colors.white : AppColors.textDark,
+                              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          selected: active,
+                          selectedColor: AppColors.primaryGold,
+                          backgroundColor: AppColors.goldLight,
+                          onSelected: (_) => setDialogState(() => selectedMethod = m),
+                          visualDensity: VisualDensity.compact,
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Catatan (Opsional)', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: noteCtrl,
+                      style: AppTypography.bodyMedium,
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: DP 2 / Termin 2',
+                        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                        isDense: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.textLight)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final raw = amountCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
+                    final amount = double.tryParse(raw) ?? 0.0;
+                    if (amount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Masukkan nominal pembayaran yang valid.', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(dialogCtx);
+                    _addPayment(
+                      amount: amount,
+                      paidAt: selectedDate,
+                      paymentMethod: selectedMethod,
+                      note: noteCtrl.text.trim(),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Simpan DP', style: AppTypography.button.copyWith(fontSize: 13)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _updateEventStatus(String newStatus) async {
@@ -1300,6 +1594,207 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                           discountValue: _item.discountValue,
                           transportFee: transportFee,
                           dpAmount: _item.dpAmount,
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Riwayat Pembayaran / Termin DP
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Riwayat Pembayaran / DP',
+                                      style: AppTypography.titleSmall.copyWith(fontSize: 13),
+                                    ),
+                                  ),
+                                  if (!_item.isPaidOff)
+                                    TextButton.icon(
+                                      onPressed: _showAddPaymentDialog,
+                                      icon: const Icon(Icons.add_circle_outline, size: 16, color: AppColors.primaryGold),
+                                      label: Text(
+                                        'Tambah DP',
+                                        style: AppTypography.labelMedium.copyWith(
+                                          color: AppColors.primaryGold,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (_item.payments.isNotEmpty)
+                                ...List.generate(_item.payments.length, (idx) {
+                                  final pay = _item.payments[idx];
+                                  final dateStr = DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(pay.paidAt);
+                                  final title = pay.note.isNotEmpty ? pay.note : 'DP ${idx + 1}';
+                                  return Padding(
+                                    padding: EdgeInsets.only(bottom: idx == _item.payments.length - 1 ? 0 : 8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AppColors.borderLight),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 26,
+                                            height: 26,
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.goldLight,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              '${idx + 1}',
+                                              style: AppTypography.caption.copyWith(
+                                                color: AppColors.primaryGold,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Flexible(
+                                                      child: Text(
+                                                        title,
+                                                        style: AppTypography.bodyMedium.copyWith(
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 13,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    if (pay.paymentMethod.isNotEmpty) ...[
+                                                      const SizedBox(width: 6),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                                        decoration: BoxDecoration(
+                                                          color: AppColors.goldLight,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: Text(
+                                                          pay.paymentMethod,
+                                                          style: AppTypography.caption.copyWith(
+                                                            fontSize: 10,
+                                                            color: AppColors.secondaryGold,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(dateStr, style: AppTypography.caption),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            currencyFormatter.format(pay.amount),
+                                            style: AppTypography.bodyMedium.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          if (pay.id.isNotEmpty) ...[
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (dialogCtx) => AlertDialog(
+                                                    title: Text('Hapus Riwayat DP?', style: AppTypography.h3),
+                                                    content: Text(
+                                                      'Hapus catatan "$title" sebesar ${currencyFormatter.format(pay.amount)}? Total DP akan dihitung ulang otomatis.',
+                                                      style: AppTypography.bodyMedium,
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () => Navigator.pop(dialogCtx),
+                                                        child: Text('Batal', style: AppTypography.labelLarge.copyWith(color: AppColors.textLight)),
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () {
+                                                          Navigator.pop(dialogCtx);
+                                                          _deletePayment(pay);
+                                                        },
+                                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                                        child: Text('Hapus', style: AppTypography.button.copyWith(fontSize: 13)),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(4),
+                                                child: Icon(Icons.delete_outline, size: 16, color: Colors.red.shade400),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                })
+                              else if (_item.dpAmount > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.borderLight),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'DP Awal',
+                                          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+                                        ),
+                                      ),
+                                      Text(
+                                        currencyFormatter.format(_item.dpAmount),
+                                        style: AppTypography.bodyMedium.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Text(
+                                  'Belum ada riwayat DP masuk. Tekan "+ Tambah DP" untuk mencatat pembayaran bertahap.',
+                                  style: AppTypography.caption,
+                                ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
 

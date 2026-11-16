@@ -62,7 +62,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   _buildLogo(),
                   const SizedBox(height: 12),
                   Text(
-                    'Kelola bisnis dekorasi Anda\ndengan mudah dan efisien',
+                    'Kelola bisnis Anda\ndengan mudah dan efisien',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, height: 1.5),
                   ),

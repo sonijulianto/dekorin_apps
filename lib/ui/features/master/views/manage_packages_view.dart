@@ -102,7 +102,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: Text('Kelola Paket Dekorasi', style: AppTypography.titleLarge),
+        title: Text('Kelola Paket', style: AppTypography.titleLarge),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -797,7 +797,7 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(child: Text(_isEdit ? 'Edit Paket Dekorasi' : 'Tambah Paket Baru', style: AppTypography.titleLarge)),
+                  Expanded(child: Text(_isEdit ? 'Edit Paket' : 'Tambah Paket Baru', style: AppTypography.titleLarge)),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: _isSubmitting ? null : () => Navigator.pop(context),
@@ -854,7 +854,7 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Label Upload Foto
-                      Text('Foto Paket Dekorasi', style: AppTypography.labelLarge),
+                      Text('Foto Paket', style: AppTypography.labelLarge),
                       const SizedBox(height: 8),
 
                       // Box Preview Foto & Button Upload

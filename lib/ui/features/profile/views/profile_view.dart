@@ -108,7 +108,7 @@ class ProfileView extends ConsumerWidget {
                         decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
                         child: const Icon(Icons.storefront_rounded, color: AppColors.primaryGold, size: 22),
                       ),
-                      title: Text('Profil & Data Usaha Dekorasi', style: AppTypography.titleSmall),
+                      title: Text('Profil & Data Usaha', style: AppTypography.titleSmall),
                       subtitle: Text('Atur nama usaha, logo resmi, kontak, alamat, dan data invoice', style: AppTypography.caption),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
@@ -123,7 +123,7 @@ class ProfileView extends ConsumerWidget {
                         child: const Icon(Icons.layers_outlined, color: AppColors.primaryGold, size: 22),
                       ),
                       title: Text('Kelola Multi-Brand / Sub-Brand', style: AppTypography.titleSmall),
-                      subtitle: Text('Atur nama & logo brand berbeda untuk market dekorasi lain', style: AppTypography.caption),
+                      subtitle: Text('Atur nama & logo brand berbeda untuk market usaha lain', style: AppTypography.caption),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageBrandsView()));
@@ -249,7 +249,7 @@ class ProfileView extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
-                  'MASTER DATA DEKORASI',
+                  'MASTER DATA',
                   style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.8, color: AppColors.textLight),
                 ),
               ),
@@ -268,7 +268,7 @@ class ProfileView extends ConsumerWidget {
                         decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
                         child: const Icon(Icons.inventory_2, color: AppColors.primaryGold, size: 22),
                       ),
-                      title: Text('Kelola Paket Dekorasi', style: AppTypography.titleSmall),
+                      title: Text('Kelola Paket', style: AppTypography.titleSmall),
                       subtitle: Text('Atur daftar paket, foto, dan harga dasar', style: AppTypography.caption),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
@@ -282,8 +282,8 @@ class ProfileView extends ConsumerWidget {
                         decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
                         child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 22),
                       ),
-                      title: Text('Kelola Model Dekorasi', style: AppTypography.titleSmall),
-                      subtitle: Text('Atur katalog model dekorasi, foto, lebar, & harga', style: AppTypography.caption),
+                      title: Text('Kelola Model', style: AppTypography.titleSmall),
+                      subtitle: Text('Atur katalog model, foto, ukuran, & harga', style: AppTypography.caption),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageDecorationModelsView()));
@@ -297,7 +297,7 @@ class ProfileView extends ConsumerWidget {
                         child: const Icon(Icons.category_rounded, color: AppColors.primaryGold, size: 22),
                       ),
                       title: Text('Kelola Properti & Alat Kerja', style: AppTypography.titleSmall),
-                      subtitle: Text('Inventaris barang dekorasi & toolkit operasional lapangan', style: AppTypography.caption),
+                      subtitle: Text('Inventaris perlengkapan & toolkit operasional lapangan', style: AppTypography.caption),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagePropertiesView()));

@@ -68,7 +68,7 @@ void main() {
     await tester.pump();
 
     // Verify filter bar is rendered at the top
-    expect(find.text('Agenda Dekorasi'), findsOneWidget);
+    expect(find.text('Agenda'), findsOneWidget);
     expect(find.text('Minggu Ini'), findsOneWidget);
 
     // Verify shimmer loading skeleton is displayed, and full-screen spinner is NOT displayed

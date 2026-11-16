@@ -262,7 +262,7 @@ class ManageBrandsView extends ConsumerWidget {
                         Text('Belum Ada Sub-Brand Tambahan', style: AppTypography.titleSmall),
                         const SizedBox(height: 4),
                         Text(
-                          'Tambahkan brand baru jika Anda memiliki nama usaha berbeda untuk market dekorasi lain (mis. Wedding vs Engagement / Kids Party).',
+                          'Tambahkan brand baru jika Anda memiliki nama usaha berbeda untuk market lain (mis. Wedding vs Engagement / Kids Party).',
                           style: AppTypography.caption.copyWith(color: AppColors.textLight),
                           textAlign: TextAlign.center,
                         ),

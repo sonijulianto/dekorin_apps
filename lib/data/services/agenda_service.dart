@@ -154,6 +154,30 @@ class AgendaService {
     return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
   }
 
+  /// Menambahkan catatan riwayat pembayaran / termin DP baru pada agenda
+  Future<AgendaItem> addAgendaPayment(
+    String agendaId, {
+    required double amount,
+    DateTime? paidAt,
+    String paymentMethod = '',
+    String note = '',
+  }) async {
+    final payload = <String, dynamic>{
+      'amount': amount,
+      if (paidAt != null) 'paid_at': paidAt.toIso8601String(),
+      if (paymentMethod.trim().isNotEmpty) 'payment_method': paymentMethod.trim(),
+      if (note.trim().isNotEmpty) 'note': note.trim(),
+    };
+    final responseData = await ApiClient.post('${ApiEndpoint.agendas}/$agendaId/payments', body: payload);
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
+  /// Menghapus satu catatan riwayat pembayaran / termin DP pada agenda
+  Future<AgendaItem> deleteAgendaPayment(String agendaId, String paymentId) async {
+    final responseData = await ApiClient.delete('${ApiEndpoint.agendas}/$agendaId/payments/$paymentId');
+    return AgendaItem.fromJson(responseData['data'] as Map<String, dynamic>);
+  }
+
   /// Mengupdate nominal uang transport untuk agenda tertentu
   Future<AgendaItem> updateAgendaTransport(String agendaId, double transportFee) async {
     final payload = {'transport_fee': transportFee};

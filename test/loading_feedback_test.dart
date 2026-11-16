@@ -277,7 +277,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     // Bottom sheet must open IMMEDIATELY showing loading state while API is pending!
-    expect(find.text('Edit Model Dekorasi'), findsOneWidget);
+    expect(find.text('Edit Model'), findsOneWidget);
     expect(find.text('Memuat data model...'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
@@ -345,7 +345,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     // Bottom sheet opens immediately with loading state
-    expect(find.text('Edit Paket Dekorasi'), findsOneWidget);
+    expect(find.text('Edit Paket'), findsOneWidget);
     expect(find.text('Memuat data paket...'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 

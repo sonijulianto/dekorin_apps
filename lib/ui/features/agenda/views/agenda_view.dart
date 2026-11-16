@@ -73,7 +73,7 @@ class AgendaView extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Agenda Dekorasi',
+          'Agenda',
           style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         actions: [
