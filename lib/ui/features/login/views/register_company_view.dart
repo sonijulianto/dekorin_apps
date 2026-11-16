@@ -131,8 +131,7 @@ class _RegisterCompanyViewState extends ConsumerState<RegisterCompanyView> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
-                        prefixIcon: const Icon(Icons.category_outlined, color: AppColors.textLight, size: 22),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: AppColors.borderLight),
@@ -168,7 +167,6 @@ class _RegisterCompanyViewState extends ConsumerState<RegisterCompanyView> {
                       controller: _ownerNameController,
                       label: 'Nama Lengkap *',
                       hint: 'Contoh: Budi Santoso',
-                      prefixWidget: const Icon(Icons.person_outline_rounded, color: AppColors.textLight, size: 22),
                       textInputAction: TextInputAction.next,
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama lengkap wajib diisi' : null,
                     ),
