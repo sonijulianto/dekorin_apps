@@ -17,7 +17,8 @@ class VendorCategoryOption {
     VendorCategoryOption(id: 'photo_video', label: 'Fotografi & Videografi', shortLabel: 'Foto & Video'),
     VendorCategoryOption(id: 'catering', label: 'Katering & Konsumsi', shortLabel: 'Catering'),
     VendorCategoryOption(id: 'attire', label: 'Busana & Gaun Pengantin', shortLabel: 'Busana'),
-    VendorCategoryOption(id: 'entertainment', label: 'MC, Musik & Hiburan', shortLabel: 'MC & Hiburan'),
+    VendorCategoryOption(id: 'mc', label: 'MC / Pembawa Acara', shortLabel: 'MC'),
+    VendorCategoryOption(id: 'entertainment', label: 'Musik & Hiburan', shortLabel: 'Hiburan'),
     VendorCategoryOption(id: 'venue', label: 'Venue & Gedung Acara', shortLabel: 'Venue'),
     VendorCategoryOption(id: 'other', label: 'Vendor & Kebutuhan Lain', shortLabel: 'Lainnya'),
   ];
