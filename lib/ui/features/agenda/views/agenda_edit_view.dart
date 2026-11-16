@@ -19,6 +19,7 @@ import 'package:dekorin_apps/domain/models/form_config.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_calendar_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
@@ -637,8 +638,10 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
     final dateFormat = DateFormat('EEEE, dd MMMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm', 'id_ID');
     final brands = ref.watch(companyBrandsProvider).valueOrNull ?? const <CompanyBrand>[];
-    final mainCompanyName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
-    final isCrew = ref.watch(globalAuthProvider).value?.isCrew ?? false;
+    final currentUser = ref.watch(globalAuthProvider).valueOrNull;
+    final categoryConfig = AgendaCategoryConfig.fromCategory(currentUser?.companyCategory ?? 'decoration');
+    final mainCompanyName = currentUser?.companyName ?? 'Brand Utama';
+    final isCrew = currentUser?.isCrew ?? false;
 
     String currentBrandName = 'Brand Utama';
     if (_brandId.isNotEmpty) {
@@ -831,26 +834,27 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
                           ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Judul Acara / Backdrop
-                        Text('Judul Acara / Tulisan Backdrop', style: AppTypography.caption),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _backdropTitleController,
-                          style: AppTypography.bodyMedium,
-                          decoration: InputDecoration(
-                            hintText: 'Contoh: The Engagement of Rian & Nisa',
-                            hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
-                            filled: true,
-                            fillColor: AppColors.backgroundLight,
-                            prefixIcon: const Icon(Icons.celebration_outlined, color: AppColors.primaryGold, size: 20),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
+                        // Judul Acara / Backdrop (khusus kategori dekorasi)
+                        if (categoryConfig.showBackdropField) ...[
+                          const SizedBox(height: 12),
+                          Text('Judul Acara / Tulisan Backdrop', style: AppTypography.caption),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _backdropTitleController,
+                            style: AppTypography.bodyMedium,
+                            decoration: InputDecoration(
+                              hintText: 'Contoh: The Engagement of Rian & Nisa',
+                              hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
+                              filled: true,
+                              fillColor: AppColors.backgroundLight,
+                              prefixIcon: const Icon(Icons.celebration_outlined, color: AppColors.primaryGold, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
 
@@ -998,13 +1002,13 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                       ],
                     ),
 
-                    // 4. Paket & Model Dekorasi
+                    // 4. Paket & Model Dekorasi (atau Paket Layanan untuk non-dekorasi)
                     _buildSectionCard(
-                      title: 'Paket & Model Dekorasi',
+                      title: categoryConfig.packageSectionTitle,
                       icon: Icons.palette_outlined,
                       children: [
                         // Paket
-                        Text('Paket Dekorasi', style: AppTypography.caption),
+                        Text(categoryConfig.packageEditLabel, style: AppTypography.caption),
                         const SizedBox(height: 6),
                         InkWell(
                           onTap: () => _openPackagePicker(currentBrandName),
@@ -1047,10 +1051,11 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 12),
+                        if (categoryConfig.showModelSection) ...[
+                          const SizedBox(height: 12),
 
-                        // Model Dekorasi
-                        Text('Model Backdrop Katalog', style: AppTypography.caption),
+                          // Model Dekorasi
+                          Text('Model Backdrop Katalog', style: AppTypography.caption),
                         const SizedBox(height: 6),
                         InkWell(
                           onTap: () => _openModelPicker(currentBrandName),
@@ -1146,6 +1151,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                               label: Text('Hapus Model Terpilih', style: AppTypography.caption.copyWith(color: Colors.red)),
                             ),
                           ),
+                        ],
                         ],
                       ],
                     ),
@@ -1277,7 +1283,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                         icon: Icons.payments_outlined,
                         children: [
                           // Harga Paket
-                          Text('Harga Paket Dekorasi', style: AppTypography.caption),
+                          Text(categoryConfig.packagePriceLabel, style: AppTypography.caption),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: _packagePriceController,
@@ -1299,31 +1305,33 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Harga Model Dekorasi (atau Tambahan Biaya Model jika memakai paket)
-                          Text(
-                            _hasActivePackage ? 'Biaya Tambahan Model' : 'Harga Model Dekorasi',
-                            style: AppTypography.caption,
-                          ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _modelPriceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                            onChanged: (_) => setState(() {}),
-                            style: AppTypography.bodyMedium,
-                            decoration: InputDecoration(
-                              prefixText: 'Rp ',
-                              prefixStyle: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-                              hintText: '0',
-                              filled: true,
-                              fillColor: AppColors.backgroundLight,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
+                          // Harga Model Dekorasi (khusus kategori dekorasi)
+                          if (categoryConfig.showModelSection) ...[
+                            Text(
+                              _hasActivePackage ? 'Biaya Tambahan Model' : 'Harga Model Dekorasi',
+                              style: AppTypography.caption,
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _modelPriceController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                              onChanged: (_) => setState(() {}),
+                              style: AppTypography.bodyMedium,
+                              decoration: InputDecoration(
+                                prefixText: 'Rp ',
+                                prefixStyle: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                                hintText: '0',
+                                filled: true,
+                                fillColor: AppColors.backgroundLight,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryGold, width: 2)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
 
                           // Diskon (Hanya memotong harga dekorasi, di luar transport)
                           Builder(
@@ -1553,7 +1561,7 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                           maxLines: 4,
                           style: AppTypography.bodyMedium,
                           decoration: InputDecoration(
-                            hintText: 'Tuliskan catatan khusus atau instruksi tim dekorasi...',
+                            hintText: categoryConfig.notesHint,
                             hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textLight),
                             filled: true,
                             fillColor: AppColors.backgroundLight,

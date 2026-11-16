@@ -18,6 +18,7 @@ class UserModel {
     this.companyInstagram = '',
     this.companyBankInfo = '',
     this.companyInvoiceTemplate = 'template_modern_navy',
+    this.companyCategory = 'decoration',
     this.permissions = const [],
   });
 
@@ -36,11 +37,13 @@ class UserModel {
   final String companyInstagram;
   final String companyBankInfo;
   final String companyInvoiceTemplate;
+  final String companyCategory;
   final List<String> permissions;
 
   /// Creates a [UserModel] from a JSON map.
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final rawTemplate = (json['company_invoice_template'] as String? ?? '').trim();
+    final rawCategory = (json['company_category'] as String? ?? '').trim();
     return UserModel(
       id: json['id'] as String? ?? '',
       fullName: json['full_name'] as String? ?? '',
@@ -57,6 +60,7 @@ class UserModel {
       companyInstagram: json['company_instagram'] as String? ?? '',
       companyBankInfo: json['company_bank_info'] as String? ?? '',
       companyInvoiceTemplate: rawTemplate.isNotEmpty ? rawTemplate : 'template_modern_navy',
+      companyCategory: rawCategory.isNotEmpty ? rawCategory : 'decoration',
       permissions: (json['permissions'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -82,6 +86,7 @@ class UserModel {
       'company_instagram': companyInstagram,
       'company_bank_info': companyBankInfo,
       'company_invoice_template': companyInvoiceTemplate,
+      'company_category': companyCategory,
       'permissions': permissions,
     };
   }
@@ -104,6 +109,7 @@ class UserModel {
       companyInstagram: companyInstagram,
       companyBankInfo: companyBankInfo,
       companyInvoiceTemplate: companyInvoiceTemplate,
+      companyCategory: companyCategory,
       permissions: permissions,
     );
   }

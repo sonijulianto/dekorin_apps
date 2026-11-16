@@ -16,6 +16,7 @@ class User {
     this.companyInstagram = '',
     this.companyBankInfo = '',
     this.companyInvoiceTemplate = 'template_modern_navy',
+    this.companyCategory = 'decoration',
     this.permissions = const [],
   });
 
@@ -34,6 +35,7 @@ class User {
   final String companyInstagram;
   final String companyBankInfo;
   final String companyInvoiceTemplate;
+  final String companyCategory;
   final List<String> permissions;
 
   /// Helper getters for Role-Based Access Control
@@ -140,6 +142,7 @@ class User {
     String? companyInstagram,
     String? companyBankInfo,
     String? companyInvoiceTemplate,
+    String? companyCategory,
     List<String>? permissions,
   }) {
     return User(
@@ -158,6 +161,7 @@ class User {
       companyInstagram: companyInstagram ?? this.companyInstagram,
       companyBankInfo: companyBankInfo ?? this.companyBankInfo,
       companyInvoiceTemplate: companyInvoiceTemplate ?? this.companyInvoiceTemplate,
+      companyCategory: companyCategory ?? this.companyCategory,
       permissions: permissions ?? this.permissions,
     );
   }

@@ -16,6 +16,7 @@ import 'package:dekorin_apps/domain/models/decoration_model.dart';
 import 'package:dekorin_apps/domain/models/decoration_package.dart';
 import 'package:dekorin_apps/domain/models/form_config.dart';
 import 'package:dekorin_apps/ui/core/widgets/contact_picker_action.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/addon_picker_screen.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/model_picker_screen.dart';
@@ -446,11 +447,14 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
     try {
       final agendaService = ref.read(agendaServiceProvider);
+      final categoryConfig = AgendaCategoryConfig.fromCategory(
+        ref.read(globalAuthProvider).value?.companyCategory ?? 'decoration',
+      );
 
       String combinedNotes = _notesController.text.trim();
 
-      // Tambahkan info Model Dekorasi ke Catatan
-      if (_selectedModel != null) {
+      // Tambahkan info Model Dekorasi ke Catatan (khusus kategori dekorasi)
+      if (categoryConfig.showModelSection && _selectedModel != null) {
         final formattedModelPrice = NumberFormat.currency(
           locale: 'id_ID',
           symbol: 'Rp ',
@@ -514,17 +518,17 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         eventLabel: _selectedEventLabel,
         clientName: _clientNameController.text.trim(),
         clientPhone: _clientPhoneController.text.trim(),
-        backdropTitle: _backdropTitleController.text.trim(),
+        backdropTitle: categoryConfig.showBackdropField ? _backdropTitleController.text.trim() : '',
         eventDateTime: eventDateTime,
         eventAddress: _eventAddressController.text.trim(),
         mapsUrl: mapsUrl,
         packageId: _selectedPackage?.id ?? '',
         packagePrice: packageBasePrice,
-        modelId: _selectedModel?.id ?? '',
-        modelName: _selectedModel?.name ?? '',
-        modelWidth: _selectedModel?.width ?? '',
-        modelImageUrl: _selectedModel?.imageUrl ?? '',
-        modelAdditionalPrice: _selectedModelAdditionalPrice,
+        modelId: categoryConfig.showModelSection ? (_selectedModel?.id ?? '') : '',
+        modelName: categoryConfig.showModelSection ? (_selectedModel?.name ?? '') : '',
+        modelWidth: categoryConfig.showModelSection ? (_selectedModel?.width ?? '') : '',
+        modelImageUrl: categoryConfig.showModelSection ? (_selectedModel?.imageUrl ?? '') : '',
+        modelAdditionalPrice: categoryConfig.showModelSection ? _selectedModelAdditionalPrice : 0.0,
         discountType: _discountType,
         discountValue: _currentDiscountValue,
         transportFee: _currentTransportFee,
@@ -570,6 +574,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
     final brandsAsync = ref.watch(companyBrandsProvider);
     final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
     final currentUser = ref.watch(globalAuthProvider).value;
+    final categoryConfig = AgendaCategoryConfig.fromCategory(currentUser?.companyCategory ?? 'decoration');
     final mainCompanyName = currentUser?.companyName ?? 'Brand Utama';
     final bool canViewPrice = currentUser?.canViewPrice ?? !(currentUser?.isCrew ?? false);
     final selectedBrandLabel = _resolveBrandLabel(brands, mainCompanyName);
@@ -594,7 +599,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Menentukan nama & logo invoice serta daftar Paket & Model yang tampil.',
+                  categoryConfig.brandHelpText,
                   style: AppTypography.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
                 ),
                 const SizedBox(height: 8),
@@ -794,27 +799,29 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 14),
 
-              // 2. Nama di Backdrop
-              Text(
-                'Nama di Backdrop (Opsional)',
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textDark,
+              // 2. Nama di Backdrop (khusus kategori dekorasi)
+              if (categoryConfig.showBackdropField) ...[
+                Text(
+                  'Nama di Backdrop (Opsional)',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.textDark,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _backdropTitleController,
-                style: AppTypography.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: _backdropHintText,
-                  prefixIcon: const Icon(Icons.title),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _backdropTitleController,
+                  style: AppTypography.bodyMedium,
+                  decoration: InputDecoration(
+                    hintText: _backdropHintText,
+                    prefixIcon: const Icon(Icons.title),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
+                const SizedBox(height: 14),
+              ],
 
               // 3. Tanggal dan Jam Acara
               Text(
@@ -1006,7 +1013,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
 
               // 5. Paket yang dipilih (Master Paket)
               Text(
-                'Pilih Paket Dekorasi (Opsional)',
+                categoryConfig.packageFieldLabel,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -1038,7 +1045,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                       Expanded(
                         child: _selectedPackage == null
                             ? Text(
-                                'Ketuk untuk pilih paket dekorasi',
+                                categoryConfig.packagePickerPlaceholder,
                                 style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, fontSize: 13),
                               )
                             : Column(
@@ -1089,15 +1096,16 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               ),
               const SizedBox(height: 14),
 
-              // 6. Model Dekorasi yang dipilih (Master Model Dekorasi)
-              Text(
-                'Pilih Model Dekorasi (Opsional)',
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textDark,
+              // 6. Model Dekorasi yang dipilih (Master Model Dekorasi - khusus kategori dekorasi)
+              if (categoryConfig.showModelSection) ...[
+                Text(
+                  'Pilih Model Dekorasi (Opsional)',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.textDark,
+                  ),
                 ),
-              ),
               const SizedBox(height: 6),
               InkWell(
                 onTap: () => _openModelPicker(selectedBrandLabel),
@@ -1260,6 +1268,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 ),
               ],
               const SizedBox(height: 14),
+              ],
 
               // 7. Item Tambahan (Addon)
               Text(
@@ -1414,7 +1423,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
                 controller: _notesController,
                 maxLines: 2,
                 decoration: InputDecoration(
-                  hintText: 'Misal: Tema warna sage green, loading barang H-1...',
+                  hintText: categoryConfig.notesHint,
                   prefixIcon: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: SvgPicture.asset(

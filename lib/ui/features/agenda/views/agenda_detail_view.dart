@@ -15,6 +15,7 @@ import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_edit_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
@@ -818,6 +819,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final form = _item.clientForm;
     final currentUser = ref.watch(globalAuthProvider).value;
+    final categoryConfig = AgendaCategoryConfig.fromCategory(currentUser?.companyCategory ?? 'decoration');
     final bool isCrew = currentUser?.isCrew ?? false;
     final bool canViewPrice = currentUser?.canViewPrice ?? (!isCrew);
     final bool canEditAgenda = currentUser?.canEditAgenda ?? (!isCrew);
@@ -979,7 +981,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                       // Nama Klien & Judul Backdrop
                       Text(_item.clientName, style: AppTypography.h2),
-                      if (_item.backdropTitle.isNotEmpty) ...[
+                      if (categoryConfig.showBackdropField && _item.backdropTitle.isNotEmpty) ...[
                         const SizedBox(height: 3),
                         Text(
                           _item.backdropTitle,
@@ -1172,7 +1174,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     ],
                   ),
 
-                  // 3. Model Dekorasi & Konsep Card
+                  // 3. Model Dekorasi & Konsep Card (khusus kategori dekorasi)
+                  if (categoryConfig.showModelConceptCard)
                   _buildCleanCard(
                     children: [
                       Row(
@@ -1371,7 +1374,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                     ],
                   ),
 
-                  // 4. Card Pick List Barang (Logistik & Operasional Muat)
+                  // 4. Card Pick List Barang (Logistik & Operasional Muat - khusus kategori dekorasi)
+                  if (categoryConfig.showPickListAndCrewBrief)
                   Consumer(
                     builder: (context, ref, _) {
                       final pickListAsync = ref.watch(agendaPropertiesProvider(_item.id));
@@ -1875,7 +1879,8 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                   ],
 
                   // 6. Catatan Khusus & Request Klien Card
-                  if (displayNotes.isNotEmpty)
+                  if (displayNotes.isNotEmpty ||
+                      (!categoryConfig.showModelConceptCard && _item.notes.contains('[Item Tambahan / Addon]:')))
                     _buildCleanCard(
                       children: [
                         Row(
@@ -1894,20 +1899,27 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.borderLight),
+                        if (displayNotes.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.backgroundLight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.borderLight),
+                            ),
+                            child: Text(
+                              displayNotes,
+                              style: AppTypography.bodyMedium.copyWith(color: AppColors.textDark, height: 1.4),
+                            ),
                           ),
-                          child: Text(
-                            displayNotes,
-                            style: AppTypography.bodyMedium.copyWith(color: AppColors.textDark, height: 1.4),
-                          ),
-                        ),
+                        ],
+                        if (!categoryConfig.showModelConceptCard &&
+                            _item.notes.contains('[Item Tambahan / Addon]:')) ...[
+                          const SizedBox(height: 12),
+                          ..._buildAddonsSection(context, _item.notes),
+                        ],
                       ],
                     ),
 

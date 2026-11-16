@@ -36,6 +36,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
     String? instagram,
     String? bankInfo,
     String? invoiceTemplate,
+    String? companyCategory,
   }) async {
     final currentUser = state.value;
     if (currentUser == null) return;
@@ -50,6 +51,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
       companyInstagram: instagram ?? currentUser.companyInstagram,
       companyBankInfo: bankInfo ?? currentUser.companyBankInfo,
       companyInvoiceTemplate: invoiceTemplate ?? currentUser.companyInvoiceTemplate,
+      companyCategory: companyCategory ?? currentUser.companyCategory,
     );
 
     state = AsyncData(updatedUser);
@@ -71,6 +73,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
       companyInstagram: updatedUser.companyInstagram,
       companyBankInfo: updatedUser.companyBankInfo,
       companyInvoiceTemplate: updatedUser.companyInvoiceTemplate,
+      companyCategory: updatedUser.companyCategory,
       permissions: updatedUser.permissions,
     );
     await DataPreferences.setUser(jsonEncode(userModel.toJson()));

@@ -255,6 +255,7 @@ class _EditCompanyViewState extends ConsumerState<EditCompanyView> {
             description: updatedProfile.description,
             instagram: updatedProfile.instagram,
             bankInfo: updatedProfile.bankInfo,
+            companyCategory: updatedProfile.category,
           );
 
       if (mounted) {
