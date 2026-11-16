@@ -5,8 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
-import 'package:dekorin_apps/ui/features/couple/views/register_couple_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/login_view_model.dart';
+import 'package:dekorin_apps/ui/features/login/views/register_company_view.dart';
 
 /// Login screen for the Dekorin app.
 ///
@@ -151,7 +151,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                             width: 22,
                             child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                           )
-                        : Text('Masuk ke Aplikasi', style: AppTypography.button),
+                        : Text('Masuk', style: AppTypography.button),
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
@@ -163,7 +163,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           : () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const RegisterCoupleView()),
+                                MaterialPageRoute(builder: (_) => const RegisterCompanyView()),
                               );
                             },
                       style: OutlinedButton.styleFrom(
@@ -171,7 +171,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
-                        'Daftar sebagai Calon Pengantin',
+                        'Daftar',
                         style: AppTypography.labelLarge.copyWith(color: AppColors.primaryGold),
                       ),
                     ),

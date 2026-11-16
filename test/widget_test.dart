@@ -16,7 +16,8 @@ void main() {
 
     // Verify login screen elements are present (logo image, fields, button)
     expect(find.byType(Image), findsOneWidget);
-    expect(find.text('Masuk ke Aplikasi'), findsOneWidget);
+    expect(find.text('Masuk'), findsOneWidget);
+    expect(find.text('Daftar'), findsOneWidget);
     expect(find.text('Nomor WhatsApp / HP'), findsOneWidget);
   });
 }

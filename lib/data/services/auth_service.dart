@@ -78,6 +78,35 @@ class AuthService {
     return user;
   }
 
+  /// Pendaftaran usaha & akun Owner baru secara mandiri
+  Future<UserModel> registerVendor({
+    required String companyName,
+    required String companyCategory,
+    required String ownerName,
+    required String ownerPhone,
+    required String ownerPassword,
+  }) async {
+    final responseData = await ApiClient.post(
+      ApiEndpoint.registerVendor,
+      body: {
+        'company_name': companyName.trim(),
+        'company_category': companyCategory.trim(),
+        'owner_name': ownerName.trim(),
+        'owner_phone': ownerPhone.trim(),
+        'owner_password': ownerPassword,
+      },
+      withToken: false,
+    );
+
+    final user = UserModel.fromJson(responseData['data']);
+    final token = responseData['token'];
+
+    await DataPreferences.setToken(token);
+    await DataPreferences.setUser(jsonEncode(user.toJson()));
+
+    return user;
+  }
+
   /// Cek apakah user sudah login sebelumnya (membaca SharedPreferences)
   Future<UserModel?> getSavedUser() async {
     final userJsonString = DataPreferences.getUser();

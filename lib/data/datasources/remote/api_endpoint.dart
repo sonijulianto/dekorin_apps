@@ -23,6 +23,7 @@ class ApiEndpoint {
   // ── Auth ──────────────────────────────────────────────────
   static const String login = '/auth/login';
   static const String registerCouple = '/auth/register-couple';
+  static const String registerVendor = '/auth/register-vendor';
   static const String changePassword = '/auth/change-password';
 
   // ── Couple / Calon Pengantin & Direktori Vendor ───────────

@@ -114,7 +114,7 @@ void main() {
   });
 
   group('Couple UI Role Routing & Views', () {
-    testWidgets('LoginView includes Register Couple button', (tester) async {
+    testWidgets('LoginView shows Masuk and Daftar buttons and hides Register Couple button', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
@@ -124,7 +124,9 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Daftar sebagai Calon Pengantin'), findsOneWidget);
+      expect(find.text('Masuk'), findsOneWidget);
+      expect(find.text('Daftar'), findsOneWidget);
+      expect(find.text('Daftar sebagai Calon Pengantin'), findsNothing);
     });
 
     testWidgets('ProfileView renders Couple header and hides vendor sections', (tester) async {
