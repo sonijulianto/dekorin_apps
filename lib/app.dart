@@ -1,9 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_client.dart';
+import 'package:dekorin_apps/data/services/collaboration_service.dart';
+import 'package:dekorin_apps/data/services/push_notification_service.dart';
+import 'package:dekorin_apps/ui/core/widgets/error_fallback_widget.dart';
 import 'package:dekorin_apps/ui/core/widgets/web_mobile_shell.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/collaboration_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 import 'package:dekorin_apps/ui/features/login/views/login_view.dart';
 import 'package:dekorin_apps/ui/features/main/views/main_view.dart';
@@ -17,11 +21,30 @@ class DekorinApp extends ConsumerStatefulWidget {
 }
 
 class _DekorinAppState extends ConsumerState<DekorinApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
     super.initState();
+    PushNotificationService.instance.onNotificationReceived = () {
+      if (!mounted) return;
+      ref.invalidate(incomingCollaborationsProvider);
+    };
+    PushNotificationService.instance.onNotificationTap = (data) {
+      if (!mounted) return;
+      final user = ref.read(globalAuthProvider).value;
+      if (user == null) return;
+      final type = (data['type'] ?? '').toString();
+      if (type.isEmpty || type.startsWith('collaboration_')) {
+        ref.invalidate(incomingCollaborationsProvider);
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => const CollaborationInvitationsView(),
+          ),
+        );
+      }
+    };
     // Daftarkan listener 401: otomatis logout dan beri notifikasi ramah
     ApiClient.onUnauthorized = () {
       ref.read(globalAuthProvider.notifier).forceLogout();
@@ -45,7 +68,9 @@ class _DekorinAppState extends ConsumerState<DekorinApp> {
 
     return MaterialApp(
       title: 'Dekorin',
+      navigatorKey: _navigatorKey,
       scaffoldMessengerKey: _scaffoldMessengerKey,
+      navigatorObservers: [ErrorLogNavigatorObserver()],
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       // Tutup keyboard secara global ketika user tap di area kosong mana pun

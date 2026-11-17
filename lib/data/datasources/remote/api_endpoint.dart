@@ -71,6 +71,7 @@ class ApiEndpoint {
 
   // ── App Version / In-App Update ───────────────────────────
   static const String appVersion = '/app/version';
+  static const String clientLogs = '/client-logs';
 
   /// Base URL khusus Subdomain Undangan Digital & Portal Pengantin
   static String get invitationDomainBaseUrl {

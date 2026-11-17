@@ -7,6 +7,7 @@ import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/datasources/remote/image_compressor.dart';
 import 'package:dekorin_apps/data/datasources/remote/network_error_helper.dart';
+import 'package:dekorin_apps/data/services/error_log_service.dart';
 import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 
 /// Exception khusus yang membawa pesan error dari API.
@@ -65,7 +66,31 @@ class ApiClient {
     return headers;
   }
 
-  static dynamic _handleResponse(http.Response response) {
+  static dynamic _handleResponse(
+    http.Response response, {
+    String method = 'HTTP',
+    String endpoint = '',
+  }) {
+    if (endpoint.isNotEmpty && endpoint != ApiEndpoint.clientLogs) {
+      ErrorLogService.instance.addBreadcrumb('api', '$method $endpoint -> ${response.statusCode}');
+    }
+
+    if (response.statusCode >= 500 && endpoint != ApiEndpoint.clientLogs) {
+      unawaited(
+        ErrorLogService.instance.reportError(
+          ApiException('HTTP ${response.statusCode} on $method $endpoint', statusCode: response.statusCode),
+          StackTrace.current,
+          level: 'error',
+          apiContext: {
+            'method': method,
+            'endpoint': endpoint,
+            'status_code': response.statusCode,
+            'response_snippet': response.body,
+          },
+        ),
+      );
+    }
+
     dynamic body;
     try {
       body = jsonDecode(response.body);
@@ -113,23 +138,46 @@ class ApiClient {
 
   static Future<dynamic> _executeRequest(
     Future<http.Response> Function() requestFn, {
+    String method = 'HTTP',
+    String endpoint = '',
     Duration? timeout,
     String? timeoutMessage,
   }) async {
     final effectiveTimeout = timeout ?? _timeout;
     try {
       final response = await requestFn().timeout(effectiveTimeout);
-      return _handleResponse(response);
-    } on TimeoutException {
+      return _handleResponse(response, method: method, endpoint: endpoint);
+    } on TimeoutException catch (e, stack) {
+      if (endpoint != ApiEndpoint.clientLogs) {
+        ErrorLogService.instance.addBreadcrumb('api', '$method $endpoint -> TIMEOUT');
+        unawaited(
+          ErrorLogService.instance.reportError(
+            e,
+            stack,
+            level: 'warning',
+            apiContext: {'method': method, 'endpoint': endpoint, 'timeout_sec': effectiveTimeout.inSeconds},
+          ),
+        );
+      }
       throw ApiException(
         timeoutMessage ??
             'Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan server berjalan dan URL benar.',
       );
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } catch (e, stack) {
       if (isNetworkConnectionError(e)) {
         throw ApiException('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+      }
+      if (endpoint != ApiEndpoint.clientLogs) {
+        unawaited(
+          ErrorLogService.instance.reportError(
+            e,
+            stack,
+            level: 'error',
+            apiContext: {'method': method, 'endpoint': endpoint},
+          ),
+        );
       }
       throw ApiException('Terjadi kesalahan: $e');
     }
@@ -142,6 +190,8 @@ class ApiClient {
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
       ),
+      method: 'GET',
+      endpoint: endpoint,
     );
   }
 
@@ -159,6 +209,8 @@ class ApiClient {
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
       ),
+      method: 'POST',
+      endpoint: endpoint,
       timeout: effectiveTimeout,
       timeoutMessage:
           'Server tidak merespons (timeout ${effectiveTimeout.inSeconds} detik). Pastikan koneksi internet stabil.',
@@ -177,6 +229,8 @@ class ApiClient {
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
       ),
+      method: 'PUT',
+      endpoint: endpoint,
     );
   }
 
@@ -192,6 +246,8 @@ class ApiClient {
         headers: _headers(withToken: withToken),
         body: body != null ? jsonEncode(body) : null,
       ),
+      method: 'PATCH',
+      endpoint: endpoint,
     );
   }
 
@@ -202,6 +258,8 @@ class ApiClient {
         Uri.parse('${ApiEndpoint.baseUrl}$endpoint'),
         headers: _headers(withToken: withToken),
       ),
+      method: 'DELETE',
+      endpoint: endpoint,
     );
   }
 
