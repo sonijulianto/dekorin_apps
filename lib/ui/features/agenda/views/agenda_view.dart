@@ -4,11 +4,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/collaboration_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_calendar_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/collaboration_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/pending_links_sheet.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
@@ -69,6 +71,8 @@ class AgendaView extends ConsumerWidget {
     final user = ref.watch(globalAuthProvider).value;
     final agendaState = ref.watch(agendaViewModelProvider);
     final filterState = ref.watch(agendaFilterProvider);
+    final incomingPendingCount =
+        ref.watch(incomingCollaborationsProvider).valueOrNull?.pendingCount ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,6 +81,46 @@ class AgendaView extends ConsumerWidget {
           style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Undangan Kolaborasi',
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.handshake_outlined, color: AppTheme.textDark),
+                if (incomingPendingCount > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorRed,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$incomingPendingCount',
+                        style: AppTypography.caption.copyWith(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CollaborationInvitationsView(),
+                ),
+              ).then((_) {
+                ref.invalidate(incomingCollaborationsProvider);
+                ref.read(agendaViewModelProvider.notifier).refresh();
+              });
+            },
+          ),
           if (user?.canCreateAgenda ?? true)
             IconButton(
               tooltip: 'Link Form Client',
@@ -130,6 +174,50 @@ class AgendaView extends ConsumerWidget {
 
           // Active filter indicator
           _buildActiveFilterInfo(context, ref, filterState),
+
+          if (incomingPendingCount > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CollaborationInvitationsView(),
+                    ),
+                  ).then((_) {
+                    ref.invalidate(incomingCollaborationsProvider);
+                    ref.read(agendaViewModelProvider.notifier).refresh();
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.45)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notifications_active_outlined,
+                          color: AppColors.secondaryGold, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Ada $incomingPendingCount undangan kolaborasi menunggu konfirmasi Anda',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: AppColors.textDark,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: AppColors.secondaryGold),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Content list
           Expanded(

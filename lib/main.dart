@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:dekorin_apps/app.dart';
 import 'package:dekorin_apps/data/datasources/local/data_preferences.dart';
+import 'package:dekorin_apps/data/services/push_notification_service.dart';
 
 void main() async {
   // Ensure flutter bindings are initialized before calling async methods
@@ -11,6 +12,9 @@ void main() async {
   
   // Initialize SharedPreferences via DataPreferences
   await DataPreferences.init();
+
+  // Initialize Firebase & Push Notifications (graceful fallback if unsupported)
+  await PushNotificationService.instance.initialize();
 
   // Initialize locale data for Indonesian formatting
   await initializeDateFormatting('id_ID', null);

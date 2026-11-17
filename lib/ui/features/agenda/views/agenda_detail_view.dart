@@ -9,6 +9,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/data/services/collaboration_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
@@ -20,6 +21,7 @@ import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.da
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_edit_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/crew_brief_form_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/invite_partner_sheet.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_preview_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/widgets/agenda_pricing_widgets.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
@@ -1877,6 +1879,246 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       ],
                     ),
                   ],
+
+                  // 5B. Kolaborasi Vendor Partner & Net Revenue
+                  if (canEditAgenda || canViewPrice)
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final collabAsync = ref.watch(agendaCollaborationsProvider(_item.id));
+                        final collabRes = collabAsync.valueOrNull;
+                        final collabs = collabRes?.collaborations ?? const [];
+                        final acceptedCost = collabRes?.acceptedPartnerCost ?? _item.acceptedPartnerCost;
+                        final pendingCost = collabRes?.pendingPartnerCost ?? _item.pendingPartnerCost;
+                        final netRevenue = (totalBiaya - acceptedCost).clamp(0.0, double.infinity);
+
+                        return _buildCleanCard(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.goldLight,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.handshake_outlined, color: AppColors.primaryGold, size: 18),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Kolaborasi Vendor Partner',
+                                    style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                if (canEditAgenda && !_item.isCancelled)
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      final invited = await InvitePartnerSheet.show(
+                                        context,
+                                        agendaId: _item.id,
+                                      );
+                                      if (invited == true) {
+                                        ref.invalidate(agendaCollaborationsProvider(_item.id));
+                                        ref.invalidate(agendaViewModelProvider);
+                                      }
+                                    },
+                                    icon: const Icon(Icons.person_add_alt_1, size: 16, color: AppColors.primaryGold),
+                                    label: Text(
+                                      'Undang',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: AppColors.primaryGold,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (canViewPrice && (acceptedCost > 0 || pendingCost > 0)) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.goldLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('Potongan Partner (Diterima)', style: AppTypography.bodySmall),
+                                        Text(
+                                          '- ${currencyFormatter.format(acceptedCost)}',
+                                          style: AppTypography.labelLarge.copyWith(color: AppColors.errorRed),
+                                        ),
+                                      ],
+                                    ),
+                                    if (pendingCost > 0) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Menunggu Konfirmasi Partner', style: AppTypography.caption),
+                                          Text(
+                                            '- ${currencyFormatter.format(pendingCost)}',
+                                            style: AppTypography.caption.copyWith(color: AppColors.secondaryGold),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    const Divider(height: 14),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Net Revenue Paket',
+                                          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+                                        ),
+                                        Text(
+                                          currencyFormatter.format(netRevenue),
+                                          style: AppTypography.titleSmall.copyWith(
+                                            color: const Color(0xFF2E7D32),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if (collabs.isEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Belum ada vendor partner (MUA, FG, MC) yang ditambahkan ke agenda ini.',
+                                style: AppTypography.bodySmall,
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 10),
+                              ...collabs.map((col) {
+                                final catLabel = VendorCategoryOption.byId(col.partnerCategory).shortLabel;
+                                final Color badgeBg = col.isAccepted
+                                    ? Colors.green.shade50
+                                    : col.isRejected
+                                        ? Colors.red.shade50
+                                        : col.isCancelled
+                                            ? Colors.grey.shade200
+                                            : AppColors.goldLight;
+                                final Color badgeFg = col.isAccepted
+                                    ? Colors.green.shade800
+                                    : col.isRejected
+                                        ? Colors.red.shade800
+                                        : col.isCancelled
+                                            ? Colors.grey.shade700
+                                            : AppColors.secondaryGold;
+                                final String statusLabel = col.isAccepted
+                                    ? 'Diterima'
+                                    : col.isRejected
+                                        ? 'Ditolak'
+                                        : col.isCancelled
+                                            ? 'Dibatalkan'
+                                            : 'Menunggu';
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.backgroundLight,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.borderLight),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    col.partnerCompanyName,
+                                                    style: AppTypography.titleSmall.copyWith(fontSize: 13),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: AppColors.borderLight),
+                                                  ),
+                                                  child: Text(catLabel, style: AppTypography.caption),
+                                                ),
+                                              ],
+                                            ),
+                                            if (canViewPrice) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Harga: ${currencyFormatter.format(col.partnerPrice)} • Transport: ${currencyFormatter.format(col.partnerTransportFee)}',
+                                                style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600),
+                                              ),
+                                            ],
+                                            if (col.rejectReason.isNotEmpty) ...[
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                'Alasan tolak: ${col.rejectReason}',
+                                                style: AppTypography.caption.copyWith(color: AppColors.errorRed),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: badgeBg,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              statusLabel,
+                                              style: AppTypography.caption.copyWith(
+                                                color: badgeFg,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          if (canEditAgenda && (col.isPending || col.isAccepted))
+                                            TextButton(
+                                              onPressed: () async {
+                                                await ref
+                                                    .read(collaborationServiceProvider)
+                                                    .cancelCollaboration(col.id);
+                                                ref.invalidate(agendaCollaborationsProvider(_item.id));
+                                                ref.invalidate(agendaViewModelProvider);
+                                              },
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              child: Text(
+                                                'Batalkan',
+                                                style: AppTypography.caption.copyWith(color: AppColors.errorRed),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
 
                   // 6. Catatan Khusus & Request Klien Card
                   if (displayNotes.isNotEmpty ||

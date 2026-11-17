@@ -217,6 +217,8 @@ class AgendaItem {
     this.notes = '',
     this.clientForm,
     this.payments = const [],
+    this.acceptedPartnerCost = 0.0,
+    this.pendingPartnerCost = 0.0,
     this.createdAt,
   });
 
@@ -255,6 +257,8 @@ class AgendaItem {
   final String notes;
   final ClientFormModel? clientForm;
   final List<AgendaPayment> payments;
+  final double acceptedPartnerCost;
+  final double pendingPartnerCost;
   final DateTime? createdAt;
 
   bool get isPaidOff => paymentStatus.toLowerCase() == 'paid';
@@ -550,6 +554,8 @@ class AgendaItem {
       notes: json['notes'] as String? ?? '',
       clientForm: parsedForm,
       payments: parsedPayments,
+      acceptedPartnerCost: parseDouble(json['accepted_partner_cost']),
+      pendingPartnerCost: parseDouble(json['pending_partner_cost']),
       createdAt: parsedCreatedAt,
     );
   }
@@ -589,6 +595,8 @@ class AgendaItem {
       'is_form_draft': isFormDraft,
       'dp_amount': dpAmount,
       'notes': notes,
+      'accepted_partner_cost': acceptedPartnerCost,
+      'pending_partner_cost': pendingPartnerCost,
       if (clientForm != null) 'client_form': clientForm!.toJson(),
       if (payments.isNotEmpty) 'payments': payments.map((p) => p.toJson()).toList(),
     };

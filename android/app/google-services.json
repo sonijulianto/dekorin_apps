@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "448756050947",
+    "project_id": "dekorin-app",
+    "storage_bucket": "dekorin-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:448756050947:android:10eaeaf2d12846e8b13236",
+        "android_client_info": {
+          "package_name": "com.dekorin.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBV72ymeoTes6uu9sO9l3f_DAEHEBzBbaw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
