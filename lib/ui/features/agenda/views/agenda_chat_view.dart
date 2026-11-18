@@ -1213,7 +1213,7 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
   Widget _buildPinnedEventHeader(ChatRoomInfo room) {
     final dateStr = room.eventDateTime != null
         ? DateFormat('dd MMM yyyy · HH:mm', 'id_ID')
-            .format(room.eventDateTime!.toLocal())
+            .format(room.eventDateTime!)
         : '-';
 
     return Container(
