@@ -1791,7 +1791,7 @@ class _SwipeToReplyWrapper extends StatefulWidget {
 }
 
 class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
-  static const double _maxDrag = 84.0;
+  static const double _maxDrag = 150.0;
   static const double _triggerThreshold = 48.0;
 
   double _dragOffset = 0.0;
