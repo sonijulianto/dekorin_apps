@@ -1289,23 +1289,9 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
       if (msg.senderCategory.isNotEmpty) msg.senderCategory,
     ].join(' · ');
 
-    return Dismissible(
+    return _SwipeToReplyWrapper(
       key: ValueKey('swipe_${msg.id}'),
-      direction: DismissDirection.startToEnd,
-      confirmDismiss: (_) async {
-        _setReplyTarget(msg);
-        return false;
-      },
-      background: Align(
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Icon(
-            Icons.reply_rounded,
-            color: AppColors.primaryGold.withValues(alpha: 0.8),
-          ),
-        ),
-      ),
+      onReply: () => _setReplyTarget(msg),
       child: GestureDetector(
         key: key,
         onLongPress: () => _showMessageOptionsSheet(msg),
@@ -1487,12 +1473,10 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
                       ),
                       if (isMe) ...[
                         const SizedBox(width: 4),
-                        Icon(
-                          Icons.done_all_rounded,
-                          size: 14,
-                          color: _readersForMessage(msg).isNotEmpty
-                              ? AppColors.primaryGold
-                              : Colors.grey.shade400,
+                        _ReadReceiptTicks(
+                          isRead: _readersForMessage(msg).isNotEmpty,
+                          isDelivered: _readReceipts.values
+                              .any((r) => r.userId != _currentUserId),
                         ),
                       ],
                     ],
@@ -1517,22 +1501,38 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
         ),
         child: Row(
           children: [
-            IconButton(
-              onPressed: _isUploadingAttachment ? null : _showAttachmentSheet,
-              icon: _isUploadingAttachment
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primaryGold,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.attach_file_rounded,
-                      color: AppColors.primaryGold,
-                    ),
+            InkWell(
+              onTap: _isUploadingAttachment ? null : _showAttachmentSheet,
+              borderRadius: BorderRadius.circular(21),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: AppColors.goldLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: _isUploadingAttachment
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryGold,
+                          ),
+                        )
+                      : Text(
+                          '+',
+                          style: AppTypography.titleLarge.copyWith(
+                            color: AppColors.primaryGold,
+                            fontWeight: FontWeight.w600,
+                            height: 1.0,
+                          ),
+                        ),
+                ),
+              ),
             ),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
                 controller: _textController,
@@ -1543,7 +1543,7 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
                 minLines: 1,
                 onSubmitted: (_) => _sendTextMessage(),
                 decoration: InputDecoration(
-                  hintText: 'Tulis pesan... (ketik @ untuk mention)',
+                  hintText: 'Tulis pesan...',
                   hintStyle: AppTypography.bodySmall,
                   filled: true,
                   fillColor: const Color(0xFFF7F5F2),
@@ -1585,4 +1585,142 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
       ),
     );
   }
+}
+
+class _SwipeToReplyWrapper extends StatefulWidget {
+  final VoidCallback onReply;
+  final Widget child;
+
+  const _SwipeToReplyWrapper({
+    super.key,
+    required this.onReply,
+    required this.child,
+  });
+
+  @override
+  State<_SwipeToReplyWrapper> createState() => _SwipeToReplyWrapperState();
+}
+
+class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
+  static const double _maxDrag = 56.0;
+  static const double _triggerThreshold = 36.0;
+
+  double _dragOffset = 0.0;
+  bool _triggered = false;
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (details.delta.dx == 0) return;
+    setState(() {
+      _dragOffset = (_dragOffset + details.delta.dx).clamp(0.0, _maxDrag);
+    });
+    if (!_triggered && _dragOffset >= _triggerThreshold) {
+      _triggered = true;
+    }
+  }
+
+  void _onDragEnd([DragEndDetails? _]) {
+    if (_triggered) {
+      widget.onReply();
+    }
+    if (mounted) {
+      setState(() {
+        _dragOffset = 0.0;
+        _triggered = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (_dragOffset / _triggerThreshold).clamp(0.0, 1.0);
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
+      onHorizontalDragCancel: () => _onDragEnd(),
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          if (_dragOffset > 2)
+            Positioned(
+              left: 8,
+              child: Opacity(
+                opacity: progress,
+                child: Transform.scale(
+                  scale: 0.7 + (0.3 * progress),
+                  child: const Icon(
+                    Icons.reply_rounded,
+                    color: AppColors.primaryGold,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          AnimatedContainer(
+            duration: _dragOffset == 0
+                ? const Duration(milliseconds: 180)
+                : Duration.zero,
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_dragOffset, 0, 0),
+            child: widget.child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadReceiptTicks extends StatelessWidget {
+  final bool isRead;
+  final bool isDelivered;
+
+  const _ReadReceiptTicks({
+    required this.isRead,
+    required this.isDelivered,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isRead ? AppColors.primaryGold : Colors.grey.shade500;
+    final showDouble = isRead || isDelivered;
+    return CustomPaint(
+      size: Size(showDouble ? 16 : 11, 11),
+      painter: _TicksPainter(color: color, showDouble: showDouble),
+    );
+  }
+}
+
+class _TicksPainter extends CustomPainter {
+  final Color color;
+  final bool showDouble;
+
+  _TicksPainter({required this.color, required this.showDouble});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final first = Path()
+      ..moveTo(1, size.height * 0.55)
+      ..lineTo(3.8, size.height * 0.85)
+      ..lineTo(9.2, size.height * 0.2);
+    canvas.drawPath(first, paint);
+
+    if (showDouble) {
+      final second = Path()
+        ..moveTo(5.6, size.height * 0.55)
+        ..lineTo(8.4, size.height * 0.85)
+        ..lineTo(14.0, size.height * 0.2);
+      canvas.drawPath(second, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TicksPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.showDouble != showDouble;
 }
