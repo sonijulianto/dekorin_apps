@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -10,6 +10,7 @@ import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/invoice_template_setting_view.dart';
 import 'package:dekorin_apps/ui/features/company/views/edit_company_view.dart';
@@ -31,6 +32,7 @@ class ProfileView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(globalAuthProvider).value;
+    final isDecorationCompany = AgendaCategoryConfig.fromCategory(user?.companyCategory ?? 'decoration').isDecoration;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -275,48 +277,50 @@ class ProfileView extends ConsumerWidget {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagePackagesView()));
                       },
                     ),
-                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 22),
+                    if (isDecorationCompany) ...[
+                      const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 22),
+                        ),
+                        title: Text('Kelola Model', style: AppTypography.titleSmall),
+                        subtitle: Text('Atur katalog model, foto, ukuran, & harga', style: AppTypography.caption),
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageDecorationModelsView()));
+                        },
                       ),
-                      title: Text('Kelola Model', style: AppTypography.titleSmall),
-                      subtitle: Text('Atur katalog model, foto, ukuran, & harga', style: AppTypography.caption),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageDecorationModelsView()));
-                      },
-                    ),
-                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.category_rounded, color: AppColors.primaryGold, size: 22),
+                      const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.category_rounded, color: AppColors.primaryGold, size: 22),
+                        ),
+                        title: Text('Kelola Properti & Alat Kerja', style: AppTypography.titleSmall),
+                        subtitle: Text('Inventaris perlengkapan & toolkit operasional lapangan', style: AppTypography.caption),
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagePropertiesView()));
+                        },
                       ),
-                      title: Text('Kelola Properti & Alat Kerja', style: AppTypography.titleSmall),
-                      subtitle: Text('Inventaris perlengkapan & toolkit operasional lapangan', style: AppTypography.caption),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagePropertiesView()));
-                      },
-                    ),
-                    const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold, size: 22),
+                      const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.auto_awesome, color: AppColors.primaryGold, size: 22),
+                        ),
+                        title: Text('Kelola Item Tambahan (Addon)', style: AppTypography.titleSmall),
+                        subtitle: Text('Atur item tambahan pilihan client & harga', style: AppTypography.caption),
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageAddonsView()));
+                        },
                       ),
-                      title: Text('Kelola Item Tambahan (Addon)', style: AppTypography.titleSmall),
-                      subtitle: Text('Atur item tambahan pilihan client & harga', style: AppTypography.caption),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textLight),
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageAddonsView()));
-                      },
-                    ),
+                    ],
                     const Divider(height: 1, indent: 60, endIndent: 20, color: AppColors.dividerColor),
                     ListTile(
                       leading: Container(

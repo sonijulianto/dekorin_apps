@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -486,9 +486,13 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
       final double transportFee = _parseFormattedNumber(_transportFeeController.text);
       final double dpAmount = _parseFormattedNumber(_dpAmountController.text);
 
+      final categoryConfig = AgendaCategoryConfig.fromCategory(
+        ref.read(globalAuthProvider).value?.companyCategory ?? 'decoration',
+      );
+
       // Susun notes baru yang menggabungkan catatan teks dan blok [Item Tambahan / Addon]
       String finalNotes = _notesController.text.trim();
-      if (_selectedAddons.isNotEmpty) {
+      if (categoryConfig.showAddonSection && _selectedAddons.isNotEmpty) {
         final addonLines = _selectedAddons.map((item) {
           final unitPriceFormatted = 'Rp ${_thousandFormatter.format(item.addon.price.toInt()).replaceAll(',', '.')}';
           if (item.quantity > 1) {
@@ -1156,8 +1160,9 @@ class _AgendaEditViewState extends ConsumerState<AgendaEditView> {
                       ],
                     ),
 
-                    // 5. Item Tambahan (Add-on)
-                    _buildSectionCard(
+                    // 5. Item Tambahan (Add-on) - khusus kategori dekorasi
+                    if (categoryConfig.showAddonSection)
+                      _buildSectionCard(
                       title: 'Item Tambahan (Add-on)',
                       icon: Icons.add_shopping_cart,
                       children: [

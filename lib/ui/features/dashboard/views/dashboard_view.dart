@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/collaboration_service.dart';
 import 'package:dekorin_apps/data/services/expense_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/domain/models/dashboard_summary.dart';
@@ -15,6 +16,7 @@ import 'package:dekorin_apps/domain/models/user.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart' hide ThousandsSeparatorInputFormatter;
+import 'package:dekorin_apps/ui/features/agenda/views/collaboration_invitations_view.dart';
 import 'package:dekorin_apps/domain/models/dashboard_filter.dart';
 import 'package:dekorin_apps/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:dekorin_apps/ui/features/dashboard/views/ai_assistant_view.dart';
@@ -36,6 +38,8 @@ class DashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(dashboardViewModelProvider);
     final user = ref.watch(globalAuthProvider).value;
+    final incomingPendingCount =
+        ref.watch(incomingCollaborationsProvider).valueOrNull?.pendingCount ?? 0;
 
     return Scaffold(
       backgroundColor: _bgCream,
@@ -44,7 +48,10 @@ class DashboardView extends ConsumerWidget {
         child: dashboardState.when(
           data: (data) => RefreshIndicator(
             color: AppColors.primaryGold,
-            onRefresh: () => ref.read(dashboardViewModelProvider.notifier).refresh(showNominalsShimmer: true),
+            onRefresh: () async {
+              ref.invalidate(incomingCollaborationsProvider);
+              await ref.read(dashboardViewModelProvider.notifier).refresh(showNominalsShimmer: true);
+            },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(top: 12, bottom: 96),
@@ -52,8 +59,21 @@ class DashboardView extends ConsumerWidget {
                 // 1. Header Profil & Notifikasi
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildHeader(context, ref, user, data.summary.upcomingAgendas),
+                  child: _buildHeader(
+                    context,
+                    ref,
+                    user,
+                    data.summary.upcomingAgendas,
+                    incomingPendingCount,
+                  ),
                 ),
+                if (incomingPendingCount > 0) ...[
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildCollaborationBanner(context, ref, incomingPendingCount),
+                  ),
+                ],
                 const SizedBox(height: 18),
 
                 // 2. Hero Card Keuntungan, Pendapatan, Pengeluaran & Agenda
@@ -178,16 +198,83 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
+  Widget _buildCollaborationBanner(BuildContext context, WidgetRef ref, int pendingCount) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const CollaborationInvitationsView(),
+          ),
+        ).then((_) {
+          ref.invalidate(incomingCollaborationsProvider);
+          ref.read(dashboardViewModelProvider.notifier).refresh();
+        });
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.goldLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.55)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primaryGold.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.handshake_outlined,
+                color: AppColors.secondaryGold,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Undangan Kolaborasi Masuk',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Ada $pendingCount undangan menunggu konfirmasi Anda',
+                    style: AppTypography.caption.copyWith(
+                      color: _greetingBrown,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.secondaryGold),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
     User? user,
     List<AgendaItem> upcomingAgendas,
+    int incomingPendingCount,
   ) {
     final displayName = (user != null && user.name.trim().isNotEmpty)
         ? user.name.trim()
         : 'Admin';
-    final hasNotification = upcomingAgendas.isNotEmpty;
+    final hasNotification = upcomingAgendas.isNotEmpty || incomingPendingCount > 0;
 
     return Row(
       children: [
@@ -245,7 +332,7 @@ class DashboardView extends ConsumerWidget {
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),
-            onTap: () => _showNotificationsSheet(context, ref, upcomingAgendas),
+            onTap: () => _showNotificationsSheet(context, ref, upcomingAgendas, incomingPendingCount),
             child: SizedBox(
               width: 44,
               height: 44,
@@ -1204,6 +1291,7 @@ class DashboardView extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<AgendaItem> upcomingAgendas,
+    int incomingPendingCount,
   ) {
     final dateFormatter = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
 
@@ -1224,7 +1312,7 @@ class DashboardView extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Pengingat Event Mendatang',
+                    'Notifikasi & Pengingat',
                     style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
                   ),
                   IconButton(
@@ -1234,6 +1322,94 @@ class DashboardView extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CollaborationInvitationsView(),
+                    ),
+                  ).then((_) {
+                    ref.invalidate(incomingCollaborationsProvider);
+                    ref.read(dashboardViewModelProvider.notifier).refresh();
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: incomingPendingCount > 0 ? AppColors.goldLight : const Color(0xFFF7F4EF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: incomingPendingCount > 0
+                          ? AppColors.primaryGold.withValues(alpha: 0.5)
+                          : AppColors.borderLight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGold.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.handshake_outlined,
+                          color: AppColors.secondaryGold,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Undangan Kolaborasi',
+                              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              incomingPendingCount > 0
+                                  ? '$incomingPendingCount undangan menunggu ACC Anda'
+                                  : 'Lihat undangan kolaborasi dari vendor lain',
+                              style: AppTypography.caption,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (incomingPendingCount > 0)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.errorRed,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$incomingPendingCount',
+                            style: AppTypography.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Pengingat Event Mendatang',
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
               if (upcomingAgendas.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),

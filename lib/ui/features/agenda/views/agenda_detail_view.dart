@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +9,7 @@ import 'package:dekorin_apps/config/theme/app_colors.dart';
 import 'package:dekorin_apps/config/theme/app_typography.dart';
 import 'package:dekorin_apps/data/datasources/remote/api_endpoint.dart';
 import 'package:dekorin_apps/data/services/agenda_service.dart';
+import 'package:dekorin_apps/data/services/chat_service.dart';
 import 'package:dekorin_apps/data/services/collaboration_service.dart';
 import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/property_service.dart';
@@ -18,6 +19,7 @@ import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_format
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
 import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_chat_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_edit_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_pick_list_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/crew_brief_form_view.dart';
@@ -482,9 +484,7 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
     }
   }
 
-  Future<void> _sendWhatsAppMessage(BuildContext context) async {
-    final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${_item.formToken}';
-
+  Future<void> _sendWhatsAppMessage(BuildContext context, {bool withMessage = true}) async {
     String phone = _item.clientPhone.replaceAll(RegExp(r'\D'), '');
     if (phone.isEmpty) {
       if (context.mounted) {
@@ -503,24 +503,34 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
       phone = '62$phone';
     }
 
+    final formUrl = '${ApiEndpoint.webFormBaseUrl}/form/${_item.formToken}';
     final message =
         'Halo Kak ${_item.clientName}, terima kasih telah mempercayakan dekorasi acara Anda kepada kami! ✨\n\n'
         'Berikut adalah rincian detail pesanan / booking acara Anda:\n'
         '$formUrl\n\n'
         'Silakan dicek kembali ya Kak. Jika ada hal yang ingin ditanyakan, hubungi kami. Terima kasih! 🙏';
 
-    final waUrl = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
+    final waUrl = withMessage
+        ? Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}')
+        : Uri.parse('https://wa.me/$phone');
+    final fallbackClipboardText = withMessage ? '$message\n$formUrl' : _item.clientPhone;
+    final cannotLaunchMsg = withMessage
+        ? 'Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!'
+        : 'Nomor WA tidak dapat dibuka. Nomor HP disalin ke Clipboard!';
+    final catchClipboardMsg = withMessage
+        ? 'Pesan & Link disalin ke Clipboard!'
+        : 'Nomor HP disalin ke Clipboard!';
 
     try {
       if (await canLaunchUrl(waUrl)) {
         await launchUrl(waUrl, mode: LaunchMode.externalApplication);
       } else {
-        await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
+        await Clipboard.setData(ClipboardData(text: fallbackClipboardText));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Nomor WA tidak dapat dibuka. Pesan & Link disalin ke Clipboard!',
+                cannotLaunchMsg,
                 style: AppTypography.bodyMedium.copyWith(color: Colors.white),
               ),
               backgroundColor: AppColors.primaryGold,
@@ -529,11 +539,11 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
         }
       }
     } catch (_) {
-      await Clipboard.setData(ClipboardData(text: '$message\n$formUrl'));
+      await Clipboard.setData(ClipboardData(text: fallbackClipboardText));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pesan & Link disalin ke Clipboard!', style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
+            content: Text(catchClipboardMsg, style: AppTypography.bodyMedium.copyWith(color: Colors.white)),
             backgroundColor: AppColors.primaryGold,
           ),
         );
@@ -996,7 +1006,9 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
 
                       // Quick Contact Actions Strip (Klik nomor HP untuk redirect ke WhatsApp)
                       InkWell(
-                        onTap: _item.clientPhone.trim().isNotEmpty ? () => _sendWhatsAppMessage(context) : null,
+                        onTap: _item.clientPhone.trim().isNotEmpty
+                            ? () => _sendWhatsAppMessage(context, withMessage: false)
+                            : null,
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1879,6 +1891,110 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                       ],
                     ),
                   ],
+
+                  // 5A. Tombol Diskusi Kolaborasi (aktif jika ada kolaborasi accepted)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final chatSummary = ref.watch(chatUnreadSummaryProvider).valueOrNull;
+                      if (chatSummary == null || !chatSummary.isActiveFor(_item.id)) {
+                        return const SizedBox.shrink();
+                      }
+                      final unread = chatSummary.unreadFor(_item.id);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AgendaChatView(
+                                  agendaId: _item.id,
+                                  initialClientName: _item.clientName,
+                                ),
+                              ),
+                            ).then((_) {
+                              ref.invalidate(chatUnreadSummaryProvider);
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.goldLight,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.primaryGold.withValues(alpha: 0.45),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGold,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: SvgPicture.asset(
+                                    'assets/icons/chat-arrow-grow.svg',
+                                    width: 18,
+                                    height: 18,
+                                    colorFilter: const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Diskusi Kolaborasi',
+                                        style: AppTypography.titleSmall.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Koordinasi langsung dengan vendor & tim lapangan',
+                                        style: AppTypography.caption,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (unread > 0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      unread > 99 ? '99+' : '$unread',
+                                      style: AppTypography.caption.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.primaryGold,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
 
                   // 5B. Kolaborasi Vendor Partner & Net Revenue
                   if (canEditAgenda || canViewPrice)

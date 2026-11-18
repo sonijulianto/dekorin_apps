@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -24,6 +26,8 @@ class PushNotificationService {
   bool _initialized = false;
   String? _lastRegisteredToken;
   VoidCallback? onNotificationReceived;
+  void Function(Map<String, dynamic> data)? onNotificationTap;
+  Map<String, dynamic>? _pendingTapData;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'dekorin_collaboration',
@@ -43,7 +47,22 @@ class PushNotificationService {
         FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
         const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
         const initSettings = InitializationSettings(android: androidInit);
-        await _localNotifications.initialize(initSettings);
+        await _localNotifications.initialize(
+          initSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            final payload = response.payload;
+            if (payload != null && payload.isNotEmpty) {
+              try {
+                final decoded = jsonDecode(payload);
+                if (decoded is Map<String, dynamic>) {
+                  _handleTap(decoded);
+                  return;
+                }
+              } catch (_) {}
+            }
+            _handleTap(const {'type': 'collaboration_invite'});
+          },
+        );
         await _localNotifications
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>()
@@ -55,6 +74,15 @@ class PushNotificationService {
         onNotificationReceived?.call();
       });
 
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        _handleTap(message.data);
+      });
+
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        _pendingTapData = Map<String, dynamic>.from(initialMessage.data);
+      }
+
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
         _sendTokenToBackend(newToken);
       });
@@ -62,6 +90,23 @@ class PushNotificationService {
       _initialized = true;
     } catch (e) {
       debugPrint('FCM initialization skipped: $e');
+    }
+  }
+
+  void _handleTap(Map<String, dynamic> data) {
+    if (onNotificationTap != null) {
+      onNotificationTap!(data);
+    } else {
+      _pendingTapData = Map<String, dynamic>.from(data);
+    }
+  }
+
+  /// Menjalankan navigasi tertunda jika aplikasi dibuka dari kondisi terminated via notifikasi.
+  void consumePendingNotificationTap() {
+    final pending = _pendingTapData;
+    if (pending != null && onNotificationTap != null) {
+      _pendingTapData = null;
+      onNotificationTap!(pending);
     }
   }
 
@@ -131,6 +176,7 @@ class PushNotificationService {
           priority: Priority.high,
         ),
       ),
+      payload: jsonEncode(message.data),
     );
   }
 }

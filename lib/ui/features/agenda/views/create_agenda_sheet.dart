@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
@@ -475,7 +475,7 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
         }
       }
 
-      if (_selectedAddons.isNotEmpty) {
+      if (categoryConfig.showAddonSection && _selectedAddons.isNotEmpty) {
         final addonNames = _selectedAddons
             .map((item) {
               final unitPriceFormatted = NumberFormat.currency(
@@ -1270,86 +1270,88 @@ class _CreateAgendaSheetState extends ConsumerState<CreateAgendaSheet> {
               const SizedBox(height: 14),
               ],
 
-              // 7. Item Tambahan (Addon)
-              Text(
-                'Pilih Item Tambahan / Addon (Opsional)',
-                style: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: AppTheme.textDark,
-                ),
-              ),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: _openAddonPicker,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    border: Border.all(color: _selectedAddons.isNotEmpty ? AppTheme.primaryGold : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
+              // 7. Item Tambahan (Addon) - khusus kategori dekorasi
+              if (categoryConfig.showAddonSection) ...[
+                Text(
+                  'Pilih Item Tambahan / Addon (Opsional)',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.textDark,
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: _openAddonPicker,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      border: Border.all(color: _selectedAddons.isNotEmpty ? AppTheme.primaryGold : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGold.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.add_shopping_cart, color: AppTheme.primaryGold, size: 20),
                         ),
-                        child: const Icon(Icons.add_shopping_cart, color: AppTheme.primaryGold, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _selectedAddons.isEmpty
-                            ? Text(
-                                'Ketuk untuk pilih item tambahan',
-                                style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, fontSize: 13),
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${_selectedAddons.fold<int>(0, (sum, i) => sum + i.quantity)} item tambahan (${_selectedAddons.length} jenis)',
-                                    style: AppTypography.labelLarge.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: AppTheme.textDark,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _selectedAddons.isEmpty
+                              ? Text(
+                                  'Ketuk untuk pilih item tambahan',
+                                  style: AppTypography.bodyMedium.copyWith(color: AppTheme.textLight, fontSize: 13),
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${_selectedAddons.fold<int>(0, (sum, i) => sum + i.quantity)} item tambahan (${_selectedAddons.length} jenis)',
+                                      style: AppTypography.labelLarge.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: AppTheme.textDark,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _selectedAddons.map((i) => '${i.addon.name} (x${i.quantity})').join(', '),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    NumberFormat.currency(
-                                      locale: 'id_ID',
-                                      symbol: 'Rp ',
-                                      decimalDigits: 0,
-                                    ).format(_selectedAddons.fold<double>(0.0, (sum, item) => sum + item.totalPrice)),
-                                    style: AppTypography.caption.copyWith(
-                                      fontSize: 11,
-                                      color: AppTheme.primaryGold,
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _selectedAddons.map((i) => '${i.addon.name} (x${i.quantity})').join(', '),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
                                     ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: _selectedAddons.isNotEmpty ? AppTheme.primaryGold : AppTheme.textLight,
-                      ),
-                    ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      NumberFormat.currency(
+                                        locale: 'id_ID',
+                                        symbol: 'Rp ',
+                                        decimalDigits: 0,
+                                      ).format(_selectedAddons.fold<double>(0.0, (sum, item) => sum + item.totalPrice)),
+                                      style: AppTypography.caption.copyWith(
+                                        fontSize: 11,
+                                        color: AppTheme.primaryGold,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: _selectedAddons.isNotEmpty ? AppTheme.primaryGold : AppTheme.textLight,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
+                const SizedBox(height: 14),
+              ],
 
               // Penyesuaian Harga & Pembayaran (Diskon, Transport & DP)
               if (canViewPrice) ...[

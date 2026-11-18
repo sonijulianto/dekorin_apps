@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/chat_service.dart';
+import 'package:dekorin_apps/data/services/push_notification_service.dart';
 import 'package:dekorin_apps/ui/core/widgets/app_update_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/invoice_template_provider.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/chat_inbox_view.dart';
 import 'package:dekorin_apps/ui/features/ai_studio/views/ai_decor_studio_view.dart';
 import 'package:dekorin_apps/ui/features/couple/views/couple_invitation_view.dart';
 import 'package:dekorin_apps/ui/features/couple/views/couple_planner_view.dart';
@@ -30,6 +34,7 @@ class _MainViewState extends ConsumerState<MainView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateChecker.check(context);
       ref.read(invoiceTemplateProvider.notifier).syncFromServer();
+      PushNotificationService.instance.consumePendingNotificationTap();
     });
   }
 
@@ -44,16 +49,20 @@ class _MainViewState extends ConsumerState<MainView> {
     final user = ref.watch(globalAuthProvider).value;
     final isCouple = user?.isCouple ?? false;
     final isOwner = user?.canAccessDashboard ?? true;
-    final canUseAiStudio = user?.canUseAiStudio ?? true;
+    final isDecorationCompany = AgendaCategoryConfig.fromCategory(user?.companyCategory ?? 'decoration').isDecoration;
+    final canUseAiStudio = (user?.canUseAiStudio ?? true) && isDecorationCompany;
+    final totalChatUnread = !isCouple
+        ? (ref.watch(chatUnreadSummaryProvider).valueOrNull?.totalUnread ?? 0)
+        : 0;
 
     const activeNavColor = Color(0xFFB3854B);
     const inactiveNavColor = Color(0xFF7A7A7A);
 
     // Menentukan daftar halaman & item navigasi bawah berdasarkan role:
     // - Couple: [Planner, Vendor, Undangan, Profil]
-    // - Owner:  [Dashboard, Agenda, Simulasi AI, Profile]
-    // - Admin:  [Agenda, Simulasi AI, Profile]
-    // - Crew:   [Agenda, Profile]
+    // - Owner:  [Dashboard, Agenda, Diskusi, Simulasi AI, Profile]
+    // - Admin:  [Agenda, Diskusi, Simulasi AI, Profile]
+    // - Crew:   [Agenda, Diskusi, Profile]
     final List<Widget> pages = isCouple
         ? [
             CouplePlannerView(onNavigateToTab: _onItemTapped),
@@ -64,6 +73,7 @@ class _MainViewState extends ConsumerState<MainView> {
         : [
             if (isOwner) const DashboardView(),
             const AgendaView(),
+            const ChatInboxView(),
             if (canUseAiStudio) const AiDecorStudioView(),
             const ProfileView(),
           ];
@@ -89,6 +99,13 @@ class _MainViewState extends ConsumerState<MainView> {
                 label: 'Dashboard',
               ),
             _buildSvgNavItem('assets/icons/calendar.svg', 'Agenda', activeNavColor, inactiveNavColor),
+            _buildSvgNavItem(
+              'assets/icons/chat-arrow-grow.svg',
+              'Diskusi',
+              activeNavColor,
+              inactiveNavColor,
+              badgeCount: totalChatUnread,
+            ),
             if (canUseAiStudio)
               _buildSvgNavItem('assets/icons/ai-magic.svg', 'Simulasi AI', activeNavColor, inactiveNavColor),
             _buildSvgNavItem('assets/icons/user.svg', 'Profile', activeNavColor, inactiveNavColor),
@@ -147,27 +164,55 @@ class _MainViewState extends ConsumerState<MainView> {
     String assetPath,
     String label,
     Color activeColor,
-    Color inactiveColor,
-  ) {
+    Color inactiveColor, {
+    int badgeCount = 0,
+  }) {
+    Widget buildIcon(Color color) {
+      final svg = SvgPicture.asset(
+        assetPath,
+        width: 22,
+        height: 22,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+      if (badgeCount <= 0) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: svg,
+        );
+      }
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            svg,
+            Positioned(
+              right: -8,
+              top: -5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  badgeCount > 99 ? '99+' : '$badgeCount',
+                  style: AppTypography.caption.copyWith(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return BottomNavigationBarItem(
-      icon: Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: SvgPicture.asset(
-          assetPath,
-          width: 22,
-          height: 22,
-          colorFilter: ColorFilter.mode(inactiveColor, BlendMode.srcIn),
-        ),
-      ),
-      activeIcon: Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: SvgPicture.asset(
-          assetPath,
-          width: 22,
-          height: 22,
-          colorFilter: ColorFilter.mode(activeColor, BlendMode.srcIn),
-        ),
-      ),
+      icon: buildIcon(inactiveColor),
+      activeIcon: buildIcon(activeColor),
       label: label,
     );
   }

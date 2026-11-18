@@ -39,12 +39,17 @@ class AgendaCategoryConfig {
 
   bool get showBackdropField => isDecoration;
   bool get showModelSection => isDecoration;
+  bool get showAddonSection => isDecoration;
   bool get showModelConceptCard => isDecoration;
   bool get showPickListAndCrewBrief => isDecoration;
 
   /// Menormalisasi kode kategori vendor agar konsisten dengan backend.
   static String normalizeCategory(String raw) {
     switch (raw.trim().toLowerCase()) {
+      case '':
+      case 'decoration':
+      case 'dekorasi':
+        return 'decoration';
       case 'mua':
       case 'makeup':
       case 'rias':
@@ -58,14 +63,44 @@ class AgendaCategoryConfig {
       case 'master_of_ceremony':
       case 'pembawa_acara':
         return 'mc';
+      case 'wo':
+      case 'wedding_organizer':
+        return 'wo';
+      case 'catering':
+      case 'katering':
+        return 'catering';
+      case 'attire':
+      case 'busana':
+        return 'attire';
+      case 'entertainment':
+      case 'hiburan':
+      case 'music':
+        return 'entertainment';
+      case 'venue':
+        return 'venue';
+      case 'other':
+      case 'lainnya':
+        return 'other';
       default:
-        return 'decoration';
+        return raw.trim().toLowerCase();
     }
   }
 
   factory AgendaCategoryConfig.fromCategory(String rawCategory) {
     final normalized = normalizeCategory(rawCategory);
     switch (normalized) {
+      case 'decoration':
+        return const AgendaCategoryConfig(
+          category: 'decoration',
+          isDecoration: true,
+          packageFieldLabel: 'Pilih Paket Dekorasi (Opsional)',
+          packageEditLabel: 'Paket Dekorasi',
+          packagePriceLabel: 'Harga Paket Dekorasi',
+          packagePickerPlaceholder: 'Ketuk untuk pilih paket dekorasi',
+          packageSectionTitle: 'Paket & Model Dekorasi',
+          notesHint: 'Misal: Tema warna sage green, loading barang H-1...',
+          brandHelpText: 'Menentukan nama & logo invoice serta daftar Paket & Model yang tampil.',
+        );
       case 'mua':
         return const AgendaCategoryConfig(
           category: 'mua',
@@ -103,16 +138,16 @@ class AgendaCategoryConfig {
           brandHelpText: 'Menentukan nama & logo invoice serta daftar Paket yang tampil.',
         );
       default:
-        return const AgendaCategoryConfig(
-          category: 'decoration',
-          isDecoration: true,
-          packageFieldLabel: 'Pilih Paket Dekorasi (Opsional)',
-          packageEditLabel: 'Paket Dekorasi',
-          packagePriceLabel: 'Harga Paket Dekorasi',
-          packagePickerPlaceholder: 'Ketuk untuk pilih paket dekorasi',
-          packageSectionTitle: 'Paket & Model Dekorasi',
-          notesHint: 'Misal: Tema warna sage green, loading barang H-1...',
-          brandHelpText: 'Menentukan nama & logo invoice serta daftar Paket & Model yang tampil.',
+        return AgendaCategoryConfig(
+          category: normalized,
+          isDecoration: false,
+          packageFieldLabel: 'Pilih Paket Layanan (Opsional)',
+          packageEditLabel: 'Paket Layanan',
+          packagePriceLabel: 'Harga Paket',
+          packagePickerPlaceholder: 'Ketuk untuk pilih paket layanan',
+          packageSectionTitle: 'Paket Layanan',
+          notesHint: 'Contoh: Detail kebutuhan acara, jam mulai, atau request khusus lainnya...',
+          brandHelpText: 'Menentukan nama & logo invoice serta daftar Paket yang tampil.',
         );
     }
   }

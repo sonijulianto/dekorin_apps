@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,6 +17,7 @@ import 'package:dekorin_apps/domain/models/picked_image_data.dart';
 import 'package:dekorin_apps/ui/core/formatters/thousands_separator_input_formatter.dart';
 import 'package:dekorin_apps/ui/core/widgets/dekorin_text_field.dart';
 import 'package:dekorin_apps/ui/core/widgets/loading_overlay_dialog.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
 import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class _PackageModelItemEntry {
@@ -97,7 +98,9 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
     final packagesAsync = ref.watch(packagesProvider);
     final brandsAsync = ref.watch(companyBrandsProvider);
     final brands = brandsAsync.valueOrNull ?? const <CompanyBrand>[];
-    final mainBrandName = ref.watch(globalAuthProvider).valueOrNull?.companyName ?? 'Brand Utama';
+    final currentUser = ref.watch(globalAuthProvider).valueOrNull;
+    final mainBrandName = currentUser?.companyName ?? 'Brand Utama';
+    final isDecorationCompany = AgendaCategoryConfig.fromCategory(currentUser?.companyCategory ?? 'decoration').isDecoration;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -391,7 +394,7 @@ class _ManagePackagesViewState extends ConsumerState<ManagePackagesView> {
                             ],
                           ),
                           // Badge daftar model dekorasi yang terhubung
-                          if (pkg.packageModels.isNotEmpty) ...[
+                          if (isDecorationCompany && pkg.packageModels.isNotEmpty) ...[
                             const SizedBox(height: 10),
                             const Divider(height: 1),
                             const SizedBox(height: 8),
@@ -535,8 +538,14 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
       _loadError = null;
     });
 
+    final isDecorationCompany = AgendaCategoryConfig.fromCategory(
+      ref.read(globalAuthProvider).value?.companyCategory ?? 'decoration',
+    ).isDecoration;
+
     try {
-      final modelsFuture = ref.read(masterServiceProvider).getDecorationModels();
+      final modelsFuture = isDecorationCompany
+          ? ref.read(masterServiceProvider).getDecorationModels()
+          : Future.value(const <DecorationModel>[]);
       final brandsFuture = ref.read(companyServiceProvider).getCompanyBrands();
       await Future.wait([modelsFuture, brandsFuture]);
       final masterModels = await modelsFuture;
@@ -782,7 +791,9 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final mainBrandName = ref.watch(globalAuthProvider).value?.companyName ?? 'Brand Utama';
+    final currentUser = ref.watch(globalAuthProvider).value;
+    final mainBrandName = currentUser?.companyName ?? 'Brand Utama';
+    final isDecorationCompany = AgendaCategoryConfig.fromCategory(currentUser?.companyCategory ?? 'decoration').isDecoration;
 
     return PopScope(
       canPop: !_isSubmitting,
@@ -1028,223 +1039,225 @@ class _PackageFormSheetState extends ConsumerState<_PackageFormSheet> {
                         hint: 'Rincian item kelengkapan...',
                         maxLines: 3,
                       ),
-                      const SizedBox(height: 16),
+                      if (isDecorationCompany) ...[
+                        const SizedBox(height: 16),
 
-                      // ── Bagian Model Dekorasi dalam Paket ──────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
-                                const SizedBox(height: 2),
-                                Text('Pilihan model & biaya tambahan (surcharge)', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primaryGold,
-                              backgroundColor: AppColors.goldLight.withValues(alpha: 0.5),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: const Icon(Icons.add, size: 16),
-                            label: Text(
-                              'Pilih Model',
-                              style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryGold),
-                            ),
-                            onPressed: _isSubmitting ? null : () => _showModelSelectorDialog(_resolveBrandLabel(_selectedBrandId, mainBrandName)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-
-                      if (_selectedModels.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline, size: 18, color: Colors.grey.shade400),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Belum ada model khusus yang dipilih. Client dapat memilih model dekorasi bebas tanpa surcharge.',
-                                  style: AppTypography.caption.copyWith(color: Colors.grey.shade600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _selectedModels.length,
-                          itemBuilder: (ctx, idx) {
-                            final item = _selectedModels[idx];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
-                              ),
+                        // ── Bagian Model Dekorasi dalam Paket ──────
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: item.model.imageUrl.isNotEmpty
-                                            ? Image.network(
-                                                item.model.imageUrl,
-                                                width: 40,
-                                                height: 40,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, _, _) => Container(
+                                  Text('Model Dekorasi Paket', style: AppTypography.labelLarge),
+                                  const SizedBox(height: 2),
+                                  Text('Pilihan model & biaya tambahan (surcharge)', style: AppTypography.caption.copyWith(color: AppColors.textLight)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primaryGold,
+                                backgroundColor: AppColors.goldLight.withValues(alpha: 0.5),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: Text(
+                                'Pilih Model',
+                                style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryGold),
+                              ),
+                              onPressed: _isSubmitting ? null : () => _showModelSelectorDialog(_resolveBrandLabel(_selectedBrandId, mainBrandName)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        if (_selectedModels.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              border: Border.all(color: Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, size: 18, color: Colors.grey.shade400),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Belum ada model khusus yang dipilih. Client dapat memilih model dekorasi bebas tanpa surcharge.',
+                                    style: AppTypography.caption.copyWith(color: Colors.grey.shade600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _selectedModels.length,
+                            itemBuilder: (ctx, idx) {
+                              final item = _selectedModels[idx];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: item.model.imageUrl.isNotEmpty
+                                              ? Image.network(
+                                                  item.model.imageUrl,
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, _, _) => Container(
+                                                    width: 40,
+                                                    height: 40,
+                                                    color: AppColors.goldLight,
+                                                    child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                                  ),
+                                                )
+                                              : Container(
                                                   width: 40,
                                                   height: 40,
                                                   color: AppColors.goldLight,
                                                   child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
                                                 ),
-                                              )
-                                            : Container(
-                                                width: 40,
-                                                height: 40,
-                                                color: AppColors.goldLight,
-                                                child: const Icon(Icons.view_carousel, color: AppColors.primaryGold, size: 20),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(item.model.name, style: AppTypography.titleSmall),
+                                              Text(
+                                                item.model.width.isNotEmpty ? 'Lebar: ${item.model.width}' : 'Lebar Standar',
+                                                style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
                                               ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(item.model.name, style: AppTypography.titleSmall),
-                                            Text(
-                                              item.model.width.isNotEmpty ? 'Lebar: ${item.model.width}' : 'Lebar Standar',
-                                              style: AppTypography.caption.copyWith(color: AppColors.primaryGold, fontWeight: FontWeight.w600),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
-                                        onPressed: () {
-                                          setState(() {
-                                            _selectedModels.removeAt(idx);
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Biaya Tambahan: ',
-                                        style: AppTypography.labelMedium.copyWith(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textDark,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: TextField(
-                                          controller: item.controller,
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
-                                          decoration: InputDecoration(
-                                            prefixText: '+ Rp ',
-                                            prefixStyle: AppTypography.labelMedium.copyWith(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primaryGold,
-                                            ),
-                                            hintText: '0',
-                                            isDense: true,
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                            filled: true,
-                                            fillColor: AppColors.backgroundLight,
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: AppColors.borderLight),
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: AppColors.primaryGold),
-                                            ),
+                                            ],
                                           ),
-                                          onChanged: (val) {
-                                            final clean = val.replaceAll(RegExp(r'\D'), '');
-                                            item.additionalPrice = double.tryParse(clean) ?? 0.0;
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, size: 18, color: AppColors.errorRed),
+                                          onPressed: () {
+                                            setState(() {
+                                              _selectedModels.removeAt(idx);
+                                            });
                                           },
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  // Quick chips untuk input cepat 0, 100k, 200k, 500k
-                                  Wrap(
-                                    spacing: 6,
-                                    children: [
-                                      ChoiceChip(
-                                        label: Text(
-                                          'Rp 0 (Termasuk)',
-                                          style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Biaya Tambahan: ',
+                                          style: AppTypography.labelMedium.copyWith(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textDark,
+                                          ),
                                         ),
-                                        selected: item.additionalPrice == 0,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setState(() {
-                                            item.additionalPrice = 0;
-                                            item.controller.text = '0';
-                                          });
-                                        },
-                                      ),
-                                      ChoiceChip(
-                                        label: Text('+ 200.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
-                                        selected: item.additionalPrice == 200000,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setState(() {
-                                            item.additionalPrice = 200000;
-                                            item.controller.text = '200.000';
-                                          });
-                                        },
-                                      ),
-                                      ChoiceChip(
-                                        label: Text('+ 500.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
-                                        selected: item.additionalPrice == 500000,
-                                        selectedColor: AppColors.goldLight,
-                                        onSelected: (_) {
-                                          setState(() {
-                                            item.additionalPrice = 500000;
-                                            item.controller.text = '500.000';
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: item.controller,
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, ThousandsSeparatorInputFormatter()],
+                                            decoration: InputDecoration(
+                                              prefixText: '+ Rp ',
+                                              prefixStyle: AppTypography.labelMedium.copyWith(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primaryGold,
+                                              ),
+                                              hintText: '0',
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                              filled: true,
+                                              fillColor: AppColors.backgroundLight,
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: const BorderSide(color: AppColors.borderLight),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: const BorderSide(color: AppColors.primaryGold),
+                                              ),
+                                            ),
+                                            onChanged: (val) {
+                                              final clean = val.replaceAll(RegExp(r'\D'), '');
+                                              item.additionalPrice = double.tryParse(clean) ?? 0.0;
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    // Quick chips untuk input cepat 0, 100k, 200k, 500k
+                                    Wrap(
+                                      spacing: 6,
+                                      children: [
+                                        ChoiceChip(
+                                          label: Text(
+                                            'Rp 0 (Termasuk)',
+                                            style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark),
+                                          ),
+                                          selected: item.additionalPrice == 0,
+                                          selectedColor: AppColors.goldLight,
+                                          onSelected: (_) {
+                                            setState(() {
+                                              item.additionalPrice = 0;
+                                              item.controller.text = '0';
+                                            });
+                                          },
+                                        ),
+                                        ChoiceChip(
+                                          label: Text('+ 200.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
+                                          selected: item.additionalPrice == 200000,
+                                          selectedColor: AppColors.goldLight,
+                                          onSelected: (_) {
+                                            setState(() {
+                                              item.additionalPrice = 200000;
+                                              item.controller.text = '200.000';
+                                            });
+                                          },
+                                        ),
+                                        ChoiceChip(
+                                          label: Text('+ 500.000', style: AppTypography.caption.copyWith(fontSize: 10, color: AppColors.textDark)),
+                                          selected: item.additionalPrice == 500000,
+                                          selectedColor: AppColors.goldLight,
+                                          onSelected: (_) {
+                                            setState(() {
+                                              item.additionalPrice = 500000;
+                                              item.controller.text = '500.000';
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                      ],
 
                       const SizedBox(height: 20),
                       SizedBox(

@@ -1,8 +1,99 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
 import 'package:dekorin_apps/data/services/assistant_service.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
+
+/// Salinan teks sambutan & saran awal Asisten AI berdasarkan kategori usaha vendor.
+class _AssistantCategoryCopy {
+  const _AssistantCategoryCopy({
+    required this.welcomeDescription,
+    required this.scheduleSuggestion,
+    required this.packageSuggestion,
+  });
+
+  final String welcomeDescription;
+  final String scheduleSuggestion;
+  final String packageSuggestion;
+
+  List<String> get initialSuggestions => [
+        'Berapa omset dan laba bersih bulan ini?',
+        scheduleSuggestion,
+        'Siapa saja klien yang belum lunas?',
+        packageSuggestion,
+        'Rincian pengeluaran operasional bulan ini',
+      ];
+
+  static const Map<String, _AssistantCategoryCopy> _byCategory = {
+    'decoration': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi agenda, pengeluaran, properti, dan paket vendor Anda. Tanyakan hal apapun seputar omset, jadwal bertabrakan, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal dekorasi yang bentrok',
+      packageSuggestion: 'Paket dekorasi apa yang paling laris?',
+    ),
+    'wo': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi agenda acara, pengeluaran, dan paket layanan WO Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal acara WO yang bentrok',
+      packageSuggestion: 'Paket layanan WO apa yang paling laris?',
+    ),
+    'mua': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal rias, pengeluaran, dan paket layanan MUA Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal rias yang bentrok',
+      packageSuggestion: 'Paket rias MUA apa yang paling laris?',
+    ),
+    'photo_video': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal liputan, pengeluaran, dan paket foto & video Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal liputan yang bentrok',
+      packageSuggestion: 'Paket foto & video apa yang paling laris?',
+    ),
+    'catering': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal acara, pengeluaran, dan paket menu katering Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal katering yang bentrok',
+      packageSuggestion: 'Paket menu katering apa yang paling laris?',
+    ),
+    'attire': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal sewa/fitting, pengeluaran, dan paket busana Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal sewa busana yang bentrok',
+      packageSuggestion: 'Paket busana apa yang paling laris?',
+    ),
+    'mc': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal acara, pengeluaran, dan paket layanan MC Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal MC yang bentrok',
+      packageSuggestion: 'Paket layanan MC apa yang paling laris?',
+    ),
+    'entertainment': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal tampil, pengeluaran, dan paket hiburan Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal tampil yang bentrok',
+      packageSuggestion: 'Paket hiburan apa yang paling laris?',
+    ),
+    'venue': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi jadwal sewa gedung, pengeluaran, dan paket venue Anda. Tanyakan hal apapun seputar omset, jadwal bentrok, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal sewa venue yang bentrok',
+      packageSuggestion: 'Paket sewa venue apa yang paling laris?',
+    ),
+    'other': _AssistantCategoryCopy(
+      welcomeDescription:
+          'Saya terhubung langsung dengan data resmi agenda, pengeluaran, dan paket layanan vendor Anda. Tanyakan hal apapun seputar omset, jadwal bertabrakan, atau tagihan klien.',
+      scheduleSuggestion: 'Cek apakah ada jadwal acara yang bentrok',
+      packageSuggestion: 'Paket layanan apa yang paling laris?',
+    ),
+  };
+
+  static _AssistantCategoryCopy fromCategory(String rawCategory) {
+    final normalized = AgendaCategoryConfig.normalizeCategory(rawCategory);
+    return _byCategory[normalized] ?? _byCategory['other']!;
+  }
+}
 
 /// Model internal untuk item pesan chat asisten
 class _ChatMessage {
@@ -31,14 +122,6 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
-
-  final List<String> _initialSuggestions = [
-    'Berapa omset dan laba bersih bulan ini?',
-    'Cek apakah ada jadwal dekorasi yang bentrok',
-    'Siapa saja klien yang belum lunas?',
-    'Paket dekorasi apa yang paling laris?',
-    'Rincian pengeluaran operasional bulan ini',
-  ];
 
   @override
   void dispose() {
@@ -240,6 +323,9 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
   }
 
   Widget _buildEmptyWelcomeState() {
+    final companyCategory = ref.watch(globalAuthProvider).valueOrNull?.companyCategory ?? 'decoration';
+    final categoryCopy = _AssistantCategoryCopy.fromCategory(companyCategory);
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -296,7 +382,7 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
               ),
               const SizedBox(height: 14),
               Text(
-                'Saya terhubung langsung dengan data resmi agenda, pengeluaran, properti, dan paket vendor Anda. Tanyakan hal apapun seputar omset, jadwal bertabrakan, atau tagihan klien.',
+                categoryCopy.welcomeDescription,
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textDark,
                   height: 1.45,
@@ -328,7 +414,7 @@ class _AIAssistantViewState extends ConsumerState<AIAssistantView> {
         Wrap(
           spacing: 8,
           runSpacing: 10,
-          children: _initialSuggestions.map((query) {
+          children: categoryCopy.initialSuggestions.map((query) {
             return InkWell(
               onTap: () => _sendMessage(query),
               borderRadius: BorderRadius.circular(20),

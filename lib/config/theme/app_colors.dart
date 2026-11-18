@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Class konstanta warna terpusat untuk aplikasi Dekorin.
 class AppColors {

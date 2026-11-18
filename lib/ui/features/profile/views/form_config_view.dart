@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -10,6 +10,8 @@ import 'package:dekorin_apps/data/services/company_service.dart';
 import 'package:dekorin_apps/data/services/form_config_service.dart';
 import 'package:dekorin_apps/domain/models/company_profile.dart';
 import 'package:dekorin_apps/domain/models/form_config.dart';
+import 'package:dekorin_apps/ui/features/agenda/utils/agenda_category_config.dart';
+import 'package:dekorin_apps/ui/features/login/view_models/global_auth_provider.dart';
 
 class FormConfigView extends ConsumerStatefulWidget {
   const FormConfigView({super.key});
@@ -29,6 +31,27 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
   bool _isInherited = false;
   String? _errorMessage;
   List<FormFieldDefinition> _fields = [];
+
+  static const Set<String> _decorationOnlyFieldKeys = {
+    'backdrop_title',
+    'model_id',
+    'addons',
+    'decoration_theme',
+    'color_preference',
+    'reference_photo_url',
+  };
+
+  bool get _isDecorationCompany {
+    final cat = ref.read(globalAuthProvider).value?.companyCategory ?? 'decoration';
+    return AgendaCategoryConfig.fromCategory(cat).isDecoration;
+  }
+
+  List<FormFieldDefinition> _filterFieldsForCompany(List<FormFieldDefinition> source) {
+    if (_isDecorationCompany) return List<FormFieldDefinition>.from(source);
+    return source
+        .where((f) => !_decorationOnlyFieldKeys.contains(f.key) && f.type != 'model_picker' && f.type != 'addon_picker')
+        .toList();
+  }
 
   @override
   void initState() {
@@ -66,7 +89,7 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
           _selectedEventType = '';
         }
         _selectedEventLabel = FormTemplateSummary.resolveLabel(_selectedEventType, cfg.eventLabel);
-        _fields = List<FormFieldDefinition>.from(cfg.fields);
+        _fields = _filterFieldsForCompany(cfg.fields);
         _showPrice = cfg.showPrice;
         _isInherited = cfg.isInherited;
         _isLoading = false;
@@ -170,7 +193,7 @@ class _FormConfigViewState extends ConsumerState<FormConfigView> {
       if (!mounted) return;
       setState(() {
         _templates = refreshedTemplates;
-        _fields = List<FormFieldDefinition>.from(cfg.fields);
+        _fields = _filterFieldsForCompany(cfg.fields);
         _showPrice = cfg.showPrice;
         _isInherited = cfg.isInherited;
         _isLoading = false;

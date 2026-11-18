@@ -1,14 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dekorin_apps/config/theme/app_theme.dart';
+import 'package:dekorin_apps/data/services/chat_service.dart';
 import 'package:dekorin_apps/data/services/collaboration_service.dart';
 import 'package:dekorin_apps/domain/models/agenda.dart';
 import 'package:dekorin_apps/ui/core/widgets/shimmer_loading.dart';
 import 'package:dekorin_apps/ui/features/agenda/view_models/agenda_view_model.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_calendar_view.dart';
+import 'package:dekorin_apps/ui/features/agenda/views/agenda_chat_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/agenda_detail_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/collaboration_invitations_view.dart';
 import 'package:dekorin_apps/ui/features/agenda/views/create_agenda_sheet.dart';
@@ -76,6 +78,7 @@ class AgendaView extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: Text(
           'Agenda',
           style: AppTypography.titleLarge.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
@@ -86,7 +89,22 @@ class AgendaView extends ConsumerWidget {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.handshake_outlined, color: AppTheme.textDark),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: incomingPendingCount > 0
+                        ? AppColors.goldLight
+                        : AppColors.primaryGold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.handshake_outlined,
+                    size: 20,
+                    color: incomingPendingCount > 0
+                        ? AppColors.secondaryGold
+                        : AppTheme.textDark,
+                  ),
+                ),
                 if (incomingPendingCount > 0)
                   Positioned(
                     right: -4,
@@ -626,7 +644,79 @@ class _AgendaCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final chatSummary = ref.watch(chatUnreadSummaryProvider).valueOrNull;
+                    if (chatSummary == null || !chatSummary.isActiveFor(item.id)) {
+                      return const SizedBox.shrink();
+                    }
+                    final unread = chatSummary.unreadFor(item.id);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AgendaChatView(
+                                agendaId: item.id,
+                                initialClientName: item.clientName,
+                              ),
+                            ),
+                          ).then((_) {
+                            ref.invalidate(chatUnreadSummaryProvider);
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.goldLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              SvgPicture.asset(
+                                'assets/icons/chat-arrow-grow.svg',
+                                width: 18,
+                                height: 18,
+                                colorFilter: const ColorFilter.mode(
+                                  AppTheme.primaryGold,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              if (unread > 0)
+                                Positioned(
+                                  right: -6,
+                                  top: -6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      unread > 99 ? '99+' : '$unread',
+                                      style: AppTypography.caption.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const Icon(
                   Icons.chevron_right_rounded,
                   color: AppTheme.textLight,
