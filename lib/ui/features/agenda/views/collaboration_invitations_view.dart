@@ -308,6 +308,37 @@ class _CollaborationInvitationsViewState
                                 ),
                               ],
                             ),
+                            if (col.partnerDpAmount > 0) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('DP Diterima', style: AppTypography.bodySmall),
+                                  Text(
+                                    currencyFmt.format(col.partnerDpAmount),
+                                    style: AppTypography.labelLarge.copyWith(
+                                      color: AppColors.successGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Sisa Pembayaran',
+                                      style: AppTypography.labelLarge
+                                          .copyWith(color: AppColors.textDark)),
+                                  Text(
+                                    currencyFmt.format(col.remainingAmount),
+                                    style: AppTypography.labelLarge.copyWith(
+                                      color: AppColors.textDark,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

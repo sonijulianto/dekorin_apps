@@ -41,6 +41,7 @@ class AgendaCollaboration {
     this.partnerAgendaId = '',
     this.partnerPrice = 0.0,
     this.partnerTransportFee = 0.0,
+    this.partnerDpAmount = 0.0,
     this.notes = '',
     this.status = 'pending',
     this.rejectReason = '',
@@ -58,6 +59,7 @@ class AgendaCollaboration {
   final String partnerAgendaId;
   final double partnerPrice;
   final double partnerTransportFee;
+  final double partnerDpAmount;
   final String notes;
   final String status; // pending, accepted, rejected, cancelled
   final String rejectReason;
@@ -65,6 +67,7 @@ class AgendaCollaboration {
   final DateTime? createdAt;
 
   double get totalCost => partnerPrice + partnerTransportFee;
+  double get remainingAmount => (totalCost - partnerDpAmount).clamp(0.0, double.infinity);
   bool get isPending => status == 'pending';
   bool get isAccepted => status == 'accepted';
   bool get isRejected => status == 'rejected';
@@ -82,6 +85,7 @@ class AgendaCollaboration {
       partnerAgendaId: json['partner_agenda_id'] as String? ?? '',
       partnerPrice: (json['partner_price'] as num?)?.toDouble() ?? 0.0,
       partnerTransportFee: (json['partner_transport_fee'] as num?)?.toDouble() ?? 0.0,
+      partnerDpAmount: (json['partner_dp_amount'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
       rejectReason: json['reject_reason'] as String? ?? '',

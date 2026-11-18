@@ -55,6 +55,7 @@ class CollaborationService {
     required String partnerCompanyId,
     required double partnerPrice,
     required double partnerTransportFee,
+    double partnerDpAmount = 0.0,
     String notes = '',
   }) async {
     final res = await ApiClient.post(
@@ -63,6 +64,7 @@ class CollaborationService {
         'partner_company_id': partnerCompanyId,
         'partner_price': partnerPrice,
         'partner_transport_fee': partnerTransportFee,
+        'partner_dp_amount': partnerDpAmount,
         'notes': notes.trim(),
       },
     );

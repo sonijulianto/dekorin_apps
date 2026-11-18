@@ -2176,6 +2176,16 @@ class _AgendaDetailViewState extends ConsumerState<AgendaDetailView> {
                                                 'Harga: ${currencyFormatter.format(col.partnerPrice)} • Transport: ${currencyFormatter.format(col.partnerTransportFee)}',
                                                 style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600),
                                               ),
+                                              if (col.partnerDpAmount > 0) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'DP: ${currencyFormatter.format(col.partnerDpAmount)} • Sisa: ${currencyFormatter.format(col.remainingAmount)}',
+                                                  style: AppTypography.caption.copyWith(
+                                                    color: AppColors.secondaryGold,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                             if (col.rejectReason.isNotEmpty) ...[
                                               const SizedBox(height: 3),

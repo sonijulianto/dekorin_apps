@@ -36,6 +36,7 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
   final _searchController = TextEditingController();
   final _priceController = TextEditingController();
   final _transportController = TextEditingController();
+  final _dpController = TextEditingController();
   final _notesController = TextEditingController();
 
   List<CollaborationVendorOption> _vendors = [];
@@ -55,6 +56,7 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
     _searchController.dispose();
     _priceController.dispose();
     _transportController.dispose();
+    _dpController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -96,6 +98,15 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
     }
     final price = parseAgendaCurrencyInput(_priceController.text);
     final transport = parseAgendaCurrencyInput(_transportController.text);
+    final dp = parseAgendaCurrencyInput(_dpController.text);
+    final totalCost = price + transport;
+
+    if (dp > totalCost) {
+      setState(() {
+        _errorMessage = 'Nominal DP tidak boleh melebihi Total Biaya Partner.';
+      });
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -107,6 +118,7 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
             partnerCompanyId: _selectedVendor!.id,
             partnerPrice: price,
             partnerTransportFee: transport,
+            partnerDpAmount: dp,
             notes: _notesController.text.trim(),
           );
       if (mounted) {
@@ -127,7 +139,9 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final price = parseAgendaCurrencyInput(_priceController.text);
     final transport = parseAgendaCurrencyInput(_transportController.text);
+    final dp = parseAgendaCurrencyInput(_dpController.text);
     final totalCost = price + transport;
+    final remainingCost = (totalCost - dp).clamp(0.0, double.infinity);
     final currencyFmt =
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
@@ -376,6 +390,28 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    controller: _dpController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      ThousandsSeparatorInputFormatter(),
+                    ],
+                    onChanged: (_) => setState(() {}),
+                    style: AppTypography.bodyMedium,
+                    decoration: InputDecoration(
+                      labelText: 'DP Partner (Opsional)',
+                      labelStyle: AppTypography.caption,
+                      hintText: '0',
+                      hintStyle: AppTypography.bodySmall,
+                      prefixText: 'Rp ',
+                      prefixStyle: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+                      filled: true,
+                      fillColor: AppColors.backgroundLight,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
                     controller: _notesController,
                     maxLines: 2,
                     style: AppTypography.bodyMedium,
@@ -397,20 +433,59 @@ class _InvitePartnerSheetState extends ConsumerState<InvitePartnerSheet> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        Text(
-                          'Total Biaya Partner',
-                          style: AppTypography.labelLarge.copyWith(color: AppColors.textDark),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Biaya Partner',
+                              style: AppTypography.labelLarge.copyWith(color: AppColors.textDark),
+                            ),
+                            Text(
+                              currencyFmt.format(totalCost),
+                              style: AppTypography.titleMedium.copyWith(
+                                color: AppColors.secondaryGold,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          currencyFmt.format(totalCost),
-                          style: AppTypography.titleMedium.copyWith(
-                            color: AppColors.secondaryGold,
-                            fontWeight: FontWeight.bold,
+                        if (dp > 0) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'DP Partner',
+                                style: AppTypography.bodySmall,
+                              ),
+                              Text(
+                                '- ${currencyFmt.format(dp)}',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: AppColors.successGreen,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          const Divider(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Sisa Pembayaran',
+                                style: AppTypography.labelLarge.copyWith(color: AppColors.textDark),
+                              ),
+                              Text(
+                                currencyFmt.format(remainingCost),
+                                style: AppTypography.titleSmall.copyWith(
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
