@@ -380,44 +380,49 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
     );
     return showDialog<String?>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      imageData != null ? 'Kirim Foto' : 'Kirim Dokumen PDF',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
+      builder: (ctx) {
+        final maxImgHeight =
+            (MediaQuery.of(ctx).size.height * 0.26).clamp(120.0, 220.0);
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        imageData != null ? 'Kirim Foto' : 'Kirim Dokumen PDF',
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(ctx, null),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (imageData != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 260),
-                    child: Image.memory(
-                      imageData.bytes,
-                      fit: BoxFit.contain,
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx, null),
                     ),
-                  ),
-                )
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (imageData != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: maxImgHeight),
+                      child: Image.memory(
+                        imageData.bytes,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  )
               else
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -465,7 +470,6 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
                 style: AppTypography.bodyMedium,
                 maxLines: 3,
                 minLines: 1,
-                autofocus: true,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => Navigator.pop(ctx, captionCtrl.text.trim()),
                 decoration: InputDecoration(
@@ -524,7 +528,8 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 
