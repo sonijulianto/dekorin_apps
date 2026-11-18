@@ -325,7 +325,11 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
 
   void _setReplyTarget(ChatMessage msg) {
     setState(() => _replyingTo = msg);
-    _inputFocusNode.requestFocus();
+    Future.delayed(const Duration(milliseconds: 180), () {
+      if (mounted) {
+        _inputFocusNode.requestFocus();
+      }
+    });
   }
 
   Future<void> _sendTextMessage() async {
@@ -1153,7 +1157,13 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
                     ),
                     if (_mentionQuery != null && _room != null)
                       _buildMentionSuggestions(_room!),
-                    if (_replyingTo != null) _buildReplyPreviewBar(_replyingTo!),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: _replyingTo != null
+                          ? _buildReplyPreviewBar(_replyingTo!)
+                          : const SizedBox.shrink(),
+                    ),
                     _buildComposerBar(),
                   ],
                 ),
@@ -1795,12 +1805,40 @@ class _SwipeToReplyWrapper extends StatefulWidget {
   State<_SwipeToReplyWrapper> createState() => _SwipeToReplyWrapperState();
 }
 
-class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
+class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper>
+    with SingleTickerProviderStateMixin {
   static const double _maxDrag = 150.0;
   static const double _triggerThreshold = 48.0;
 
+  late final AnimationController _resetController;
+  Animation<double>? _resetAnimation;
   double _dragOffset = 0.0;
   bool _triggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )..addListener(() {
+        if (mounted && _resetAnimation != null) {
+          setState(() {
+            _dragOffset = _resetAnimation!.value;
+          });
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _resetController.dispose();
+    super.dispose();
+  }
+
+  void _onDragStart(DragStartDetails _) {
+    _resetController.stop();
+  }
 
   void _onDragUpdate(DragUpdateDetails details) {
     if (details.delta.dx == 0) return;
@@ -1816,12 +1854,12 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
     if (_triggered) {
       widget.onReply();
     }
-    if (mounted) {
-      setState(() {
-        _dragOffset = 0.0;
-        _triggered = false;
-      });
-    }
+    _triggered = false;
+    if (_dragOffset <= 0) return;
+    _resetAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+      CurvedAnimation(parent: _resetController, curve: Curves.easeOutCubic),
+    );
+    _resetController.forward(from: 0.0);
   }
 
   @override
@@ -1829,6 +1867,7 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
     final progress = (_dragOffset / _triggerThreshold).clamp(0.0, 1.0);
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: _onDragStart,
       onHorizontalDragUpdate: _onDragUpdate,
       onHorizontalDragEnd: _onDragEnd,
       onHorizontalDragCancel: () => _onDragEnd(),
@@ -1850,12 +1889,8 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
                 ),
               ),
             ),
-          AnimatedContainer(
-            duration: _dragOffset == 0
-                ? const Duration(milliseconds: 180)
-                : Duration.zero,
-            curve: Curves.easeOut,
-            transform: Matrix4.translationValues(_dragOffset, 0, 0),
+          Transform.translate(
+            offset: Offset(_dragOffset, 0),
             child: widget.child,
           ),
         ],
