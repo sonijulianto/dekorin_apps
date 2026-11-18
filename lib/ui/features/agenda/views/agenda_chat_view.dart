@@ -370,6 +370,157 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
     }
   }
 
+  Future<String?> _showAttachmentCaptionDialog({
+    PickedImageData? imageData,
+    String? pdfFilename,
+    int? pdfSize,
+  }) async {
+    final captionCtrl = TextEditingController(
+      text: _textController.text.trim(),
+    );
+    return showDialog<String?>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      imageData != null ? 'Kirim Foto' : 'Kirim Dokumen PDF',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx, null),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (imageData != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    child: Image.memory(
+                      imageData.bytes,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primaryGold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: Colors.redAccent,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pdfFilename ?? 'Dokumen.pdf',
+                              style: AppTypography.labelMedium.copyWith(
+                                color: AppColors.textDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              _formatFileSize(pdfSize ?? 0),
+                              style: AppTypography.caption,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: captionCtrl,
+                style: AppTypography.bodyMedium,
+                maxLines: 3,
+                minLines: 1,
+                autofocus: true,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => Navigator.pop(ctx, captionCtrl.text.trim()),
+                decoration: InputDecoration(
+                  hintText: 'Tambahkan keterangan / pesan...',
+                  hintStyle: AppTypography.bodySmall,
+                  filled: true,
+                  fillColor: const Color(0xFFF7F5F2),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, null),
+                    child: Text(
+                      'Batal',
+                      style: AppTypography.labelLarge.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGold,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () =>
+                        Navigator.pop(ctx, captionCtrl.text.trim()),
+                    child: Text('Kirim', style: AppTypography.button),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickAndSendImage(ImageSource source) async {
     if (_isUploadingAttachment) return;
     try {
@@ -381,8 +532,21 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
       );
       if (picked == null) return;
 
-      setState(() => _isUploadingAttachment = true);
       final imageData = await PickedImageData.fromXFile(picked);
+      if (!mounted) return;
+      final caption = await _showAttachmentCaptionDialog(imageData: imageData);
+      if (caption == null || !mounted) return;
+
+      final replyId = _replyingTo?.id ?? '';
+      final mentions = _pendingMentionIds.toList();
+      _textController.clear();
+      _pendingMentionIds.clear();
+      setState(() {
+        _isUploadingAttachment = true;
+        _replyingTo = null;
+        _mentionQuery = null;
+      });
+
       final chatSvc = ref.read(chatServiceProvider);
       final imageUrl = await chatSvc.uploadChatImage(widget.agendaId, imageData);
       if (imageUrl.isEmpty) {
@@ -391,10 +555,11 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
       final sent = await chatSvc.sendMessage(
         widget.agendaId,
         messageType: 'image',
+        content: caption,
         attachmentUrl: imageUrl,
-        replyToId: _replyingTo?.id ?? '',
+        replyToId: replyId,
+        mentionedCompanyIds: mentions,
       );
-      if (mounted) setState(() => _replyingTo = null);
       _appendMessageIfNew(sent);
     } catch (e) {
       if (mounted) {
@@ -431,7 +596,23 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
         throw Exception('Ukuran file PDF maksimal 10MB');
       }
 
-      setState(() => _isUploadingAttachment = true);
+      if (!mounted) return;
+      final caption = await _showAttachmentCaptionDialog(
+        pdfFilename: file.name,
+        pdfSize: bytes.lengthInBytes,
+      );
+      if (caption == null || !mounted) return;
+
+      final replyId = _replyingTo?.id ?? '';
+      final mentions = _pendingMentionIds.toList();
+      _textController.clear();
+      _pendingMentionIds.clear();
+      setState(() {
+        _isUploadingAttachment = true;
+        _replyingTo = null;
+        _mentionQuery = null;
+      });
+
       final chatSvc = ref.read(chatServiceProvider);
       final uploaded = await chatSvc.uploadChatPdf(
         widget.agendaId,
@@ -446,12 +627,13 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
       final sent = await chatSvc.sendMessage(
         widget.agendaId,
         messageType: 'file',
+        content: caption,
         attachmentUrl: pdfUrl,
         attachmentName: file.name,
         attachmentSize: bytes.lengthInBytes,
-        replyToId: _replyingTo?.id ?? '',
+        replyToId: replyId,
+        mentionedCompanyIds: mentions,
       );
-      if (mounted) setState(() => _replyingTo = null);
       _appendMessageIfNew(sent);
     } catch (e) {
       if (mounted) {
@@ -1602,8 +1784,8 @@ class _SwipeToReplyWrapper extends StatefulWidget {
 }
 
 class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> {
-  static const double _maxDrag = 56.0;
-  static const double _triggerThreshold = 36.0;
+  static const double _maxDrag = 84.0;
+  static const double _triggerThreshold = 48.0;
 
   double _dragOffset = 0.0;
   bool _triggered = false;
