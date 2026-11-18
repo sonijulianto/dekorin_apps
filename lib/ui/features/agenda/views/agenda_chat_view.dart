@@ -485,32 +485,39 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
               ),
               const SizedBox(height: 14),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, null),
-                    child: Text(
-                      'Batal',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: Colors.grey.shade600,
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(ctx, null),
+                      child: Text(
+                        'Batal',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGold,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGold,
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      onPressed: () =>
+                          Navigator.pop(ctx, captionCtrl.text.trim()),
+                      child: Text('Kirim', style: AppTypography.button),
                     ),
-                    onPressed: () =>
-                        Navigator.pop(ctx, captionCtrl.text.trim()),
-                    child: Text('Kirim', style: AppTypography.button),
                   ),
                 ],
               ),
