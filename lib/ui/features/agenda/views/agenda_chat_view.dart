@@ -325,11 +325,9 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
 
   void _setReplyTarget(ChatMessage msg) {
     setState(() => _replyingTo = msg);
-    Future.delayed(const Duration(milliseconds: 180), () {
-      if (mounted) {
-        _inputFocusNode.requestFocus();
-      }
-    });
+    if (!_inputFocusNode.hasFocus) {
+      _inputFocusNode.requestFocus();
+    }
   }
 
   Future<void> _sendTextMessage() async {
@@ -1157,12 +1155,26 @@ class _AgendaChatViewState extends ConsumerState<AgendaChatView> {
                     ),
                     if (_mentionQuery != null && _room != null)
                       _buildMentionSuggestions(_room!),
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => ClipRect(
+                        child: SizeTransition(
+                          sizeFactor: animation,
+                          alignment: Alignment.topCenter,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        ),
+                      ),
                       child: _replyingTo != null
-                          ? _buildReplyPreviewBar(_replyingTo!)
-                          : const SizedBox.shrink(),
+                          ? KeyedSubtree(
+                              key: ValueKey('reply_${_replyingTo!.id}'),
+                              child: _buildReplyPreviewBar(_replyingTo!),
+                            )
+                          : const SizedBox.shrink(key: ValueKey('reply_empty')),
                     ),
                     _buildComposerBar(),
                   ],
